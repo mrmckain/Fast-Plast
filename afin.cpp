@@ -1,6 +1,9 @@
 // $Author: benine $
-// $Date: 2014/04/15 01:15:40 $
+// $Date: 2014/04/18 19:09:09 $
 // $Log: afin.cpp,v $
+// Revision 1.4  2014/04/18 19:09:09  benine
+// Cleaned up some and found jesus
+//
 // Revision 1.3  2014/04/15 01:15:40  benine
 // Process class added
 // Cleaned up processing
@@ -19,7 +22,7 @@
 // Revision 1.1  2014/04/01 17:23:50  benine
 // Initial revision
 //
-// $Header: /home/benine/code/git/bb_afin/RCS/afin.cpp,v 1.3 2014/04/15 01:15:40 benine Exp benine $
+// $Header: /home/benine/code/git/bb_afin/RCS/afin.cpp,v 1.4 2014/04/18 19:09:09 benine Exp benine $
 //
 // Coded and compiled using c++11 standard
 
@@ -32,6 +35,10 @@
 
 using namespace std;
 
+// TASK:: Add processing for IUPAC DNA ambiguity codes
+// TASK:: Add processing for differences in reads( ie, create new contig objects for differing sets of matches, add method for splitting matchlist between two new contig objects ), determine which contig is correct
+// TASK:: Check to see if it would be beneficial to leave the offthefront() function out of find_part(), maybe include it when determining if two contigs connect, but probably not
+// TASK:: Add threading capability
 // TASK:: Put the following functions in class
 // pass by reference rc and put in it the reverse compliment of str
 void revcomp( std::string& str, std::string& rc ){
@@ -51,6 +58,9 @@ void revcomp( std::string& str, std::string& rc ){
         break;
       case 'C':
         rc[ len - i - 1 ] = 'G';
+        break;
+      case 'N':
+        rc[ len - i - 1 ] = 'N';
         break;
       case 't':
         rc[ len - i - 1 ] = 'A';
@@ -89,6 +99,9 @@ string revcomp( std::string& str ){
         break;
       case 'C':
         rc[ len - i - 1 ] = 'G';
+        break;
+      case 'N':
+        rc[ len - i - 1 ] = 'N';
         break;
       case 't':
         rc[ len - i - 1 ] = 'A';
@@ -220,7 +233,7 @@ class Contig_c{
     int find_start();
 
     // find reads from readlist that match the contig, the portion of the contig is indicated by sub_len, 0 indicates use of the full contig
-    void find_match( int sub_len );
+    void find_match();
 
     // checks the matches against each other and the contig, compiles an extension of length len (or less if the length is limited by matches) that is returned 
     string check_match( int len );
@@ -228,8 +241,8 @@ class Contig_c{
     // check_match( int ) with a default len provided
     string check_match();
 
-    // extend() performs loops iterations of check_match with length len of each extension, at each iteration the extension is added to contig
-    void extend( int loops, int len );
+    // extend() performs loops iterations of check_match with length len of each extension, at each iteration the extension is added to contig, and uses sublen characters from the end of the contig
+    void extend( int loops, int len, int sublen );
 
     // checks the coverage of matches at the given positions, returns the coverage
     int check_cov( int pos );
@@ -299,7 +312,8 @@ class Process{
 		      buffer = "";
 		    }
 		    else {
-		      line.pop_back();
+          if( line.back() == '\n' || line.back() == '>' )
+		        line.pop_back();
 		      buffer += line;
 		    }
 		  }
@@ -311,9 +325,6 @@ class Process{
 		  
       // close contig file
       cont.close();
-
-      // put last line into contig list
-      contigs.push_back( Contig_c( buffer, 3 ));
     }
 
     // return contig with index contig_ind
@@ -354,7 +365,7 @@ int main( int argc, char** argv ){
 
   cout << "contig: " << process.get_contig(0) << endl;
 
-  process.contigs[0].extend( 4, 10 );
+  process.contigs[0].extend( 4, 10, 100 );
 
   cout << "contex: " << process.get_contig(0) << endl;
 
@@ -552,22 +563,11 @@ int Contig_c::find_start(){
   return(contig.length() + 1);
 }
 
-// find reads from readlist that match the contig, the portion of the contig is indicated by sub_len, 0 indicates use of the full contig
-void Contig_c::find_match( int sub_len ){
-  string contig_sub("");
-
-  // Get contig piece to use for matching against
-  // if sub_len = 0, use full length of contig
-  if( sub_len == 0 ){
-    contig_sub = contig;
-  }
-  else {
-    contig_sub = contig.substr( contig.length() - (sub_len + 1 ), sub_len );
-  }
-
+// find reads from readlist that match the contig
+void Contig_c::find_match(){
   // cycle through readlist to check for matching reads
   for( int j=0; j<Process::readlist.size(); j++ ){
-    find_part( Process::readlist[j], contig_sub );
+    find_part( Process::readlist[j], contig );
   }
 }
 
@@ -576,7 +576,7 @@ string Contig_c::check_match( int len ){
   int start = contig.length();
 
   matchlist.clear();
-  find_match( 0 );
+  find_match();
 
   // create reference string for numeric based additions to the extension string
   string ATCGstr( "ATCG" );
@@ -588,25 +588,27 @@ string Contig_c::check_match( int len ){
     int ATCG[] = { 0,0,0,0 };
     int max = 0;
     int avg = 0;
-    int cov = 0;
+    
+    // check coverage at current position
+    if( check_cov( start + j ) < min_cov ){
+      break;
+    }
+
+    
     for( i=0; i<matchlist.size(); i++ ){
       int next_char = matchlist[i].getPos( start+j );
 
       if ( next_char == 'A' ) {
         ATCG[0]++;
-        cov++;
       }
       else if ( next_char == 'T' ) {
         ATCG[1]++;
-        cov++;
       }
       else if ( next_char == 'C' ) {
         ATCG[2]++;
-        cov++;
       }
       else if ( next_char == 'G' ) {
         ATCG[3]++;
-        cov++;
       }
     }
 
@@ -617,10 +619,6 @@ string Contig_c::check_match( int len ){
       }
     }
 
-    if( cov < min_cov ){
-      break;
-    }
-    
     // add next base
     extension.append( ATCGstr.substr( max, 1 ) );
   }
@@ -633,28 +631,37 @@ string Contig_c::check_match(){
   return check_match( 20 );
 }
 
-
-// TASK:: create new contig object when len>0
-// TASK:: clean up other methods to not deal with contig_sub length
-// extend() performs loops iterations of check_match with length len of each extension, at each iteration the extension is added to contig
-void Contig_c::extend( int loops, int len ){
+// extend() performs loops iterations of check_match with length len of each extension, at each iteration the extension is added to contig, and uses sublen characters from the end of the contig
+void Contig_c::extend( int loops, int len, int sublen ){
   string extension("");
-  for( int i=0; i<loops; i++ ){
-    extension = check_match( len );
-    contig.append( extension );
+  
+  // if sublen=0 use entire contig, else use the end of the contig len characters long and create new contig object to process and get extension from
+  if( sublen > 0 ){
+    for( int i=0; i<loops; i++ ){
+      Contig_c contig_sub( contig.substr( contig.length() - ( sublen + 1 ) ), 3 );
+   
+      // get extension through check_match
+      extension = contig_sub.check_match( len );
+      contig.append( extension );
+    }
+  }
+  else {
+    for( int i=0; i<loops; i++ ){
+      extension = check_match( len );
+      contig.append( extension );
+    }
   }
 }
 
 // checks the coverage of matches at the given positions, returns the coverage
 int Contig_c::check_cov( int pos ){
   int cov = 0;
-  
+
   for( int i=0; i<matchlist.size(); i++ ){
     if( matchlist[i].getPos( pos ) != -1 ){
       cov++;
     }
   }
-
   return cov;
 }
 
