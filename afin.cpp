@@ -312,7 +312,7 @@ class Process{
 		      buffer = "";
 		    }
 		    else {
-          if( line.back() == '\n' || line.back() == '>' )
+          if( line.back() == '>' )
 		        line.pop_back();
 		      buffer += line;
 		    }
@@ -347,8 +347,68 @@ class Process{
 // BEGIN MAIN FUNCTION ///////////////////////////////////////////////////////////>
 /////////////////////////////////////////////////////////////////////////////////
 int main( int argc, char** argv ){
-  //vector<Contig_c> contigs;
-  //vector<string> readlist;
+  //////////////////////////////////
+  // Process Command Line Options //
+  //////////////////////////////////
+  int c;
+  
+  // prevent output to stderr if erroneous option is found
+  opterr = 0;
+
+  // get all options that have been provided on the command line
+  while (( c = getopt (argc, argv, "hltpir:ugsd" )) != -1 ) {
+    switch( c ) {
+      case 'h':
+        cout << "hellp\n";
+        break;
+      case 'l':
+        cout << "lap\n";
+        break;
+      case 't':
+        cout << "tepid\n";
+        break;
+      case 'p':
+        cout << "pam\n";
+        break;
+      case 'i':
+        cout << "imp\n";
+        break;
+      case 'u':
+        cout << "up\n";
+        break;
+      case 'g':
+        cout << "gap\n";
+        break;
+      case 's':
+        cout << "sippy\n";
+        break;
+      case 'd':
+        cout << "drape\n";
+        break;
+      case 'r':
+        cout << "rapp " << optarg << endl;
+        break;
+      case '?':
+        if ( optopt == 'r' )
+          fprintf( stderr, "%s: Error: Option -r requires an argument. ", argv[0] );
+        else if ( isprint( optopt ))
+          fprintf( stderr, "%s: Error: Unknown option -%c. \n", argv[0], optopt );
+        else
+          fprintf( stderr, "%s: Error: Unknown option character %x.\n", argv[0], optopt );
+        return 1;
+      default:
+        abort();
+    }
+  }
+  
+  while ( optind < argc ) {
+    cout << argv[optind] << endl;
+    optind++;
+  }
+  /////////////////
+  // End Options //
+  /////////////////
+
 
 
   /////////////////////////
