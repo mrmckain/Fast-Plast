@@ -351,50 +351,43 @@ int main( int argc, char** argv ){
   // Process Command Line Options //
   //////////////////////////////////
   int c;
+  Process process;
+  
   
   // prevent output to stderr if erroneous option is found
   opterr = 0;
 
   // get all options that have been provided on the command line
-  while (( c = getopt (argc, argv, "hltpir:ugsd" )) != -1 ) {
+  while (( c = getopt (argc, argv, "hr:c:" )) != -1 ) {
     switch( c ) {
       case 'h':
-        cout << "hellp\n";
-        break;
-      case 'l':
-        cout << "lap\n";
-        break;
-      case 't':
-        cout << "tepid\n";
-        break;
-      case 'p':
-        cout << "pam\n";
-        break;
-      case 'i':
-        cout << "imp\n";
-        break;
-      case 'u':
-        cout << "up\n";
-        break;
-      case 'g':
-        cout << "gap\n";
-        break;
-      case 's':
-        cout << "sippy\n";
-        break;
-      case 'd':
-        cout << "drape\n";
+        cout << "Usage: " << argv[0] << " -c [contigfile(s)] -r [readfile(s)]\n";
         break;
       case 'r':
-        cout << "rapp " << optarg << endl;
+        cout << "readfile: " << optarg << endl;
+        process.add_reads( optarg );
+        break;
+      case 'c':
+        cout << "contigfile: " << optarg << endl;
+        process.add_contigs( optarg );
         break;
       case '?':
-        if ( optopt == 'r' )
+        if ( optopt == 'r' ){
           fprintf( stderr, "%s: Error: Option -r requires an argument. ", argv[0] );
-        else if ( isprint( optopt ))
+          cout << "Usage: " << argv[0] << " -c [contigfile(s)] -r [readfile(s)]\n";
+        }
+        else if ( optopt == 'c' ){
+          fprintf( stderr, "%s: Error: Option -c requires an argument. ", argv[0] );
+          cout << "Usage: " << argv[0] << " -c [contigfile(s)] -r [readfile(s)]\n";
+        }
+        else if ( isprint( optopt )){
           fprintf( stderr, "%s: Error: Unknown option -%c. \n", argv[0], optopt );
-        else
+          cout << "Usage: " << argv[0] << " -c [contigfile(s)] -r [readfile(s)]\n";
+        }
+        else{
           fprintf( stderr, "%s: Error: Unknown option character %x.\n", argv[0], optopt );
+          cout << "Usage: " << argv[0] << " -c [contigfile(s)] -r [readfile(s)]\n";
+        }
         return 1;
       default:
         abort();
@@ -417,11 +410,6 @@ int main( int argc, char** argv ){
 
   cout << "THIS IS A PROCESS CLASS TEST! THIS IS ONLY A TEST!" << endl;
 
-
-  Process process;
-  
-  process.add_contigs( "contig.fasta" );
-  process.add_reads( "reads.fasta" );
 
   cout << "contig: " << process.get_contig(0) << endl;
 
