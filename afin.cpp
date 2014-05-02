@@ -308,13 +308,13 @@ class Process{
 
       // read in contig objects
 		  while( getline( cont, line ) ){
-		    if( line.length()>0 && line[0] != '>' && buffer.length() != 0 ){
+		    if( line[0] != '>' && buffer.length() != 0 ){
 		      contigs.push_back( Contig_c( buffer, 3 ));
 		      buffer = "";
 		    }
-		    else {
-          if( line.back() == '>' )
-		        line.pop_back();
+		    else if ( line[0] == '>' ) {
+        }
+        else{
 		      buffer += line;
 		    }
 		  }
@@ -530,10 +530,6 @@ int Contig_c::find_part( string match, string contig_sub, int min ){
   	    push_read( match, pos );
     return 1;
   }
-  if( (pos = offthefront( contig_sub, match, min )) != 0){
-  	    push_read( match, pos );
-    return 1;
-  }
   if( (pos = offtheback( contig_sub, match, min )) != 0){
   	    push_read( match, pos );
     return 1;
@@ -542,10 +538,6 @@ int Contig_c::find_part( string match, string contig_sub, int min ){
   rc = revcomp( match );
   // check for reverse compliment matches
   if( (pos = -contig_sub.find( rc )) != 1 ){
-  	    push_read( rc, pos, true );
-    return 1;
-  }
-  if( (pos = offthefront( contig_sub, rc, min )) != 0){
   	    push_read( rc, pos, true );
     return 1;
   }
