@@ -278,11 +278,51 @@ class Process{
     void add_reads( string filename ){
 		  string buffer("");
       string line("");
+      int line_count = 0;
 		  
       // open read file
       ifstream read( filename );
       
-      // read in reads
+      // read in fastq reads
+      while( getline( read, line )){
+        line_count++;
+        if( line[0] == '@' ){
+          if( getline( read, line )){
+            line_count++;
+            readlist.push_back( line );
+            if( getline( read, line )){
+              line_count++;
+              if( line[0] == '+'){
+                if( getline( read, line )){
+                  line_count++;
+                  continue;
+                }
+                else{
+                  fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
+                }
+              }
+              else{
+                fprintf( stderr, "Error reading fastq file. '+' expected at this line. Line: %d\n", line_count );
+              }
+            }
+            else{
+              fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
+            }
+          }
+          else{
+            fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
+          }
+        }
+        else{  
+          fprintf( stderr, "Error reading fastq file. '@' expected at the beginning of this line. Line: %d\n", line_count );
+        }
+      }
+
+
+
+              
+
+      /*// read in reads
 		  while( getline( read, line )){
 		    if( line[0] == '>' && buffer.length() != 0 ){
           cout << buffer << endl;
@@ -294,7 +334,7 @@ class Process{
 		    else {
 		      buffer += line;
 		    }
-      }
+      }*/
 
       // close read file
       read.close();
