@@ -36,6 +36,8 @@
 
 using namespace std;
 
+// TASK:: create separate methods for fasta and fastq files
+// TASK:: creaet methods for detecting fasta vs fastq 
 // TASK:: Add processing for IUPAC DNA ambiguity codes
 // TASK:: Add processing for differences in reads( ie, create new contig objects for differing sets of matches, add method for splitting matchlist between two new contig objects ), determine which contig is correct
 // TASK:: Check to see if it would be beneficial to leave the offthefront() function out of find_part(), maybe include it when determining if two contigs connect, but probably not
@@ -139,9 +141,13 @@ int offtheback( string base, string sub, int min ){
   int length = base.length();
   int sublen = sub.length();
 
+  cout << "offtheback1\n";
   // compare base and sub to see if the end of base lines up with the beginning of sub anywhere with a minimum of min characters in common
   for( int i=length - sublen + 1; i<length-min; i++ ){
+  //cout << sub << endl;
+  printf( "offtheback2  i:%d length:%d sublen:%d \n", i, length, sublen );
     if( base.substr( i, length-i-2 ) == sub.substr( 0, length-i-2 ) ){
+  cout << "offtheback2\n";
       return( -i );
     }
   }
@@ -279,6 +285,7 @@ class Process{
       // read in reads
 		  while( getline( read, line )){
 		    if( line[0] == '>' && buffer.length() != 0 ){
+          cout << buffer << endl;
 		      readlist.push_back( buffer );
 		      buffer = "";
 		    } 
@@ -308,8 +315,9 @@ class Process{
 
       // read in contig objects
 		  while( getline( cont, line ) ){
-		    if( line[0] != '>' && buffer.length() != 0 ){
-		      contigs.push_back( Contig_c( buffer, 3 ));
+		    if( line[0] == '>' && buffer.length() != 0 ){
+          cout << buffer << endl;
+          contigs.push_back( Contig_c( buffer, 3 ));
 		      buffer = "";
 		    }
 		    else if ( line[0] == '>' ) {
@@ -353,6 +361,7 @@ int main( int argc, char** argv ){
   //////////////////////////////////
   int c;
   Process process;
+  char* bob;
   
   
   // prevent output to stderr if erroneous option is found
@@ -367,10 +376,12 @@ int main( int argc, char** argv ){
       case 'r':
         cout << "readfile: " << optarg << endl;
         process.add_reads( optarg );
+        cin >> bob;
         break;
       case 'c':
         cout << "contigfile: " << optarg << endl;
         process.add_contigs( optarg );
+        cin >> bob;
         break;
       case '?':
         if ( optopt == 'r' ){
@@ -526,23 +537,31 @@ int Contig_c::find_part( string match, string contig_sub, int min ){
   string rc("");  
   
   // check for normal matches
+    cout << "find_part_within1" << endl;
   if( (pos = -contig_sub.find( match )) != 1 ){
-  	    push_read( match, pos );
+    push_read( match, pos );
+    cout << "find_part_within2" << endl;
     return 1;
   }
+    cout << "find_part_otb1" << endl;
   if( (pos = offtheback( contig_sub, match, min )) != 0){
-  	    push_read( match, pos );
+    cout << "find_part_otb2" << endl;
+  	push_read( match, pos );
     return 1;
   }
 	
   rc = revcomp( match );
   // check for reverse compliment matches
+    cout << "find_part_rc_within1" << endl;
   if( (pos = -contig_sub.find( rc )) != 1 ){
-  	    push_read( rc, pos, true );
+  	push_read( rc, pos, true );
+    cout << "find_part_rc_within2" << endl;
     return 1;
   }
+    cout << "find_part_rc_otb1\n";
   if( (pos = offtheback( contig_sub, rc, min )) != 0){
-  	    push_read( rc, pos, true );
+  	push_read( rc, pos, true );
+    cout << "find_part_rc_otb2\n";
     return 1;
   }
 
