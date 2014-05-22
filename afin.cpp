@@ -33,9 +33,12 @@
 #include <fstream>
 #include <vector>
 #include <unistd.h>
+#include <ctime>
 
 using namespace std;
 
+// TASK:: Use find() in off_the_back
+// TASK:: use check to see if a loop has failed to extend the contig or if the loop has failed to extend the loop beyond a certain threshold
 // TASK:: create separate methods for fasta and fastq files
 // TASK:: creaet methods for detecting fasta vs fastq 
 // TASK:: Add processing for IUPAC DNA ambiguity codes
@@ -125,6 +128,17 @@ string revcomp( std::string& str ){
   return rc;
 }
 
+// print current time in h:m:s format
+void print_time(){
+  time_t t = time(0);   // get time now
+  struct tm * now = localtime( & t );
+  cout << now->tm_hour << ':' 
+        << now->tm_min << ':'
+        <<  now->tm_sec
+        << endl;
+}
+
+
 // returns position if the search string aligns with a portion off the front of the base 
 int offthefront( string base, string sub, int min ){
   int length = sub.length();
@@ -141,13 +155,13 @@ int offtheback( string base, string sub, int min ){
   int length = base.length();
   int sublen = sub.length();
 
-  cout << "offtheback1\n";
+  //cout << "offtheback1\n";
   // compare base and sub to see if the end of base lines up with the beginning of sub anywhere with a minimum of min characters in common
   for( int i=length - sublen + 1; i<length-min; i++ ){
   //cout << sub << endl;
-  printf( "offtheback2  i:%d length:%d sublen:%d \n", i, length, sublen );
+  //printf( "offtheback2  i:%d length:%d sublen:%d \n", i, length, sublen );
     if( base.substr( i, length-i-2 ) == sub.substr( 0, length-i-2 ) ){
-  cout << "offtheback2\n";
+  //cout << "offtheback2\n";
       return( -i );
     }
   }
@@ -356,7 +370,7 @@ class Process{
       // read in contig objects
 		  while( getline( cont, line ) ){
 		    if( line[0] == '>' && buffer.length() != 0 ){
-          cout << buffer << endl;
+          //cout << buffer << endl;
           contigs.push_back( Contig_c( buffer, 3 ));
 		      buffer = "";
 		    }
@@ -401,8 +415,6 @@ int main( int argc, char** argv ){
   //////////////////////////////////
   int c;
   Process process;
-  char* bob;
-  
   
   // prevent output to stderr if erroneous option is found
   opterr = 0;
@@ -415,13 +427,17 @@ int main( int argc, char** argv ){
         break;
       case 'r':
         cout << "readfile: " << optarg << endl;
+        cout << "add_reads time: ";
+        print_time();
         process.add_reads( optarg );
-        cin >> bob;
+        print_time();
         break;
       case 'c':
         cout << "contigfile: " << optarg << endl;
+        cout << "add_contigs time: ";
+        print_time();
         process.add_contigs( optarg );
-        cin >> bob;
+        print_time();
         break;
       case '?':
         if ( optopt == 'r' ){
@@ -465,7 +481,7 @@ int main( int argc, char** argv ){
 
   cout << "contig: " << process.get_contig(0) << endl;
 
-  process.contigs[0].extend( 4, 10, 100 );
+  process.contigs[0].extend( 4, 80, 100 );
 
   cout << "contex: " << process.get_contig(0) << endl;
 
@@ -577,31 +593,31 @@ int Contig_c::find_part( string match, string contig_sub, int min ){
   string rc("");  
   
   // check for normal matches
-    cout << "find_part_within1" << endl;
-  if( (pos = -contig_sub.find( match )) != 1 ){
-    push_read( match, pos );
-    cout << "find_part_within2" << endl;
-    return 1;
-  }
-    cout << "find_part_otb1" << endl;
+    //cout << "find_part_within1" << endl;
+  //if( (pos = -contig_sub.find( match )) != 1 ){
+    //push_read( match, pos );
+    //cout << "find_part_within2" << endl;
+    //return 1;
+  //}
+    //cout << "find_part_otb1" << endl;
   if( (pos = offtheback( contig_sub, match, min )) != 0){
-    cout << "find_part_otb2" << endl;
+    //cout << "find_part_otb2" << endl;
   	push_read( match, pos );
     return 1;
   }
 	
   rc = revcomp( match );
   // check for reverse compliment matches
-    cout << "find_part_rc_within1" << endl;
-  if( (pos = -contig_sub.find( rc )) != 1 ){
-  	push_read( rc, pos, true );
-    cout << "find_part_rc_within2" << endl;
-    return 1;
-  }
-    cout << "find_part_rc_otb1\n";
+    //cout << "find_part_rc_within1" << endl;
+  //if( (pos = -contig_sub.find( rc )) != 1 ){
+  	//push_read( rc, pos, true );
+    //cout << "find_part_rc_within2" << endl;
+    //return 1;
+  //}
+    //cout << "find_part_rc_otb1\n";
   if( (pos = offtheback( contig_sub, rc, min )) != 0){
   	push_read( rc, pos, true );
-    cout << "find_part_rc_otb2\n";
+    //cout << "find_part_rc_otb2\n";
     return 1;
   }
 
@@ -665,10 +681,15 @@ int Contig_c::find_start(){
 
 // find reads from readlist that match the contig
 void Contig_c::find_match(){
+  cout << "find_match: ";
+  print_time();
+
   // cycle through readlist to check for matching reads
   for( int j=0; j<Process::readlist.size(); j++ ){
-    find_part( Process::readlist[j], contig );
+    find_part( Process::readlist[j], contig, 20 );
   }
+  cout << "find_match2: ";
+  print_time();
 }
 
 // checks the matches against each other and the contig, compiles an extension of length len (or less if the length is limited by matches) that is returned 
@@ -738,16 +759,29 @@ void Contig_c::extend( int loops, int len, int sublen ){
   // if sublen=0 use entire contig, else use the end of the contig len characters long and create new contig object to process and get extension from
   if( sublen > 0 ){
     for( int i=0; i<loops; i++ ){
+      printf( "extend loop#: %2.d  time: ", i );
+      print_time();
       Contig_c contig_sub( contig.substr( contig.length() - ( sublen + 1 ) ), 3 );
    
       // get extension through check_match
       extension = contig_sub.check_match( len );
+      cout << extension << endl;
+      if( extension.length() == 0 ){
+        break;
+      }
+
       contig.append( extension );
+      printf( "extend loop#: %2.d  time: ", i );
     }
   }
   else {
     for( int i=0; i<loops; i++ ){
       extension = check_match( len );
+      cout << extension << endl;
+      if( extension.length() == 0 ){
+        break;
+      }
+      
       contig.append( extension );
     }
   }
