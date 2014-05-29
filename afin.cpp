@@ -34,18 +34,25 @@
 #include <vector>
 #include <unistd.h>
 #include <ctime>
+#include <unordered_map>
+#include <utility>
 
 using namespace std;
 
-// TASK:: Use find() in off_the_back
-// TASK:: use check to see if a loop has failed to extend the contig or if the loop has failed to extend the loop beyond a certain threshold
+// TASK:: split this into several header files
+// TASK:: consider revcomp hash list that points to readlist positions
+// TASK:: develop search based on sorted readlist
+// TASK:: match up min overlap better with max extension? Extending doesn't add too much time but searching adds a great deal of time
 // TASK:: create separate methods for fasta and fastq files
-// TASK:: creaet methods for detecting fasta vs fastq 
+// TASK:: create methods for detecting fasta vs fastq 
 // TASK:: Add processing for IUPAC DNA ambiguity codes
 // TASK:: Add processing for differences in reads( ie, create new contig objects for differing sets of matches, add method for splitting matchlist between two new contig objects ), determine which contig is correct
 // TASK:: Check to see if it would be beneficial to leave the offthefront() function out of find_part(), maybe include it when determining if two contigs connect, but probably not
 // TASK:: Add threading capability
 // TASK:: Put the following functions in class
+
+#define MAX_SORT 4
+
 // pass by reference rc and put in it the reverse compliment of str
 void revcomp( std::string& str, std::string& rc ){
   int len = str.length();
@@ -266,7 +273,7 @@ class Contig_c{
     void extend( int loops, int len, int sublen );
 
     // checks the coverage of matches at the given positions, returns the coverage
-    int check_cov( int pos );
+    long int check_cov( long int pos );
 };
 //////////////////////
 // End Contig Class //
@@ -285,115 +292,26 @@ class Process{
   public:
     vector<Contig_c> contigs;
     static vector<string> readlist;
+    static vector<int> rc_readlist;
+    static unordered_map<string, vector<int>> read_range;
 
     Process(){}
 
+    // sorts the reads by the first MAX_SORT characters
+    void sort_reads();
+
+    // creates a hash table within the process object that contains the ranges corresponding to equivalent first MAX_SORT characters in the reads
+    // This increases the efficiency of searching
+    void create_read_range();
+
     // put reads from readfile into readlist
-    void add_reads( string filename ){
-		  string buffer("");
-      string line("");
-      int line_count = 0;
-		  
-      // open read file
-      ifstream read( filename );
-      
-      // read in fastq reads
-      while( getline( read, line )){
-        line_count++;
-        if( line[0] == '@' ){
-          if( getline( read, line )){
-            line_count++;
-            readlist.push_back( line );
-            if( getline( read, line )){
-              line_count++;
-              if( line[0] == '+'){
-                if( getline( read, line )){
-                  line_count++;
-                  continue;
-                }
-                else{
-                  fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
-                }
-              }
-              else{
-                fprintf( stderr, "Error reading fastq file. '+' expected at this line. Line: %d\n", line_count );
-              }
-            }
-            else{
-              fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
-            }
-          }
-          else{
-            fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
-          }
-        }
-        else{  
-          fprintf( stderr, "Error reading fastq file. '@' expected at the beginning of this line. Line: %d\n", line_count );
-        }
-      }
-
-
-
-              
-
-      /*// read in reads
-		  while( getline( read, line )){
-		    if( line[0] == '>' && buffer.length() != 0 ){
-          cout << buffer << endl;
-		      readlist.push_back( buffer );
-		      buffer = "";
-		    } 
-		    else if( line[0] == '>' ){
-		    }
-		    else {
-		      buffer += line;
-		    }
-      }*/
-
-      // close read file
-      read.close();
-
-      // insert last line into readlist
-		  if( buffer.length() != 0 ){
-		    readlist.push_back( buffer );
-		  }
-    }
+    void add_reads( string filename );
 
     // put contigs from contfile into contlist
-    void add_contigs( string filename ){
-		  string buffer("");
-      string line("");
-		  
-      // open contig file
-      ifstream cont( filename );
-
-      // read in contig objects
-		  while( getline( cont, line ) ){
-		    if( line[0] == '>' && buffer.length() != 0 ){
-          //cout << buffer << endl;
-          contigs.push_back( Contig_c( buffer, 3 ));
-		      buffer = "";
-		    }
-		    else if ( line[0] == '>' ) {
-        }
-        else{
-		      buffer += line;
-		    }
-		  }
-      
-      // insert last line into contigs list
-		  if( buffer.length() != 0 ){
-		    contigs.push_back( Contig_c( buffer, 3 ) );
-		  }
-		  
-      // close contig file
-      cont.close();
-    }
+    void add_contigs( string filename );
 
     // return contig with index contig_ind
-    string get_contig( int contig_ind ){
-      return contigs[ contig_ind ].getContig();
-    }
+    string get_contig( int contig_ind );
 };
 
 ///////////////////////
@@ -652,7 +570,7 @@ void Contig_c::check_pos( int pos ){
 
 // finds the initial point at which the matches meet the min_cov requirement
 int Contig_c::find_start(){
-  int cov;
+  long int cov;
   int next_char;
   first_read = contig.length();
   
@@ -692,7 +610,7 @@ void Contig_c::find_match(){
   print_time();
 }
 
-// checks the matches against each other and the contig, compiles an extension of length len (or less if the length is limited by matches) that is returned 
+/// checks the matches against each other and the contig, compiles an extension of length len (or less if the length is limited by matches) that is returned 
 string Contig_c::check_match( int len ){
   int start = contig.length();
 
@@ -788,10 +706,10 @@ void Contig_c::extend( int loops, int len, int sublen ){
 }
 
 // checks the coverage of matches at the given positions, returns the coverage
-int Contig_c::check_cov( int pos ){
-  int cov = 0;
+long int Contig_c::check_cov( long int pos ){
+  long int cov = 0;
 
-  for( int i=0; i<matchlist.size(); i++ ){
+  for( long int i=0; i<matchlist.size(); i++ ){
     if( matchlist[i].getPos( pos ) != -1 ){
       cov++;
     }
@@ -801,6 +719,129 @@ int Contig_c::check_cov( int pos ){
 
 //////// PROCESS DEFINITIONS ///////
 vector<string> Process::readlist;
+vector<int> Process::rc_readlist;
+unordered_map<string, pair<long int,long int>> Process::read_range;
+
+// uses a bubblesort to sort the read list based on the first MAX_SORT characters of each read
+void Process::sort_reads(){
+  for( long int i=1; i<readlist.size(); i++ ){
+    for( long int j=readlist.size()-1; j>=i; j-- ){
+      if( readlist[j].compare( 0, MAX_SORT, readlist[j-1] ) < 0 ){
+        string temp = readlist[j];
+        readlist[j] = readlist[j-1];
+        readlist[j-1] = temp;
+      }
+    }
+  }
+}
+
+// creates a hash table within the process object that contains the ranges corresponding to equivalent first MAX_SORT characters in the reads
+// This increases the efficiency of searching
+void Process::create_read_range(){
+  string current( readlist[0].substr( 0, MAX_SORT ) );
+  long curr_start = 0;
+  for( long int i=1; i<readlist.size; i++ ){
+    if( readlist[i].compare( 0, MAX_SORT, current ) != 0 ){
+      // insert values into hash table, the ordered pair reflecting the range is increased by 1 to differentiate between a false search  
+      read_range.insert( { current, { curr_start+1, i }});
+      curr_start = i;
+      current = readlist[i].substr( 0, MAX_SORT );
+    }
+  }
+  
+  read_range.insert( { current, { curr_start+1, readlist.size() }});
+}
+
+// put reads from readfile into readlist
+void Process::add_reads( string filename ){
+  string buffer("");
+  string line("");
+  int line_count = 0;
+  
+  // open read file
+  ifstream read( filename );
+  
+  // read in fastq reads
+  while( getline( read, line )){
+    line_count++;
+    if( line[0] == '@' ){
+      if( getline( read, line )){
+        line_count++;
+        readlist.push_back( line );
+        if( getline( read, line )){
+          line_count++;
+          if( line[0] == '+'){
+            if( getline( read, line )){
+              line_count++;
+              continue;
+            }
+            else{
+              fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
+            }
+          }
+          else{
+            fprintf( stderr, "Error reading fastq file. '+' expected at this line. Line: %d\n", line_count );
+          }
+        }
+        else{
+          fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
+        }
+      }
+      else{
+        fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
+      }
+    }
+    else{  
+      fprintf( stderr, "Error reading fastq file. '@' expected at the beginning of this line. Line: %d\n", line_count );
+    }
+  }
+
+
+  // close read file
+  read.close();
+
+  // insert last line into readlist
+  if( buffer.length() != 0 ){
+    readlist.push_back( buffer );
+  }
+}
+
+
+// put contigs from contfile into contlist
+void Process::add_contigs( string filename ){
+  string buffer("");
+  string line("");
+  
+  // open contig file
+  ifstream cont( filename );
+
+  // read in contig objects
+  while( getline( cont, line ) ){
+    if( line[0] == '>' && buffer.length() != 0 ){
+      //cout << buffer << endl;
+      contigs.push_back( Contig_c( buffer, 3 ));
+      buffer = "";
+    }
+    else if ( line[0] == '>' ) {
+    }
+    else{
+      buffer += line;
+    }
+  }
+  
+  // insert last line into contigs list
+  if( buffer.length() != 0 ){
+    contigs.push_back( Contig_c( buffer, 3 ) );
+  }
+  
+  // close contig file
+  cont.close();
+}
+
+// return contig with index contig_ind
+string Process::get_contig( int contig_ind ){
+  return contigs[ contig_ind ].getContig();
+}
 
 //////////////////////////////
 // END DEFINITIONS ///////////
