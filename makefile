@@ -1,9 +1,14 @@
-OBJS = afin.o
+CC := g++
+CPPFLAGS := -std=c++11 -g
+TARGET := afin
+OBJS := afin.o contig.o print_time.o process.o read.o revcomp.o
 
-afin: $(OBJS)
-	g++ -std=c++11 -o $@ $(OBJS)
+$(TARGET): $(OBJS)
+	$(CC) $(CPPFLAGS) -o $@ $(OBJS)
 
-afin.o: afin.cpp
-	g++ -std=c++11 -c afin.cpp
+%.o : %.cpp
+	$(CC) $(CPPFLAGS) -c $< -o $@ 
 
+clean:
+	/bin/rm -f *o $(TARGET)
 
