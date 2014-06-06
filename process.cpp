@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <unordered_map>
 #include <tuple>
+#include <algorithm>
 #include "print_time.hpp"
 #include "revcomp.hpp"
 #include "process.hpp"
@@ -42,37 +43,46 @@ vector<string> readlist;
 vector<long int> rc_reflist;
 unordered_map<string, tuple<long,long,long,long>> read_range;
 
-// uses a bubblesort to sort the read list based on the first MAX_SORT characters of each read
-void Process::sort_reads(){
-  for( long int i=1; i<readlist.size(); i++ ){
-    for( long int j=readlist.size()-1; j>=i; j-- ){
-      if( readlist[j].compare( 0, MAX_SORT, readlist[j-1].substr( 0, MAX_SORT )) < 0 ){
-        string temp = readlist[j];
-        readlist[j] = readlist[j-1];
-        readlist[j-1] = temp;
-      }
-    }
+bool cmp_rc( const int ind1, const int ind2 ){
+  string str1 = readlist[ind1].substr( readlist[ind1].length()-MAX_SORT, MAX_SORT );
+  str1 = revcomp( str1 );
+  string str2 = readlist[ind2].substr( readlist[ind2].length()-MAX_SORT, MAX_SORT );
+  str2 = revcomp( str2 );
+
+  return (str1.compare( str2 ) < 0 ); 
+}
+
+bool cmp_read( const string str1, const string str2 ){
+  return (str1.compare( 0, MAX_SORT, str2.substr( 0, MAX_SORT ) ) < 0 ); 
+}
+
+template<class Iter, typename Order>
+void merge_sort( Iter first, Iter last, Order order ){
+  if (last - first > 1){
+    Iter middle = first + (last - first)/2;
+    merge_sort( first, middle, order );
+    merge_sort( middle, last, order );
+    inplace_merge( first, middle, last, order );
   }
+}
+
+// uses a mergesort to sort the read list based on the first MAX_SORT characters of each read
+void Process::sort_reads(){
+  merge_sort( readlist.begin(), readlist.end(), cmp_read );
 }
 
 // Produces list of references to the readlist sorted based on the first MAX_SORT characters of the reverse_compliment of the
 //  referenced read
 //  Must be done after the readlist is sorted as it contains the locations in the readlist of the referenced read
-//  Uses an insertion sort to build the list
+//  Uses a mergesort
 void Process::sort_rc(){
-  vector<long int>::iterator iter;
-  iter = rc_reflist.begin();
+  rc_reflist.resize( readlist.size() );
 
-  rc_reflist.insert( iter, 0 );
-  for( long int i=1; i<readlist.size(); i++ ){
-    for( long int j=0; i<rc_reflist.size(); j++ ){
-      string temp = readlist[i].substr( readlist[i].length() - MAX_SORT, MAX_SORT );
-      if( readlist[rc_reflist[j]].compare( 0, MAX_SORT, revcomp( temp ) ) < 0 ){
-        rc_reflist.insert( iter+j, i );
-        break;
-      }
-    }
+  for( int i=0; i<rc_reflist.size(); i++ ){
+    rc_reflist[i]=i;
   }
+
+  merge_sort( rc_reflist.begin(), rc_reflist.end(), cmp_rc );
 }
 
 // creates a hash table within the process object that contains the ranges corresponding to equivalent first MAX_SORT characters in the reads
