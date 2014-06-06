@@ -46,7 +46,7 @@ unordered_map<string, tuple<long,long,long,long>> read_range;
 void Process::sort_reads(){
   for( long int i=1; i<readlist.size(); i++ ){
     for( long int j=readlist.size()-1; j>=i; j-- ){
-      if( readlist[j].compare( 0, MAX_SORT, readlist[j-1] ) < 0 ){
+      if( readlist[j].compare( 0, MAX_SORT, readlist[j-1].substr( 0, MAX_SORT )) < 0 ){
         string temp = readlist[j];
         readlist[j] = readlist[j-1];
         readlist[j-1] = temp;

@@ -145,7 +145,7 @@ void Contig::match_contig(){
     if( get<0>(range) != 0 ){
       for( int j=get<0>(range)-1; j<get<1>(range); j++ ){
         // check if the current read matches the contig from this point
-        if( readlist[j].compare( 0, contig_sub.length(), contig_sub ) == 0 ){
+        if( readlist[j].compare( 0, contig_sub.length() - 1, contig_sub ) == 0 ){
   	      push_match( readlist[j], -i );
         }
       }
@@ -156,7 +156,7 @@ void Contig::match_contig(){
         string rc = readlist[rc_reflist[j]];
         rc = revcomp( rc );
 
-        if( rc.compare( 0, contig_sub.length(), contig_sub ) == 0 ){
+        if( rc.compare( 0, contig_sub.length() - 1, contig_sub ) == 0 ){
   	      push_match( rc, -i, true );
         }
       }
@@ -171,6 +171,7 @@ string Contig::check_match( int len ){
   matchlist.clear();
   match_contig();
 
+  cout << "check_match1 start: " << start << "  contig: " << contig << endl;
   // create reference string for numeric based additions to the extension string
   string ATCGstr( "ATCG" );
   int i;
@@ -237,7 +238,7 @@ void Contig::extend( int loops, int len, int sublen ){
    
       // get extension through check_match
       extension = contig_sub.check_match( len );
-      cout << extension << endl;
+      cout << "extension:" << extension << endl;
       if( extension.length() == 0 ){
         break;
       }

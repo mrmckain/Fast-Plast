@@ -125,6 +125,17 @@ int main( int argc, char** argv ){
 
   cout << "THIS IS A PROCESS CLASS TEST! THIS IS ONLY A TEST!" << endl;
 
+  cout << "sort_reads start: ";
+  print_time();
+  process.sort_reads();
+  cout << "sort_rc start: ";
+  print_time();
+  process.sort_rc();
+  cout << "create_reads_range start: ";
+  print_time();
+  process.create_read_range();
+  cout << "extend start: ";
+  print_time();
 
   cout << "contig: " << process.get_contig(0) << endl;
 
