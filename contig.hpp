@@ -11,6 +11,9 @@ using namespace std;
 
 #include "read.hpp"
 
+// return the read range corresponding to the first MAX_SORT characters of the read passed
+tuple<long,long,long,long> get_read_range( string read_seg );
+    
 /////////////////////////////////////////////////////\
 // Contig Class: //////////////////////////////////////>
 //////////////////////////////////////////////////////
@@ -21,8 +24,7 @@ class Contig{
     vector<Read> matchlist;
     string contig;
     int first_read; // indicates the postition in contig where the first matching read begins    
-    int min_cov; // contains the minimum coverage variable
-    int min_overlap;
+    int min_cov;
 
   public:
     Contig( string str, int cov );
@@ -56,9 +58,6 @@ class Contig{
     // determines where the read passed matches the contig if at all
     void match_contig();
     
-    // return the read range corresponding to the first MAX_SORT characters of the read passed
-    tuple<long,long,long,long> get_read_range( string read_seg );
-    
     // checks the matches against each other and the contig, compiles an extension of length len (or less if the length is limited by matches) that is returned 
     string check_match( int len );
 
@@ -66,7 +65,7 @@ class Contig{
     string check_match();
 
     // extend() performs loops iterations of check_match with length len of each extension, at each iteration the extension is added to contig, and uses sublen characters from the end of the contig
-    void extend( int loops, int len, int sublen );
+    void extend();
 
     // checks the coverage of matches at the given positions, returns the coverage
     long check_cov( long pos );

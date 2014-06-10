@@ -33,6 +33,9 @@
 #include <fstream>
 #include <vector>
 #include <unistd.h>
+#include <tuple>
+#include <utility>
+#include <unordered_map>
 #include "contig.hpp"
 #include "print_time.hpp"
 #include "process.hpp"
@@ -40,17 +43,15 @@
 
 using namespace std;
 
-// TASK:: split this into several header files
-// TASK:: consider revcomp hash list that points to readlist positions
-// TASK:: develop search based on sorted readlist
-// TASK:: match up min overlap better with max extension? Extending doesn't add too much time but searching adds a great deal of time
+// TASK:: remove unnecessary variables that have been replaced by global variables 
+// TASK:: add print usage function
+// TASK:: add parsing for multiple read/contig files
+// TASK:: add long options
 // TASK:: create separate methods for fasta and fastq files
 // TASK:: create methods for detecting fasta vs fastq 
 // TASK:: Add processing for IUPAC DNA ambiguity codes
 // TASK:: Add processing for differences in reads( ie, create new contig objects for differing sets of matches, add method for splitting matchlist between two new contig objects ), determine which contig is correct
-// TASK:: Check to see if it would be beneficial to leave the offthefront() function out of find_part(), maybe include it when determining if two contigs connect, but probably not
 // TASK:: Add threading capability
-// TASK:: Put the following functions in class
 
 
 /////////////////////////////////////////////////////////////////////////////////\
@@ -60,6 +61,12 @@ int main( int argc, char** argv ){
   //////////////////////////////////
   // Process Command Line Options //
   //////////////////////////////////
+  max_search_loops = 10;
+  contig_sub_len = 100;
+  extend_len = 80;
+  max_sort_char = 4;
+  min_cov_init = 5;
+  min_overlap = 20;
   int c;
   Process process;
   
@@ -67,11 +74,36 @@ int main( int argc, char** argv ){
   opterr = 0;
 
   // get all options that have been provided on the command line
-  while (( c = getopt (argc, argv, "hr:c:" )) != -1 ) {
+  while (( c = getopt (argc, argv, "hr:c:s:l:x:m:i:" )) != -1 ) {
     switch( c ) {
       case 'h':
         cout << "Usage: " << argv[0] << " -c [contigfile(s)] -r [readfile(s)]\n";
         break;
+      // max_sort_char option
+      case 'm':
+        max_sort_char = atoi(optarg);
+        break;
+      // contig_sub_len option
+      case 's':
+        contig_sub_len = atoi(optarg);
+        break;
+      // extend_len option
+      case 'x':
+        extend_len = atoi(optarg);
+        break;
+      // max_sort_char option
+      case 'l':
+        max_search_loops = atoi(optarg);
+        break;
+      // min_cov_init option
+      case 'i':
+        min_cov_init = atoi(optarg);
+        break;
+      // min_cov_init option
+      case 'p':
+        min_overlap = atoi(optarg);
+        break;
+      // readfile option
       case 'r':
         cout << "readfile: " << optarg << endl;
         cout << "add_reads time: ";
@@ -79,6 +111,7 @@ int main( int argc, char** argv ){
         process.add_reads( optarg );
         print_time();
         break;
+      // contig file option
       case 'c':
         cout << "contigfile: " << optarg << endl;
         cout << "add_contigs time: ";
@@ -109,6 +142,15 @@ int main( int argc, char** argv ){
     }
   }
   
+  // output starting option values
+  cout << "OPTION VALUES" << endl;
+  cout << "contig_sub_len: " << contig_sub_len << endl;
+  cout << "extend_len: " << extend_len << endl;
+  cout << "max_search_loops: " << max_search_loops << endl;
+  cout << "max_sort_char: " << max_sort_char << endl;
+  cout << "min_cov_init: " << min_cov_init << endl;
+  cout << "min_overlap: " << min_overlap << endl;
+
   while ( optind < argc ) {
     cout << argv[optind] << endl;
     optind++;
@@ -134,17 +176,18 @@ int main( int argc, char** argv ){
   cout << "create_reads_range start: ";
   print_time();
   process.create_read_range();
+
   cout << "extend start: ";
   print_time();
 
   cout << "contig: " << process.get_contig(0) << endl;
 
-  process.contigs[0].extend( 4, 80, 100 );
+  process.contigs[0].extend();
 
   cout << "contex: " << process.get_contig(0) << endl;
 
-
   cout << "THIS HAS BEEN A PROCESS CLASS TEST. THANK YOU FOR YOUR PATIENCE!" << endl;
+
 
   //////////////
   // End Test //

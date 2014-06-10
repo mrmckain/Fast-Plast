@@ -14,8 +14,14 @@ using namespace std;
 extern vector<string> readlist;
 extern vector<long int> rc_reflist;
 
-// contains hash of ranges in the readlist corresponding to keys made up of the first MAX_SORT characters in the read
+// contains hash of ranges in the readlist corresponding to keys made up of the first max_sort_char characters in the read
 extern unordered_map<string, tuple<long,long,long,long>> read_range;
+extern int max_search_loops;
+extern int contig_sub_len;
+extern int extend_len;
+extern int max_sort_char;
+extern int min_cov_init;
+extern int min_overlap;
 
 /////////////////////////////////////////////\
 // Process Class: ////////////////////////////>
@@ -31,16 +37,16 @@ class Process{
     
     Process(){}
 
-    // sorts the reads by the first MAX_SORT characters
+    // sorts the reads by the first max_sort_char characters
     void sort_reads();
 
-    // Produces list of references to the readlist sorted based on the first MAX_SORT characters of the reverse_compliment of the
+    // Produces list of references to the readlist sorted based on the first max_sort_char characters of the reverse_compliment of the
     //  referenced read
     //  Must be done after the readlist is sorted as it contains the locations in the readlist of the referenced read
     //  Uses an insertion sort to build the list
     void sort_rc();
 
-    // creates a hash table within the process object that contains the ranges corresponding to equivalent first MAX_SORT characters in the reads
+    // creates a hash table within the process object that contains the ranges corresponding to equivalent first max_sort_char characters in the reads
     // This increases the efficiency of searching
     void create_read_range();
 

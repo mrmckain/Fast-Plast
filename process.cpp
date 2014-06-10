@@ -15,8 +15,8 @@
 #include <algorithm>
 #include "print_time.hpp"
 #include "revcomp.hpp"
-#include "process.hpp"
 #include "contig.hpp"
+#include "process.hpp"
 
 using namespace std;
 
@@ -32,30 +32,38 @@ using namespace std;
 // TASK:: Add threading capability
 // TASK:: Put the following functions in class
 
-#ifndef MAX_SORT
-#define MAX_SORT 4
-#endif
+
+vector<string> readlist;
+vector<long int> rc_reflist;
+unordered_map<string, tuple<long,long,long,long>> read_range;
+int max_search_loops;
+int contig_sub_len;
+int extend_len;
+int max_sort_char;
+int min_cov_init;
+int min_overlap;
+
 
 ////////////////////////////////////
 //////// PROCESS DEFINITIONS ///////
 ////////////////////////////////////
-vector<string> readlist;
-vector<long int> rc_reflist;
-unordered_map<string, tuple<long,long,long,long>> read_range;
 
+// compare function for sorting the reverse compliment reference list
 bool cmp_rc( const int ind1, const int ind2 ){
-  string str1 = readlist[ind1].substr( readlist[ind1].length()-MAX_SORT, MAX_SORT );
+  string str1 = readlist[ind1].substr( readlist[ind1].length()-max_sort_char, max_sort_char );
   str1 = revcomp( str1 );
-  string str2 = readlist[ind2].substr( readlist[ind2].length()-MAX_SORT, MAX_SORT );
+  string str2 = readlist[ind2].substr( readlist[ind2].length()-max_sort_char, max_sort_char );
   str2 = revcomp( str2 );
 
   return (str1.compare( str2 ) < 0 ); 
 }
 
+// compare function for sorting the initial read list
 bool cmp_read( const string str1, const string str2 ){
-  return (str1.compare( 0, MAX_SORT, str2.substr( 0, MAX_SORT ) ) < 0 ); 
+  return (str1.compare( 0, max_sort_char, str2.substr( 0, max_sort_char ) ) < 0 ); 
 }
 
+// mergesort template to be used with any datatype
 template<class Iter, typename Order>
 void merge_sort( Iter first, Iter last, Order order ){
   if (last - first > 1){
@@ -66,12 +74,14 @@ void merge_sort( Iter first, Iter last, Order order ){
   }
 }
 
-// uses a mergesort to sort the read list based on the first MAX_SORT characters of each read
+// uses a mergesort to sort the read list based on the first max_sort_char characters of each read
 void Process::sort_reads(){
+  cout << "READLIST[0]: " << readlist[0] << "  READLIST[last]: " << readlist[readlist.size()-1] << endl;
   merge_sort( readlist.begin(), readlist.end(), cmp_read );
+  cout << "READLIST[0]: " << readlist[0] << "  READLIST[last]: " << readlist[readlist.size()-1] << endl;
 }
 
-// Produces list of references to the readlist sorted based on the first MAX_SORT characters of the reverse_compliment of the
+// Produces list of references to the readlist sorted based on the first max_sort_char characters of the reverse_compliment of the
 //  referenced read
 //  Must be done after the readlist is sorted as it contains the locations in the readlist of the referenced read
 //  Uses a mergesort
@@ -85,35 +95,35 @@ void Process::sort_rc(){
   merge_sort( rc_reflist.begin(), rc_reflist.end(), cmp_rc );
 }
 
-// creates a hash table within the process object that contains the ranges corresponding to equivalent first MAX_SORT characters in the reads
+// creates a hash table within the process object that contains the ranges corresponding to equivalent first max_sort_char characters in the reads
 // This increases the efficiency of searching
 void Process::create_read_range(){
-  string current( readlist[0].substr( 0, MAX_SORT ) );
+  string current( readlist[0].substr( 0, max_sort_char ) );
   long curr_start = 0;
   // cycle through the readlist
   for( long int i=1; i<readlist.size(); i++ ){
-    if( readlist[i].compare( 0, MAX_SORT, current ) != 0 ){
+    if( readlist[i].compare( 0, max_sort_char, current ) != 0 ){
       // insert values into hash table, the ordered pair reflecting the range is increased by 1 to differentiate between a false search  
       read_range.insert( { current, make_tuple( curr_start+1, i, 0, 0 )});
       curr_start = i;
-      current = readlist[i].substr( 0, MAX_SORT );
+      current = readlist[i].substr( 0, max_sort_char );
     }
   }
   
   // add the last entry
   read_range.insert( { current, make_tuple( curr_start+1, readlist.size(), 0, 0 )});
 
-  string rc( readlist[0].substr( readlist[0].length() - MAX_SORT, MAX_SORT ) );
+  string rc( readlist[0].substr( readlist[0].length() - max_sort_char, max_sort_char ) );
   current = revcomp( rc );
   curr_start = 0;
 
   // cycle through the rc_reflist to include these ranges in the hash as well
   for( long int i=1; i<rc_reflist.size(); i++ ){
-    rc = readlist[i].substr( readlist[i].length() - MAX_SORT, MAX_SORT );
+    rc = readlist[i].substr( readlist[i].length() - max_sort_char, max_sort_char );
     rc = revcomp( rc );
     if( rc.compare( current ) != 0 ){
       // check if current already exists in hash
-      if( get<0>( read_range[current] ) == 0 ){
+      if( get<0>( get_read_range(current) ) == -1 ){
         read_range.insert( { current, make_tuple( 0, 0, curr_start+1, i )});
       }
       else{
@@ -126,7 +136,7 @@ void Process::create_read_range(){
   }
   
   // add the last entry
-  if( get<0>( read_range[current] ) == 0 ){
+  if( get<0>( get_read_range(current) ) == -1 ){
     read_range.insert( { current, make_tuple( 0, 0, curr_start+1, rc_reflist.size() )});
   }
   else{
@@ -143,7 +153,8 @@ void Process::add_reads( string filename ){
   
   // open read file
   ifstream read( filename );
-  
+ 
+
   // read in fastq reads
   while( getline( read, line )){
     line_count++;
@@ -178,7 +189,21 @@ void Process::add_reads( string filename ){
       fprintf( stderr, "Error reading fastq file. '@' expected at the beginning of this line. Line: %d\n", line_count );
     }
   }
-
+/*
+  // read in reads to vector from fasta file
+  while( getline( read, line ) ){
+    if( line[0] == '>' && buffer.length() != 0 ){
+      //cout << buffer << endl;
+      readlist.push_back( buffer);
+      buffer = "";
+    }
+    else if ( line[0] == '>' ) {
+    }
+    else{
+      buffer += line;
+    }
+  }
+*/  
 
   // close read file
   read.close();
@@ -202,7 +227,7 @@ void Process::add_contigs( string filename ){
   while( getline( cont, line ) ){
     if( line[0] == '>' && buffer.length() != 0 ){
       //cout << buffer << endl;
-      contigs.push_back( Contig( buffer, 3 ));
+      contigs.push_back( Contig( buffer, min_cov_init ));
       buffer = "";
     }
     else if ( line[0] == '>' ) {
@@ -214,7 +239,7 @@ void Process::add_contigs( string filename ){
   
   // insert last line into contigs list
   if( buffer.length() != 0 ){
-    contigs.push_back( Contig( buffer, 3 ) );
+    contigs.push_back( Contig( buffer, min_cov_init ) );
   }
   
   // close contig file
