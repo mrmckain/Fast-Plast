@@ -36,13 +36,18 @@
 #include <tuple>
 #include <utility>
 #include <unordered_map>
+#include <thread>
 #include "contig.hpp"
 #include "print_time.hpp"
 #include "process.hpp"
 #include "read.hpp"
+#include "queue.hpp"
 
 using namespace std;
 
+// TASK:: look into whether coverage should be based on number of similar bases rather than total bases.. maybe originally based on similar and when coverage drops switch and make a note
+// TASK:: add output file section and command line option
+// TASK:: output information about where contigs are combined and where contigs have had two or more options due to duplicate regions
 // TASK:: remove unnecessary variables that have been replaced by global variables 
 // TASK:: add print usage function
 // TASK:: add parsing for multiple read/contig files
@@ -53,6 +58,10 @@ using namespace std;
 // TASK:: Add processing for differences in reads( ie, create new contig objects for differing sets of matches, add method for splitting matchlist between two new contig objects ), determine which contig is correct
 // TASK:: Add threading capability
 
+// PRINT USAGE FUNCTION
+void print_usage( string prog ){
+  cout << "Usage: " << prog << " -c [contigfile(s)] -r [readfile(s)] [-m " << endl;
+}
 
 /////////////////////////////////////////////////////////////////////////////////\
 // BEGIN MAIN FUNCTION ///////////////////////////////////////////////////////////>
@@ -67,6 +76,7 @@ int main( int argc, char** argv ){
   max_sort_char = 4;
   min_cov_init = 5;
   min_overlap = 20;
+  max_threads = 6;
   int c;
   Process process;
   
@@ -74,7 +84,7 @@ int main( int argc, char** argv ){
   opterr = 0;
 
   // get all options that have been provided on the command line
-  while (( c = getopt (argc, argv, "hr:c:s:l:x:m:i:" )) != -1 ) {
+  while (( c = getopt (argc, argv, "hr:c:s:l:x:m:i:p:t:" )) != -1 ) {
     switch( c ) {
       case 'h':
         cout << "Usage: " << argv[0] << " -c [contigfile(s)] -r [readfile(s)]\n";
@@ -99,10 +109,13 @@ int main( int argc, char** argv ){
       case 'i':
         min_cov_init = atoi(optarg);
         break;
-      // min_cov_init option
+      // min_overlap option
       case 'p':
         min_overlap = atoi(optarg);
         break;
+      // max_threads option
+      case 't':
+        max_threads = atoi(optarg);
       // readfile option
       case 'r':
         cout << "readfile: " << optarg << endl;
@@ -150,6 +163,7 @@ int main( int argc, char** argv ){
   cout << "max_sort_char: " << max_sort_char << endl;
   cout << "min_cov_init: " << min_cov_init << endl;
   cout << "min_overlap: " << min_overlap << endl;
+  cout << "max_threads: " << max_threads << endl;
 
   while ( optind < argc ) {
     cout << argv[optind] << endl;
@@ -192,6 +206,18 @@ int main( int argc, char** argv ){
   //////////////
   // End Test //
   //////////////
+  
+  ///////////////////////
+  // Test Thread Queue //
+  ///////////////////////
+
+  cout << "This is testing thread methods with a queue and a max thread count" << endl;
+
+  // create thread array with max_thread entries
+  thread t[max_threads];
+
+
+
 
 
   return 0;
