@@ -47,6 +47,12 @@
 
 using namespace std;
 
+// TASK:: align contigs? Remove mismatched bp's at the end of contigs?
+// TASK:: add contigs together
+// TASK:: make considerations for splits in possibility (eg IR boundaries, RPL23 gene copy)
+// TASK:: go both directions in extend
+//
+// TASK:: add ability to extract and print contig id 
 // TASK:: look into whether coverage should be based on number of similar bases rather than total bases.. maybe originally based on similar and when coverage drops switch and make a note
 // TASK:: add output file section and command line option
 // TASK:: output information about where contigs are combined and where contigs have had two or more options due to duplicate regions
@@ -82,7 +88,7 @@ int main( int argc, char** argv ){
   opterr = 0;
 
   // get all options that have been provided on the command line
-  while (( c = getopt (argc, argv, "hr:c:s:l:x:m:i:p:t:" )) != -1 ) {
+  while (( c = getopt (argc, argv, "hr:c:o:s:l:x:m:i:p:t:" )) != -1 ) {
     switch( c ) {
       case 'h':
         print_usage( argv[0] );
@@ -114,6 +120,12 @@ int main( int argc, char** argv ){
       // max_threads option
       case 't':
         max_threads = atoi(optarg);
+      // outputfile option
+      case 'o':
+        cout << "output file: " << optarg << endl;
+        process.add_reads( optarg );
+        print_time();
+        break;
       // readfile option
       case 'r':
         cout << "readfile: " << optarg << endl;
@@ -179,13 +191,6 @@ int main( int argc, char** argv ){
 
   cout << "THIS IS A PROCESS CLASS TEST! THIS IS ONLY A TEST!" << endl;
 
-
-  cout << "contig: " << process.get_contig(0) << endl;
-
-  process.contigs[0].extend();
-
-  cout << "contex: " << process.get_contig(0) << endl;
-
   cout << "THIS HAS BEEN A PROCESS CLASS TEST. THANK YOU FOR YOUR PATIENCE!" << endl;
 
 
@@ -248,6 +253,8 @@ int main( int argc, char** argv ){
   
   cout << "exit time: ";
   print_time();
+
+  process.print_to_file();
   
   return 0;
 }

@@ -35,6 +35,7 @@ class Process{
   private:
   public:
     vector<Contig> contigs;
+    string outfile;
     
     Process(){}
 
@@ -59,6 +60,9 @@ class Process{
 
     // return contig with index contig_ind
     string get_contig( int contig_ind );
+
+    // prints results to fasta file with outfile prefix and additional information is printed to a text based file with outfile prefix
+    void print_to_file();
 };
 
 ///////////////////////

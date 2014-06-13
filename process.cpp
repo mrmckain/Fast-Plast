@@ -264,6 +264,20 @@ string Process::get_contig( int contig_ind ){
   return contigs[ contig_ind ].getContig();
 }
 
+// prints results to fasta file with outfile prefix and additional information is printed to a text based file with outfile prefix
+void Process::print_to_file(){
+  // open outfile
+  ofstream outfile_fp( outfile+".fasta");
+
+  // print out each line to the 
+  for( int i=0; i<contigs.size(); i++ ){
+    outfile_fp << ">" << i << endl;
+    outfile_fp << get_contig(i) << endl;
+  }
+
+  outfile_fp.close();
+} 
+
 //////////////////////////////
 // END DEFINITIONS ///////////
 //////////////////////////////
