@@ -22,6 +22,7 @@ extern int extend_len;
 extern int max_sort_char;
 extern int min_cov_init;
 extern int min_overlap;
+extern int max_threads;
 
 /////////////////////////////////////////////\
 // Process Class: ////////////////////////////>

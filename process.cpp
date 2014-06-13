@@ -42,7 +42,7 @@ int extend_len;
 int max_sort_char;
 int min_cov_init;
 int min_overlap;
-
+int max_threads;
 
 ////////////////////////////////////
 //////// PROCESS DEFINITIONS ///////
@@ -154,56 +154,69 @@ void Process::add_reads( string filename ){
   // open read file
   ifstream read( filename );
  
-
-  // read in fastq reads
-  while( getline( read, line )){
-    line_count++;
+  // check what type of file it is
+  if( getline( read, line ) ){
     if( line[0] == '@' ){
-      if( getline( read, line )){
+      // return to beginning of file
+      read.seekg( 0, ios::beg );
+
+      // read in fastq reads
+      while( getline( read, line )){
         line_count++;
-        readlist.push_back( line );
-        if( getline( read, line )){
-          line_count++;
-          if( line[0] == '+'){
+        if( line[0] == '@' ){
+          if( getline( read, line )){
+            line_count++;
+            readlist.push_back( line );
             if( getline( read, line )){
               line_count++;
-              continue;
+              if( line[0] == '+'){
+                if( getline( read, line )){
+                  line_count++;
+                  continue;
+                }
+                else{
+                  fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
+                }
+              }
+              else{
+                fprintf( stderr, "Error reading fastq file. '+' expected at this line. Line: %d\n", line_count );
+              }
             }
             else{
               fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
             }
           }
           else{
-            fprintf( stderr, "Error reading fastq file. '+' expected at this line. Line: %d\n", line_count );
+            fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
           }
         }
-        else{
-          fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
+        else{  
+          fprintf( stderr, "Error reading fastq file. '@' expected at the beginning of this line. Line: %d\n", line_count );
         }
       }
-      else{
-        fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
+    }
+    else if( line[0] == '>' ){
+      // return to beginning of file
+      read.seekg( 0, ios::beg );
+      
+      // read in reads to vector from fasta file
+      while( getline( read, line ) ){
+        if( line[0] == '>' && buffer.length() != 0 ){
+          //cout << buffer << endl;
+          readlist.push_back( buffer);
+          buffer = "";
+        }
+        else if ( line[0] == '>' ) {
+        }
+        else{
+          buffer += line;
+        }
       }
     }
-    else{  
-      fprintf( stderr, "Error reading fastq file. '@' expected at the beginning of this line. Line: %d\n", line_count );
+    else {
+      fprintf( stderr, "Error: Unexpected file type. Needs to be fasta or fastq file for input." );
     }
   }
-/*
-  // read in reads to vector from fasta file
-  while( getline( read, line ) ){
-    if( line[0] == '>' && buffer.length() != 0 ){
-      //cout << buffer << endl;
-      readlist.push_back( buffer);
-      buffer = "";
-    }
-    else if ( line[0] == '>' ) {
-    }
-    else{
-      buffer += line;
-    }
-  }
-*/  
 
   // close read file
   read.close();
