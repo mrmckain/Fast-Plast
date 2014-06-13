@@ -37,11 +37,13 @@
 #include <utility>
 #include <unordered_map>
 #include <thread>
+#include <functional>
 #include "contig.hpp"
 #include "print_time.hpp"
 #include "process.hpp"
 #include "read.hpp"
-#include "queue.hpp"
+#include "afin_util.hpp"
+#include "queue.tcc"
 
 using namespace std;
 
@@ -57,11 +59,6 @@ using namespace std;
 // TASK:: Add processing for IUPAC DNA ambiguity codes
 // TASK:: Add processing for differences in reads( ie, create new contig objects for differing sets of matches, add method for splitting matchlist between two new contig objects ), determine which contig is correct
 // TASK:: Add threading capability
-
-// PRINT USAGE FUNCTION
-void print_usage( string prog ){
-  cout << "Usage: " << prog << " -c [contigfile(s)] -r [readfile(s)] [-m " << endl;
-}
 
 /////////////////////////////////////////////////////////////////////////////////\
 // BEGIN MAIN FUNCTION ///////////////////////////////////////////////////////////>
@@ -79,6 +76,7 @@ int main( int argc, char** argv ){
   max_threads = 6;
   int c;
   Process process;
+  Queue<int> qu;
   
   // prevent output to stderr if erroneous option is found
   opterr = 0;
@@ -87,7 +85,7 @@ int main( int argc, char** argv ){
   while (( c = getopt (argc, argv, "hr:c:s:l:x:m:i:p:t:" )) != -1 ) {
     switch( c ) {
       case 'h':
-        cout << "Usage: " << argv[0] << " -c [contigfile(s)] -r [readfile(s)]\n";
+        print_usage( argv[0] );
         break;
       // max_sort_char option
       case 'm':
@@ -135,19 +133,19 @@ int main( int argc, char** argv ){
       case '?':
         if ( optopt == 'r' ){
           fprintf( stderr, "%s: Error: Option -r requires an argument. ", argv[0] );
-          cout << "Usage: " << argv[0] << " -c [contigfile(s)] -r [readfile(s)]\n";
+          print_usage( argv[0] );
         }
         else if ( optopt == 'c' ){
           fprintf( stderr, "%s: Error: Option -c requires an argument. ", argv[0] );
-          cout << "Usage: " << argv[0] << " -c [contigfile(s)] -r [readfile(s)]\n";
+          print_usage( argv[0] );
         }
         else if ( isprint( optopt )){
           fprintf( stderr, "%s: Error: Unknown option -%c. \n", argv[0], optopt );
-          cout << "Usage: " << argv[0] << " -c [contigfile(s)] -r [readfile(s)]\n";
+          print_usage( argv[0] );
         }
         else{
           fprintf( stderr, "%s: Error: Unknown option character %x.\n", argv[0], optopt );
-          cout << "Usage: " << argv[0] << " -c [contigfile(s)] -r [readfile(s)]\n";
+          print_usage( argv[0] );
         }
         return 1;
       default:
@@ -181,18 +179,6 @@ int main( int argc, char** argv ){
 
   cout << "THIS IS A PROCESS CLASS TEST! THIS IS ONLY A TEST!" << endl;
 
-  cout << "sort_reads start: ";
-  print_time();
-  process.sort_reads();
-  cout << "sort_rc start: ";
-  print_time();
-  process.sort_rc();
-  cout << "create_reads_range start: ";
-  print_time();
-  process.create_read_range();
-
-  cout << "extend start: ";
-  print_time();
 
   cout << "contig: " << process.get_contig(0) << endl;
 
@@ -211,15 +197,58 @@ int main( int argc, char** argv ){
   // Test Thread Queue //
   ///////////////////////
 
+  int length[process.contigs.size()];
+  for( int i=0; i<process.contigs.size(); i++ ){
+    length[i] = process.get_contig(i).length();
+  }
+  
+  cout << "sort_reads start: ";
+  print_time();
+  process.sort_reads();
+  cout << "sort_rc start: ";
+  print_time();
+  process.sort_rc();
+  cout << "create_reads_range start: ";
+  print_time();
+  process.create_read_range();
+
+  cout << "extend start: ";
+  print_time();
+
   cout << "This is testing thread methods with a queue and a max thread count" << endl;
 
   // create thread array with max_thread entries
   thread t[max_threads];
 
+  // initialize threads
+  for( int i=0; i<max_threads; i++ ){
+    t[i] = thread( thread_worker, ref(process.contigs), ref(qu), i );
+  }
 
+  // push each thread onto queue
+  for( int i=0; i<process.contigs.size(); i++ ){
+    qu.push( i );
+  }
 
+  // push stop signals onto queue for each thread
+  for( int i=0; i<max_threads; i++ ){
+    qu.push( -1 );
+  }
 
+  // join threads
+  for( int i=0; i<max_threads; i++ ){
+    t[i].join();
+  }
 
+  // print out each contig and the number of bp added
+  for( int i=0; i<process.contigs.size(); i++ ){
+    cout << "Contig[" << i << "]: " << process.get_contig(i) << endl;
+    cout << "\tbp added: " << process.get_contig(i).length() - length[i] << endl;
+  }
+  
+  cout << "exit time: ";
+  print_time();
+  
   return 0;
 }
 
