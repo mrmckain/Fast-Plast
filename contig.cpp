@@ -107,8 +107,47 @@ int Contig::find_start(){
   return(contig.length() + 1);
 }
 
-// determines where the read passed matches the contig if at all
-void Contig::match_contig(){
+// determines where the read passed matches the contig if at all for off the front matches
+void Contig::match_contig_fr(){
+  // loop through possible substrings of contig_sub to check for matches in readlist
+  for( int i=contig.length()-1; i>=min_overlap; i-- ){
+    string contig_sub( contig.substr( 0, i ));
+    
+    // get the ranges in the ordered lists based on the reverse compliment of the last max_sort_char characters of contig_sub
+    string rc_sub = contig_sub.substr( contig_sub.length()-max_sort_char, max_sort_char );
+    rc_sub = revcomp( rc_sub );
+    tuple<long,long,long,long> range = get_read_range( rc_sub );
+
+    if( get<0>(range) != -1 ){
+      // check reads in range against contig 
+      if( get<2>(range) != 0 ){
+        for( int j=get<2>(range)-1; j<get<3>(range); j++ ){
+          // check if the current read matches the contig from this point
+          if( readlist[j].compare( 0, contig_sub.length(), contig_sub ) == 0 ){
+            push_match( readlist[j], i, true );
+          }
+        }
+      }
+
+      // check if there are revcomp reads to be checked
+      if( get<0>(range) != 0 ){
+        // check reverse complements
+        for( int j=get<0>(range)-1; j<get<1>(range); j++ ){
+          // check if the current read matches the contig from this point
+          string rc = readlist[rc_reflist[j]];
+          rc = revcomp( rc );
+
+          if( rc.compare( 0, contig_sub.length() - 1, contig_sub ) == 0 ){
+            push_match( rc, i );
+          }
+        }
+      }
+    }
+  }
+}
+
+// determines where the read passed matches the contig if at all for off the back matches
+void Contig::match_contig_rr(){
   // loop through possible substrings of contig_sub to check for matches in readlist
   for( int i=1; i<contig.length()-min_overlap; i++ ){
     string contig_sub( contig.substr( i, contig.length()-1 ));
@@ -120,7 +159,7 @@ void Contig::match_contig(){
         for( int j=get<0>(range)-1; j<get<1>(range); j++ ){
           // check if the current read matches the contig from this point
           if( readlist[j].compare( 0, contig_sub.length(), contig_sub ) == 0 ){
-            push_match( readlist[j], -i );
+            push_match( readlist[j], i );
           }
         }
       }
@@ -134,7 +173,7 @@ void Contig::match_contig(){
           rc = revcomp( rc );
 
           if( rc.compare( 0, contig_sub.length() - 1, contig_sub ) == 0 ){
-            push_match( rc, -i, true );
+            push_match( rc, i, true );
           }
         }
       }
@@ -143,11 +182,69 @@ void Contig::match_contig(){
 }
 
 /// checks the matches against each other and the contig, compiles an extension of length len (or less if the length is limited by matches) that is returned 
-string Contig::check_match( int len ){
-  int start = contig.length();
+/// used for off the front matching
+string Contig::check_match_fr( int len ){
 
   matchlist.clear();
-  match_contig();
+  match_contig_fr();
+  int start = -1;
+
+  cout << "check_match1 start: " << start << "  contig: " << contig << endl;
+  // create reference string for numeric based additions to the extension string
+  string ATCGstr( "ATCG" );
+  int i;
+  string extension( "" );
+
+  // loop len times processing 1 basepair at a time
+  for( int j=0; j<len; j++ ){
+    int ATCG[] = { 0,0,0,0 };
+    int max = 0;
+    int avg = 0;
+    
+    // check coverage at current position
+    if( check_cov( start - j ) < min_cov ){
+      break;
+    }
+
+    
+    for( i=0; i<matchlist.size(); i++ ){
+      int next_char = matchlist[i].getPos( start-j );
+
+      if ( next_char == 'A' ) {
+        ATCG[0]++;
+      }
+      else if ( next_char == 'T' ) {
+        ATCG[1]++;
+      }
+      else if ( next_char == 'C' ) {
+        ATCG[2]++;
+      }
+      else if ( next_char == 'G' ) {
+        ATCG[3]++;
+      }
+    }
+
+    // find character with greatest appearance
+    for( i=1; i<4; i++ ){
+      if( ATCG[i] > ATCG[max] ) {
+        max = i;
+      }
+    }
+
+    // add next base
+    extension.insert( 0, ATCGstr.substr( max, 1 ) );
+  }
+ 
+  return extension;
+}
+
+/// checks the matches against each other and the contig, compiles an extension of length len (or less if the length is limited by matches) that is returned 
+/// used for off the back matching
+string Contig::check_match_rr( int len ){
+
+  matchlist.clear();
+  match_contig_rr();
+  int start = contig.length();
 
   cout << "check_match1 start: " << start << "  contig: " << contig << endl;
   // create reference string for numeric based additions to the extension string
@@ -198,44 +295,45 @@ string Contig::check_match( int len ){
   return extension;
 }
 
-// check_match( int ) with a default len provided
-string Contig::check_match(){
-  return check_match( 20 );
-}
-
-// extend() performs max_search_loops iterations of check_match with length len of each extension, at each iteration the extension is added to contig, and uses contig_sub_len characters from the end of the contig
-void Contig::extend(){
+// extend performs loops iterations of check_match with length extend_len of each extension, at each iteration the extension is added to contig, and uses contig_sub_len characters from the front or back of the contig, which end is determined by the boolean value of back
+void Contig::extend( bool back ){
   string extension("");
+  string contig_sub_str("");
   
-  // if contig_sub_len=0 use entire contig, else use the end of the contig len characters long and create new contig object to process and get extension from
-  if( contig_sub_len > 0 ){
-    for( int i=0; i<max_search_loops; i++ ){
-      printf( "extend loop#: %2.d  time: ", i );
-      print_time();
-      Contig contig_sub( contig.substr( contig.length() - ( contig_sub_len + 1 ) ), 3 );
-   
-      // get extension through check_match
-      extension = contig_sub.check_match( extend_len );
-      cout << "extension:" << extension << endl;
-      if( extension.length() == 0 ){
-        break;
-      }
-
-      contig.append( extension );
-      printf( "extend loop#: %2.d  time: ", i );
-      print_time();
+  // use the end of the contig len characters long and create new contig object to process and get extension from
+  for( int i=0; i<max_search_loops; i++ ){
+    printf( "extend loop#: %2.d  time: ", i );
+    print_time();
+    if( back ){
+      contig_sub_str = contig.substr( contig.length() - ( contig_sub_len ) );
     }
-  }
-  else {
-    for( int i=0; i<max_search_loops; i++ ){
-      extension = check_match( extend_len );
-      cout << extension << endl;
-      if( extension.length() == 0 ){
-        break;
-      }
+    else{
+      contig_sub_str = contig.substr( contig_sub_len );
+    }
       
+    Contig contig_sub( contig_sub_str, min_cov_init );
+ 
+    // get extension through check_match
+    if( back ){
+      extension = contig_sub.check_match_rr( extend_len );
+    }
+    else{
+      extension = contig_sub.check_match_fr( extend_len );
+    }
+
+    cout << "extension:" << extension << endl;
+    if( extension.length() == 0 ){
+      break;
+    }
+
+    if( back ){
       contig.append( extension );
     }
+    else{
+      contig.insert( 0, extension );
+    }
+    printf( "extend loop#: %2.d  time: ", i );
+    print_time();
   }
 }
 

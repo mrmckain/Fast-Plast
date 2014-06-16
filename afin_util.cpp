@@ -13,7 +13,8 @@ void thread_worker(vector<Contig>& contigs, Queue<int>& q, unsigned int id) {
       break;
     }
     else{
-      contigs[item].extend();
+      contigs[item].extend( false );
+      contigs[item].extend( true );
     }
   }
 }

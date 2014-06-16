@@ -14,11 +14,11 @@ using namespace std;
 //  Contains one read and information about that read in reference to the piece of the contig it matched to
 class Read{
   private:
-    int start;      // position of read where match (ie piece of contig) starts
+    int start;      // position of read where match starts in reference to the contig it matches
                     // for instance:
                     //    match: aaaattta
                     //    read:  tttatt
-                    //    start: -4
+                    //    start: 4
     int misses;    // counts the number of characters that don't match other reads
     string read;    // contains the read or rev compliment, whichever is found
     bool revcomp;   // indicates if the read is a reverse compliment of the matched string

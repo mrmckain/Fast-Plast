@@ -20,19 +20,6 @@
 
 using namespace std;
 
-// TASK:: split this into several header files
-// TASK:: consider revcomp hash list that points to readlist positions
-// TASK:: develop search based on sorted readlist
-// TASK:: match up min overlap better with max extension? Extending doesn't add too much time but searching adds a great deal of time
-// TASK:: create separate methods for fasta and fastq files
-// TASK:: create methods for detecting fasta vs fastq 
-// TASK:: Add processing for IUPAC DNA ambiguity codes
-// TASK:: Add processing for differences in reads( ie, create new contig objects for differing sets of matches, add method for splitting matchlist between two new contig objects ), determine which contig is correct
-// TASK:: Check to see if it would be beneficial to leave the offthefront() function out of find_part(), maybe include it when determining if two contigs connect, but probably not
-// TASK:: Add threading capability
-// TASK:: Put the following functions in class
-
-
 vector<string> readlist;
 vector<long int> rc_reflist;
 unordered_map<string, tuple<long,long,long,long>> read_range;
