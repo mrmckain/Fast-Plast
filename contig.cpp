@@ -110,35 +110,33 @@ int Contig::find_start(){
 // determines where the read passed matches the contig if at all for off the front matches
 void Contig::match_contig_fr(){
   // loop through possible substrings of contig_sub to check for matches in readlist
-  for( int i=contig.length()-1; i>=min_overlap; i-- ){
-    string contig_sub( contig.substr( 0, i ));
-    
-    // get the ranges in the ordered lists based on the reverse compliment of the last max_sort_char characters of contig_sub
-    string rc_sub = contig_sub.substr( contig_sub.length()-max_sort_char, max_sort_char );
-    rc_sub = revcomp( rc_sub );
-    tuple<long,long,long,long> range = get_read_range( rc_sub );
+  for( int i=contig.length()-2; i>=min_overlap; i-- ){
+    string contig_sub_rc( contig.substr( 0, i ));
+    contig_sub_rc = revcomp( contig_sub_rc );
+    tuple<long,long,long,long> range = get_read_range( contig_sub_rc.substr( 0, max_sort_char ) );
 
     if( get<0>(range) != -1 ){
       // check reads in range against contig 
-      if( get<2>(range) != 0 ){
-        for( int j=get<2>(range)-1; j<get<3>(range); j++ ){
+      if( get<0>(range) != 0 ){
+        for( int j=get<0>(range)-1; j<get<1>(range); j++ ){
           // check if the current read matches the contig from this point
-          if( readlist[j].compare( 0, contig_sub.length(), contig_sub ) == 0 ){
-            push_match( readlist[j], i, true );
+          if( readlist[j].compare( 0, contig_sub_rc.length(), contig_sub_rc ) == 0 ){
+            string read_rc = revcomp( readlist[j] );
+            push_match( read_rc, i-contig.length(), true );
           }
         }
       }
 
       // check if there are revcomp reads to be checked
-      if( get<0>(range) != 0 ){
+      if( get<2>(range) != 0 ){
         // check reverse complements
-        for( int j=get<0>(range)-1; j<get<1>(range); j++ ){
+        for( int j=get<2>(range)-1; j<get<3>(range); j++ ){
           // check if the current read matches the contig from this point
-          string rc = readlist[rc_reflist[j]];
-          rc = revcomp( rc );
+          string read_ = readlist[rc_reflist[j]];
+          string rc = revcomp( read_ );
 
-          if( rc.compare( 0, contig_sub.length() - 1, contig_sub ) == 0 ){
-            push_match( rc, i );
+          if( rc.compare( 0, contig_sub_rc.length() - 1, contig_sub_rc ) == 0 ){
+            push_match( read_, i-contig.length() );
           }
         }
       }
@@ -308,7 +306,7 @@ void Contig::extend( bool back ){
       contig_sub_str = contig.substr( contig.length() - ( contig_sub_len ) );
     }
     else{
-      contig_sub_str = contig.substr( contig_sub_len );
+      contig_sub_str = contig.substr( 0, contig_sub_len );
     }
       
     Contig contig_sub( contig_sub_str, min_cov_init );

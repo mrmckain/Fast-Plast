@@ -122,6 +122,7 @@ int main( int argc, char** argv ){
       // max_threads option
       case 't':
         max_threads = atoi(optarg);
+        break;
       // outputfile option
       case 'o':
         cout << "output file: " << optarg << endl;
