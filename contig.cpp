@@ -32,10 +32,10 @@ tuple<long,long,long,long> get_read_range( string read_seg ){
 }
 
 ////////// Contig FUNCTIONS ////////////
-Contig::Contig( string str, int cov ) : min_cov( cov ), contig( str ){
+Contig::Contig( string str, string id, int cov ) : min_cov( cov ), contig( str ), contig_id(id){
 }
 
-Contig::Contig( string str ) : contig( str ){
+Contig::Contig( string str, string id ) : contig( str ), contig_id(id){
   min_cov = min_cov_init;
 }   
 
@@ -50,6 +50,11 @@ void Contig::push_match( string read, int pos, bool revcomp ){
 
 string Contig::getContig(){
   return contig;
+}
+
+// return contig_id
+string Contig::get_contig_id(){
+  return contig_id;
 }
 
 int Contig::getListSize(){
@@ -309,7 +314,7 @@ void Contig::extend( bool back ){
       contig_sub_str = contig.substr( 0, contig_sub_len );
     }
       
-    Contig contig_sub( contig_sub_str, min_cov_init );
+    Contig contig_sub( contig_sub_str, "temp", min_cov_init );
  
     // get extension through check_match
     if( back ){

@@ -23,20 +23,25 @@ class Contig{
   private:
     vector<Read> matchlist;
     string contig;
+    string contig_id;
     int first_read; // indicates the postition in contig where the first matching read begins    
     int min_cov;
 
   public:
-    Contig( string str, int cov );
+    Contig( string str, string id, int cov );
 
-    Contig( string str );
+    Contig( string str, string id );
 
     // adds a read to the read list
     void push_match( string read, int pos );
 
     void push_match( string read, int pos, bool revcomp );
 
+    // return contig
     string getContig();
+    
+    // return contig_id
+    string get_contig_id();
 
     int getListSize();
 

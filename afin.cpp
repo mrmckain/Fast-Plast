@@ -47,25 +47,20 @@
 
 using namespace std;
 
-// TASK:: Throws out_of_range error when min_cov_init < 4.... ? Not that it should ever be that low
+// TASK:: Throws out_of_range error when min_overlap < 4.... ? Not that it should ever be that low
 //
 // TASK:: align contigs? Remove mismatched bp's at the end of contigs?
 // TASK:: add contigs together
 // TASK:: make considerations for splits in possibility (eg IR boundaries, RPL23 gene copy)
-// TASK:: go both directions in extend:: To utilize existing data structures, this step will use the reverse compliment of the end of the searched string since the end of each read is ordered by the reverse compliment
 //
-// TASK:: add ability to extract and print contig id 
 // TASK:: look into whether coverage should be based on number of similar bases rather than total bases.. maybe originally based on similar and when coverage drops switch and make a note
 // TASK:: add output file section and command line option
 // TASK:: output information about where contigs are combined and where contigs have had two or more options due to duplicate regions
 // TASK:: remove unnecessary variables that have been replaced by global variables 
 // TASK:: add parsing for multiple read/contig files
 // TASK:: add long options
-// TASK:: create separate methods for fasta and fastq files
-// TASK:: create methods for detecting fasta vs fastq 
 // TASK:: Add processing for IUPAC DNA ambiguity codes
 // TASK:: Add processing for differences in reads( ie, create new contig objects for differing sets of matches, add method for splitting matchlist between two new contig objects ), determine which contig is correct
-// TASK:: Add threading capability
 
 /////////////////////////////////////////////////////////////////////////////////\
 // BEGIN MAIN FUNCTION ///////////////////////////////////////////////////////////>
@@ -131,19 +126,11 @@ int main( int argc, char** argv ){
         break;
       // readfile option
       case 'r':
-        cout << "readfile: " << optarg << endl;
-        cout << "add_reads time: ";
-        print_time();
         process.add_reads( optarg );
-        print_time();
         break;
       // contig file option
       case 'c':
-        cout << "contigfile: " << optarg << endl;
-        cout << "add_contigs time: ";
-        print_time();
         process.add_contigs( optarg );
-        print_time();
         break;
       case '?':
         if ( optopt == 'r' ){

@@ -53,10 +53,10 @@ class Process{
     void create_read_range();
 
     // put reads from readfile into readlist
-    void add_reads( string filename );
+    void add_reads( string fnames );
 
     // put contigs from contfile into contlist
-    void add_contigs( string filename );
+    void add_contigs( string fnames );
 
     // return contig with index contig_ind
     string get_contig( int contig_ind );

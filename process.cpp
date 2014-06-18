@@ -8,6 +8,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <vector>
 #include <unistd.h>
 #include <unordered_map>
@@ -133,80 +134,90 @@ void Process::create_read_range(){
 }
 
 // put reads from readfile into readlist
-void Process::add_reads( string filename ){
+void Process::add_reads( string fnames ){
+  stringstream ss;
+  ss.str( fnames );
+  string filename;
   string buffer("");
   string line("");
   int line_count = 0;
-  
-  // open read file
-  ifstream read( filename );
- 
-  // check what type of file it is
-  if( getline( read, line ) ){
-    if( line[0] == '@' ){
-      // return to beginning of file
-      read.seekg( 0, ios::beg );
+    
+  while( getline( ss, filename, ',' )){
+    cout << "readfile: " << filename << endl;
+    cout << "add_reads time: ";
+    print_time();
 
-      // read in fastq reads
-      while( getline( read, line )){
-        line_count++;
-        if( line[0] == '@' ){
-          if( getline( read, line )){
-            line_count++;
-            readlist.push_back( line );
+    // open read file
+    ifstream read( filename );
+   
+    // check what type of file it is
+    if( getline( read, line ) ){
+      if( line[0] == '@' ){
+        // return to beginning of file
+        read.seekg( 0, ios::beg );
+
+        // read in fastq reads
+        while( getline( read, line )){
+          line_count++;
+          if( line[0] == '@' ){
             if( getline( read, line )){
               line_count++;
-              if( line[0] == '+'){
-                if( getline( read, line )){
-                  line_count++;
-                  continue;
+              readlist.push_back( line );
+              if( getline( read, line )){
+                line_count++;
+                if( line[0] == '+'){
+                  if( getline( read, line )){
+                    line_count++;
+                    continue;
+                  }
+                  else{
+                    fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
+                  }
                 }
                 else{
-                  fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
+                  fprintf( stderr, "Error reading fastq file. '+' expected at this line. Line: %d\n", line_count );
                 }
               }
               else{
-                fprintf( stderr, "Error reading fastq file. '+' expected at this line. Line: %d\n", line_count );
+                fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
               }
             }
             else{
               fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
             }
           }
-          else{
-            fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
+          else{  
+            fprintf( stderr, "Error reading fastq file. '@' expected at the beginning of this line. Line: %d\n", line_count );
           }
         }
-        else{  
-          fprintf( stderr, "Error reading fastq file. '@' expected at the beginning of this line. Line: %d\n", line_count );
+      }
+      else if( line[0] == '>' ){
+        // return to beginning of file
+        read.seekg( 0, ios::beg );
+        
+        // read in reads to vector from fasta file
+        while( getline( read, line ) ){
+          if( line[0] == '>' && buffer.length() != 0 ){
+            //cout << buffer << endl;
+            readlist.push_back( buffer);
+            buffer = "";
+          }
+          else if ( line[0] == '>' ) {
+          }
+          else{
+            buffer += line;
+          }
         }
       }
-    }
-    else if( line[0] == '>' ){
-      // return to beginning of file
-      read.seekg( 0, ios::beg );
-      
-      // read in reads to vector from fasta file
-      while( getline( read, line ) ){
-        if( line[0] == '>' && buffer.length() != 0 ){
-          //cout << buffer << endl;
-          readlist.push_back( buffer);
-          buffer = "";
-        }
-        else if ( line[0] == '>' ) {
-        }
-        else{
-          buffer += line;
-        }
+      else {
+        fprintf( stderr, "Error: Unexpected file type. Needs to be fasta or fastq file for input." );
       }
     }
-    else {
-      fprintf( stderr, "Error: Unexpected file type. Needs to be fasta or fastq file for input." );
-    }
-  }
 
-  // close read file
-  read.close();
+    // close read file
+    read.close();
+    print_time();
+  }
 
   // insert last line into readlist
   if( buffer.length() != 0 ){
@@ -216,34 +227,47 @@ void Process::add_reads( string filename ){
 
 
 // put contigs from contfile into contlist
-void Process::add_contigs( string filename ){
+void Process::add_contigs( string fnames ){
+  stringstream ss;
+  ss.str( fnames );
+  string filename;
   string buffer("");
   string line("");
+  string contig_id("");
+    
+  while( getline( ss, filename, ',' )){
+    cout << "contigfile: " << filename << endl;
+    cout << "add_contigs time: ";
+    print_time();
   
-  // open contig file
-  ifstream cont( filename );
+    // open contig file
+    ifstream cont( filename );
 
-  // read in contig objects
-  while( getline( cont, line ) ){
-    if( line[0] == '>' && buffer.length() != 0 ){
-      //cout << buffer << endl;
-      contigs.push_back( Contig( buffer, min_cov_init ));
-      buffer = "";
+    // read in contig objects
+    while( getline( cont, line ) ){
+      if( line[0] == '>' && buffer.length() != 0 ){
+        //cout << buffer << endl;
+        contigs.push_back( Contig( buffer, contig_id, min_cov_init ));
+        buffer = "";
+        contig_id = line.substr(1);
+      }
+      else if ( line[0] == '>' ){
+        contig_id = line.substr(1);
+      }
+      else{
+        buffer += line;
+      }
     }
-    else if ( line[0] == '>' ) {
-    }
-    else{
-      buffer += line;
-    }
+    
+    // close contig file
+    cont.close();
+ 
   }
-  
+
   // insert last line into contigs list
   if( buffer.length() != 0 ){
-    contigs.push_back( Contig( buffer, min_cov_init ) );
+    contigs.push_back( Contig( buffer, contig_id, min_cov_init ) );
   }
-  
-  // close contig file
-  cont.close();
 }
 
 // return contig with index contig_ind
@@ -258,7 +282,7 @@ void Process::print_to_file(){
 
   // print out each line to the 
   for( int i=0; i<contigs.size(); i++ ){
-    outfile_fp << ">" << i << endl;
+    outfile_fp << ">" << contigs[i].get_contig_id() << "_" << outfile << endl;
     outfile_fp << get_contig(i) << endl;
   }
 
