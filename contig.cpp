@@ -112,6 +112,11 @@ int Contig::find_start(){
   return(contig.length() + 1);
 }
 
+// checks each matched read against the contig one bp at a time and filters out poorly aligning reads
+string Contig::check_match( ){
+
+}
+
 // determines where the read passed matches the contig if at all for off the front matches
 void Contig::match_contig_fr(){
   // loop through possible substrings of contig_sub to check for matches in readlist
@@ -186,119 +191,171 @@ void Contig::match_contig_rr(){
 
 /// checks the matches against each other and the contig, compiles an extension of length len (or less if the length is limited by matches) that is returned 
 /// used for off the front matching
-string Contig::check_match_fr( int len ){
-
-  matchlist.clear();
-  match_contig_fr();
+string Contig::create_extension( int len, bool back ){
+  // contains multiplier for position calculation
+  int pos_mult = -1;
   int start = -1;
 
-  cout << "check_match1 start: " << start << "  contig: " << contig << endl;
   // create reference string for numeric based additions to the extension string
   string ATCGstr( "ATCG" );
-  int i;
   string extension( "" );
-
-  // loop len times processing 1 basepair at a time
-  for( int j=0; j<len; j++ ){
-    int ATCG[] = { 0,0,0,0 };
-    int max = 0;
-    int avg = 0;
-    
-    // check coverage at current position
-    if( check_cov( start - j ) < min_cov ){
-      break;
-    }
-
-    
-    for( i=0; i<matchlist.size(); i++ ){
-      int next_char = matchlist[i].getPos( start-j );
-
-      if ( next_char == 'A' ) {
-        ATCG[0]++;
-      }
-      else if ( next_char == 'T' ) {
-        ATCG[1]++;
-      }
-      else if ( next_char == 'C' ) {
-        ATCG[2]++;
-      }
-      else if ( next_char == 'G' ) {
-        ATCG[3]++;
-      }
-    }
-
-    // find character with greatest appearance
-    for( i=1; i<4; i++ ){
-      if( ATCG[i] > ATCG[max] ) {
-        max = i;
-      }
-    }
-
-    // add next base
-    extension.insert( 0, ATCGstr.substr( max, 1 ) );
-  }
- 
-  return extension;
-}
-
-/// checks the matches against each other and the contig, compiles an extension of length len (or less if the length is limited by matches) that is returned 
-/// used for off the back matching
-string Contig::check_match_rr( int len ){
-
   matchlist.clear();
-  match_contig_rr();
-  int start = contig.length();
 
-  cout << "check_match1 start: " << start << "  contig: " << contig << endl;
-  // create reference string for numeric based additions to the extension string
-  string ATCGstr( "ATCG" );
-  int i;
-  string extension( "" );
+  // vector of int vectors to hold values of nucleotides at each position, the 5th member of the in vector will be the max number for that position
+  vector< vector< int > > ATCG;
+  
+  // get matches
+  if( back ){
+    match_contig_rr();
+    start = contig.length();
+    pos_mult = 1;
+  }
+  else{
+    match_contig_fr();
+  }
 
+  // create missed bp's vector to keep track of how many bp's each read contains that are below the max at that position
+  vector<int> missed_bp( matchlist.size(), 0 );
+  int missed_bp_tot = 0;
+  int missed_bp_avg = 0;
+ 
+  // loop through bp's for initial pass to filter out errant matches
+  for( int j=0; j<len; j++ ){
+    // initialize temporary vector 
+    vector<int> ATCG_curr = { 0,0,0,0,0 };
+    
+    // loop through matches to get count of each nucleotide present at the current position
+    for( int i=0; i<matchlist.size(); i++ ){
+      int next_char = matchlist[i].getPos( start+(pos_mult*j) );
+
+      if ( next_char == 'A' ) {
+        ATCG[j][0]++;
+      }
+      else if ( next_char == 'T' ) {
+        ATCG[j][1]++;
+      }
+      else if ( next_char == 'C' ) {
+        ATCG[j][2]++;
+      }
+      else if ( next_char == 'G' ) {
+        ATCG[j][3]++;
+      }
+    }
+
+    // determine maximum number of any nucleotide 
+    for( int i=0; i<4; i++ ){
+      if( ATCG_curr[i] > ATCG_curr[4] ){
+        ATCG_curr[4] = ATCG_curr[i];
+      }
+    }
+
+    // check coverage level and break if below min
+    if( ATCG_curr[4] < min_cov ){
+      len = j;
+      break;
+    }
+
+    // initialize next bp to 0 for each nucleotide
+    ATCG.push_back( ATCG_curr );
+  }
+    
+  // loop through bp's to determine which reads, if any, should be eliminated from the matchlist
+  // if nucleotide of read is < max for that position, count it against the read, otherwise don't count it
+  for( int j=0; j<len; j++ ){
+    for( int i=0; i<matchlist.size(); i++ ){
+      int next_char = matchlist[i].getPos( start+(pos_mult*j));
+      switch( next_char ){
+        case 'A':
+          if( ATCG[j][0] < ATCG[j][4] ){
+            missed_bp[i]++;
+            missed_bp_tot++;
+          }
+          break;
+        case 'T':
+          if( ATCG[j][1] < ATCG[j][4] ){
+            missed_bp[i]++;
+            missed_bp_tot++;
+          }
+          break;
+        case 'C':
+          if( ATCG[j][2] < ATCG[j][4] ){
+            missed_bp[i]++;
+            missed_bp_tot++;
+          }
+          break;
+        case 'G':
+          if( ATCG[j][3] < ATCG[j][4] ){
+            missed_bp[i]++;
+            missed_bp_tot++;
+          }
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  // calculate avg missed_bp's
+  missed_bp_avg = missed_bp_tot / matchlist.size() + 1;
+
+  // loop through missed_bp list to eliminate any matches that have a missed level greater than the avg 
+  for( int i=0; i<missed_bp.size(); i++ ){
+    if( missed_bp[i] > missed_bp_avg ){
+      matchlist.erase( matchlist.begin() + i );
+      missed_bp.erase( missed_bp.begin() + i );
+      i--;
+    }
+  }
+    
+  cout << "create_extension1 start: " << start << "  contig: " << contig << endl;
   // loop len times processing 1 basepair at a time
   for( int j=0; j<len; j++ ){
-    int ATCG[] = { 0,0,0,0 };
+    vector<int> ATCG_curr = { 0,0,0,0 };
     int max = 0;
     int avg = 0;
     
     // check coverage at current position
-    if( check_cov( start + j ) < min_cov ){
+    if( check_cov( start+(pos_mult*j) ) < min_cov ){
       break;
     }
-
     
-    for( i=0; i<matchlist.size(); i++ ){
-      int next_char = matchlist[i].getPos( start+j );
+    for( int i=0; i<matchlist.size(); i++ ){
+      int next_char = matchlist[i].getPos( start+(pos_mult*j) );
 
       if ( next_char == 'A' ) {
-        ATCG[0]++;
+        ATCG_curr[0]++;
       }
       else if ( next_char == 'T' ) {
-        ATCG[1]++;
+        ATCG_curr[1]++;
       }
       else if ( next_char == 'C' ) {
-        ATCG[2]++;
+        ATCG_curr[2]++;
       }
       else if ( next_char == 'G' ) {
-        ATCG[3]++;
+        ATCG_curr[3]++;
       }
     }
 
     // find character with greatest appearance
-    for( i=1; i<4; i++ ){
-      if( ATCG[i] > ATCG[max] ) {
+    for( int i=1; i<4; i++ ){
+      if( ATCG_curr[i] > ATCG_curr[max] ) {
         max = i;
       }
     }
 
     // add next base
-    extension.append( ATCGstr.substr( max, 1 ) );
+    if( back ){
+      extension.append( ATCGstr.substr( max, 1 ) );
+    }
+    else{
+      extension.insert( 0, ATCGstr.substr( max, 1 ) );
+    }
   }
  
   return extension;
 }
 
-// extend performs loops iterations of check_match with length extend_len of each extension, at each iteration the extension is added to contig, and uses contig_sub_len characters from the front or back of the contig, which end is determined by the boolean value of back
+// extend performs loops iterations of create_extension with length extend_len of each extension, at each iteration the extension is added to contig, and uses contig_sub_len characters from the front or back of the contig, which end is determined by the boolean value of back
 void Contig::extend( bool back ){
   string extension("");
   string contig_sub_str("");
@@ -307,23 +364,18 @@ void Contig::extend( bool back ){
   for( int i=0; i<max_search_loops; i++ ){
     printf( "extend loop#: %2.d  time: ", i );
     print_time();
+ 
+    // get extension through create_extension
     if( back ){
       contig_sub_str = contig.substr( contig.length() - ( contig_sub_len ) );
     }
     else{
       contig_sub_str = contig.substr( 0, contig_sub_len );
     }
-      
-    Contig contig_sub( contig_sub_str, "temp", min_cov_init );
- 
-    // get extension through check_match
-    if( back ){
-      extension = contig_sub.check_match_rr( extend_len );
-    }
-    else{
-      extension = contig_sub.check_match_fr( extend_len );
-    }
 
+    Contig contig_sub( contig_sub_str, "temp", min_cov_init );
+    extension = contig_sub.create_extension( extend_len, back );
+    
     cout << "extension:" << extension << endl;
     if( extension.length() == 0 ){
       break;

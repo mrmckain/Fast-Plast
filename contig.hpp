@@ -60,6 +60,9 @@ class Contig{
     // finds the initial point at which the matches meet the min_cov requirement
     int find_start();
 
+    // checks each matched read against the contig one bp at a time and filters out poorly aligning reads
+    string check_match();
+
     // determines where the read passed matches the contig if at all for off the front matches
     void match_contig_fr();
 
@@ -67,14 +70,9 @@ class Contig{
     void match_contig_rr();
     
     /// checks the matches against each other and the contig, compiles an extension of length len (or less if the length is limited by matches) that is returned 
-    /// used for off the front matching
-    string check_match_fr( int len );
+    string create_extension( int len, bool back );
 
-    // checks the matches against each other and the contig, compiles an extension of length len (or less if the length is limited by matches) that is returned 
-    /// used for off the back matching
-    string check_match_rr( int len );
-
-    // extend() performs loops iterations of check_match with length extend_len of each extension, at each iteration the extension is added to contig, and uses contig_sub_len characters from the front or back of the contig, which end is determined by the boolean value back
+    // extend() performs loops iterations of create_extension with length extend_len of each extension, at each iteration the extension is added to contig, and uses contig_sub_len characters from the front or back of the contig, which end is determined by the boolean value back
     void extend( bool back );
 
     // checks the coverage of matches at the given positions, returns the coverage
