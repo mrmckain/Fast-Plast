@@ -32,12 +32,11 @@ extern int max_threads;
 // Process object, contains all classes, methods, data, and data references necessary for processing the contigs
 // There will be only one Process object needed per iteration of this program
 class Process{
-  private:
   public:
     vector<Contig> contigs;
     string outfile;
     
-    Process(){}
+    Process();
 
     // sorts the reads by the first max_sort_char characters
     void sort_reads();

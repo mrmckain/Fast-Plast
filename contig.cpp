@@ -214,11 +214,18 @@ string Contig::create_extension( int len, bool back ){
     match_contig_fr();
   }
 
+  // return if no matches are found
+  if( matchlist.size() == 0 ){
+    return "";
+  }
+
   // create missed bp's vector to keep track of how many bp's each read contains that are below the max at that position
   vector<int> missed_bp( matchlist.size(), 0 );
   int missed_bp_tot = 0;
   int missed_bp_avg = 0;
  
+  /////////////////////////////////////
+  // STEP 1: First Pass Over Matches //
   // loop through bp's for initial pass to filter out errant matches
   for( int j=0; j<len; j++ ){
     // initialize temporary vector 
@@ -229,16 +236,16 @@ string Contig::create_extension( int len, bool back ){
       int next_char = matchlist[i].getPos( start+(pos_mult*j) );
 
       if ( next_char == 'A' ) {
-        ATCG[j][0]++;
+        ATCG_curr[0]++;
       }
       else if ( next_char == 'T' ) {
-        ATCG[j][1]++;
+        ATCG_curr[1]++;
       }
       else if ( next_char == 'C' ) {
-        ATCG[j][2]++;
+        ATCG_curr[2]++;
       }
       else if ( next_char == 'G' ) {
-        ATCG[j][3]++;
+        ATCG_curr[3]++;
       }
     }
 
@@ -258,7 +265,9 @@ string Contig::create_extension( int len, bool back ){
     // initialize next bp to 0 for each nucleotide
     ATCG.push_back( ATCG_curr );
   }
-    
+  
+  ///////////////////////////////////////////
+  // STEP 2: Mark Errant Matches For Death //
   // loop through bp's to determine which reads, if any, should be eliminated from the matchlist
   // if nucleotide of read is < max for that position, count it against the read, otherwise don't count it
   for( int j=0; j<len; j++ ){
@@ -295,9 +304,16 @@ string Contig::create_extension( int len, bool back ){
     }
   }
 
-  // calculate avg missed_bp's
-  missed_bp_avg = missed_bp_tot / matchlist.size() + 1;
+  if( matchlist.size() != 0 ){
+    // calculate avg missed_bp's
+    missed_bp_avg = missed_bp_tot / matchlist.size() + 1;
+  }
+  else{
+    return "";
+  }
 
+  ///////////////////////////////////
+  // STEP 3: Remove Errant Matches //
   // loop through missed_bp list to eliminate any matches that have a missed level greater than the avg 
   for( int i=0; i<missed_bp.size(); i++ ){
     if( missed_bp[i] > missed_bp_avg ){
@@ -307,6 +323,8 @@ string Contig::create_extension( int len, bool back ){
     }
   }
     
+  //////////////////////////////
+  // STEP 4: Create Extension //
   cout << "create_extension1 start: " << start << "  contig: " << contig << endl;
   // loop len times processing 1 basepair at a time
   for( int j=0; j<len; j++ ){

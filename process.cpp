@@ -62,6 +62,11 @@ void merge_sort( Iter first, Iter last, Order order ){
   }
 }
 
+// Process constructor
+Process::Process(){
+  outfile = "afin_out";
+}
+
 // uses a mergesort to sort the read list based on the first max_sort_char characters of each read
 void Process::sort_reads(){
   cout << "READLIST[0]: " << readlist[0] << "  READLIST[last]: " << readlist[readlist.size()-1] << endl;
