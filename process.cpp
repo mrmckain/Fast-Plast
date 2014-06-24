@@ -281,7 +281,7 @@ string Process::get_contig( int contig_ind ){
 }
 
 // prints results to fasta file with outfile prefix and additional information is printed to a text based file with outfile prefix
-void Process::print_to_file(){
+void Process::print_to_outfile(){
   // open outfile
   ofstream outfile_fp( outfile+".fasta");
 
@@ -293,6 +293,197 @@ void Process::print_to_file(){
 
   outfile_fp.close();
 } 
+
+// prints notes to file as the program progresses
+void Process::print_to_logfile( string note ){
+
+}
+
+// Compares the ends of the contigs with indices index_i and index_j which are related to the contigs from Process::contig_fusion()
+// back indicates whether contig_i comes off the front or back of contig_j and changes the behavior of pos as follows:
+//  1:  pos indicates the position in contig_j from which contig_i starts
+//  0:  pos indicates the position in contig_j to which contig_i extends
+// rev indicates whether contig_i is the reverse compliment of the original contig
+// returns boolean value that indicates if a fusion was made
+bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, bool rev ){
+  string contig_j = get_contig( index_j );
+  string contig_i = get_contig( index_i );
+  string i_rev( "" );
+
+  if( rev ){
+    contig_i = revcomp( contig_i );
+    i_rev = "_rev_comp";
+  }
+
+  if( back ){
+    int len = contig_j.length() - pos;
+    string contig_i_sub = contig_i.substr( 0, len );
+    if( contig_j.compare( pos, contig_j.length(), contig_i ) == 0 ){
+      // form fused contig and its id
+      string fused( contig_j );
+      fused.append( contig_i.substr( len, contig_i.length()-len ) );
+      string fused_id( "fused("+contigs[index_j].get_contig_id()+"_||_"+contigs[index_i].get_contig_id()+i_rev+")" );
+
+      // put pre-fused contigs in contigs_fused vector and post-fused contig in contigs vector
+      contigs_fused.push_back( contigs[index_i] );
+      contigs_fused.push_back( contigs[index_j] );
+      contigs.push_back( Contig( fused, fused_id, min_cov_init ));
+      
+      // remove pre-fused vectors from contigs vector
+      if( index_i>index_j ){
+        contigs.erase( contigs.begin() + index_i );
+        contigs.erase( contigs.begin() + index_j );
+      }
+      else{
+        contigs.erase( contigs.begin() + index_j );
+        contigs.erase( contigs.begin() + index_i );
+      }
+
+      return true;
+
+    }
+  }
+  else{
+    int len = contig_i.length() - pos;
+    string contig_i_sub = contig_i.substr( len, pos );
+    if( contig_j.compare( 0, pos, contig_i ) == 0 ){
+      // form fused contig and its id
+      string fused( contig_i );
+      fused.append( contig_j.substr( len, contig_j.length()-len ) );
+      string fused_id( "fused("+contigs[index_i].get_contig_id()+i_rev+"_||_"+contigs[index_j].get_contig_id()+")" );
+
+      // put pre-fused contigs in contigs_fused vector and post-fused contig in contigs vector
+      contigs_fused.push_back( contigs[index_i] );
+      contigs_fused.push_back( contigs[index_j] );
+      contigs.push_back( Contig( fused, fused_id, min_cov_init ));
+      
+      // remove pre-fused vectors from contigs vector
+      if( index_i>index_j ){
+        contigs.erase( contigs.begin() + index_i );
+        contigs.erase( contigs.begin() + index_j );
+      }
+      else{
+        contigs.erase( contigs.begin() + index_j );
+        contigs.erase( contigs.begin() + index_i );
+      }
+
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// fuse contigs wherever possible
+void Process::contig_fusion(){
+  int end_length = 20;
+  int end_depth = 100;
+  
+  // loop through each contig to get the end of the contig
+  for( int i=0; i<contigs.size(); i++ ){
+    string contig_i( get_contig( i ) );
+    string contig_i_rev( revcomp( contig_i ) );
+
+    // front end tip of the contig and that of the reverse compliment of the contig
+    string contig_tip_fr( contig_i.substr( 0, end_length ) );
+    string contig_rev_tip_fr( contig_i_rev.substr( 0, end_length ) );
+
+    // rear end tip of the contig and that of the reverse compliment of the contig
+    string contig_tip_rr( contig_i.substr( get_contig(i).length()-end_length, end_length ) );
+    string contig_rev_tip_rr( contig_i_rev.substr( get_contig(i).length()-end_length, end_length ) );
+
+    // loop through contigs and use this contig as the base to compare the end of contig_i and contig_i_rev to
+    for( int j=0; j<contigs.size(); j++ ){
+      if( j != i ){
+        string contig_j( get_contig( j ) );
+        
+        //////////////////////
+        // FRONT END SEARCH //
+        //////////////////////
+        end_depth = contigs[j].get_bp_added_fr();
+
+        // limit to prevent out_of_bounds errors
+        if( end_depth > contig_i.length() ){
+          end_depth = contig_i.length();
+        }
+
+        //// search the front of the contig_j for the contig_tips created above
+        for( int k=end_depth; k>=end_length; k-- ){
+          if( contig_j.compare( k, end_length, contig_tip_rr ) == 0 ){
+            if( contig_end_compare( i, j, k, false, false ) ){
+              // if the two contigs match and are fused, adjustments must be made to the index markers so all contigs are checked
+              if( i>j ){
+                j--;
+                i-=2;
+              }
+              else{
+                j-=2;
+                i--;
+              }
+              continue;
+            }
+          }
+          
+          if( contig_j.compare( k, end_length, contig_rev_tip_rr ) == 0 ){
+            if( contig_end_compare( i, j, k, false, true ) ){
+              // if the two contigs match and are fused, adjustments must be made to the index markers so all contigs are checked
+              if( i>j ){
+                j--;
+                i-=2;
+              }
+              else{
+                j-=2;
+                i--;
+              }
+            }
+          }
+        }
+        
+        //////////////////////
+        // BACK END SEARCH //
+        //////////////////////
+        end_depth = contigs[j].get_bp_added_rr();
+
+        // limit to prevent out_of_bounds errors
+        if( end_depth > contig_i.length() ){
+          end_depth = contig_i.length();
+        }
+
+        //// search the back of the contig_j for the contig_tips created above
+        for( int k=contig_j.length()-end_depth; k<contig_j.length()-end_length; k++ ){
+          if( contig_j.compare( k, end_length, contig_tip_fr ) == 0 ){
+            if( contig_end_compare( i, j, k, true, false ) ){
+              // if the two contigs match and are fused, adjustments must be made to the index markers so all contigs are checked
+              if( i>j ){
+                j--;
+                i-=2;
+              }
+              else{
+                j-=2;
+                i--;
+              }
+              continue;
+            }
+          }
+          
+          if( contig_j.compare( k, end_length, contig_rev_tip_fr ) == 0 ){
+            if( contig_end_compare( i, j, k, true, true ) ){
+              // if the two contigs match and are fused, adjustments must be made to the index markers so all contigs are checked
+              if( i>j ){
+                j--;
+                i-=2;
+              }
+              else{
+                j-=2;
+                i--;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
 
 //////////////////////////////
 // END DEFINITIONS ///////////

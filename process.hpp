@@ -34,6 +34,7 @@ extern int max_threads;
 class Process{
   public:
     vector<Contig> contigs;
+    vector<Contig> contigs_fused;
     string outfile;
     
     Process();
@@ -61,7 +62,21 @@ class Process{
     string get_contig( int contig_ind );
 
     // prints results to fasta file with outfile prefix and additional information is printed to a text based file with outfile prefix
-    void print_to_file();
+    void print_to_outfile();
+
+    // prints notes to file as the program progresses
+    void print_to_logfile( string note );
+
+    // Compares the ends of the contigs with indices index_i and index_j which are related to the contigs from Process::contig_fusion()
+    // back indicates whether contig_i comes off the front or back of contig_j and changes the behavior of pos as follows:
+    //  1:  pos indicates the position in contig_j from which contig_i starts
+    //  0:  pos indicates the position in contig_j to which contig_i extends
+    // rev indicates whether contig_i is the reverse compliment of the original contig
+    // returns boolean value that indicates if a fusion was made
+    bool contig_end_compare( int index_i, int index_j, int pos, bool back, bool rev );
+
+    // fuse contigs wherever possible
+    void contig_fusion();
 };
 
 ///////////////////////

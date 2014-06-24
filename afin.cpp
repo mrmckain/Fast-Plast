@@ -47,17 +47,21 @@
 
 using namespace std;
 
+// TASK:: Clean up functions, break long functions into smaller ones and eliminate unused functions
+// TASK:: Remove add_reads() and add_contigs() from the options section and place them in the Process constructor
+// TASK:: expand Process::print_to_outfile() to include contigs_fused vector
+// TASK:: develop Process::print_to_logfile( string )
+// TASK:: Remove using line from each file and add std:: where necessary
+// TASK:: break Contig::create_extension() into multiple files 
+// TASK:: test multiple input files
+//
 // TASK:: Throws out_of_range error when min_overlap < 4.... ? Not that it should ever be that low
 //
 // TASK:: align contigs? Remove mismatched bp's at the end of contigs?
 // TASK:: add contigs together
 // TASK:: make considerations for splits in possibility (eg IR boundaries, RPL23 gene copy)
 //
-// TASK:: look into whether coverage should be based on number of similar bases rather than total bases.. maybe originally based on similar and when coverage drops switch and make a note
-// TASK:: add output file section and command line option
 // TASK:: output information about where contigs are combined and where contigs have had two or more options due to duplicate regions
-// TASK:: remove unnecessary variables that have been replaced by global variables 
-// TASK:: add parsing for multiple read/contig files
 // TASK:: add long options
 // TASK:: Add processing for IUPAC DNA ambiguity codes
 // TASK:: Add processing for differences in reads( ie, create new contig objects for differing sets of matches, add method for splitting matchlist between two new contig objects ), determine which contig is correct
@@ -177,20 +181,6 @@ int main( int argc, char** argv ){
   // End Options //
   /////////////////
 
-
-
-  /////////////////////////
-  // Test Process Class ///
-  /////////////////////////
-
-  cout << "THIS IS A PROCESS CLASS TEST! THIS IS ONLY A TEST!" << endl;
-
-  cout << "THIS HAS BEEN A PROCESS CLASS TEST. THANK YOU FOR YOUR PATIENCE!" << endl;
-
-
-  //////////////
-  // End Test //
-  //////////////
   
   ///////////////////////
   // Test Thread Queue //
@@ -248,7 +238,7 @@ int main( int argc, char** argv ){
   cout << "exit time: ";
   print_time();
 
-  process.print_to_file();
+  process.print_to_outfile();
   
   return 0;
 }
