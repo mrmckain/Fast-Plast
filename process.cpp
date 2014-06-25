@@ -69,9 +69,7 @@ Process::Process(){
 
 // uses a mergesort to sort the read list based on the first max_sort_char characters of each read
 void Process::sort_reads(){
-  cout << "READLIST[0]: " << readlist[0] << "  READLIST[last]: " << readlist[readlist.size()-1] << endl;
   merge_sort( readlist.begin(), readlist.end(), cmp_read );
-  cout << "READLIST[0]: " << readlist[0] << "  READLIST[last]: " << readlist[readlist.size()-1] << endl;
 }
 
 // Produces list of references to the readlist sorted based on the first max_sort_char characters of the reverse_compliment of the
@@ -230,6 +228,44 @@ void Process::add_reads( string fnames ){
   }
 }
 
+// parses the cov value from the contig_id and passes the result back as a double
+double Process::get_cov( string contig_id ){
+  int pos = contig_id.find( "cov_" ) + 4;
+  string contig_cov_str = contig_id.substr( pos, contig_id.length() - pos );
+  contig_cov_str = contig_cov_str.substr( 0, contig_cov_str.find( "_" ) );
+  
+  double cov = atof( contig_cov_str.c_str() );
+  
+  return cov;
+}
+
+// check coverage of each contig, calculate the average coverage, then remove into a separate data structure any contigs that have more than 2xAvg coverage
+void Process::contig_cov(){
+  double cov_total = 0;
+  int total_contigs = contigs.size();
+  
+  for( int i=0; i<total_contigs; i++ ){
+    // get contig id, parse out cov_##, add to the total of all cov values
+    string contig_id = contigs[i].get_contig_id();
+    double cov = get_cov( contig_id );
+    cov_total += cov;
+  }
+
+  // find average of all cov values
+  double cov_avg = cov_total / total_contigs;
+
+  for( int i=0; i<total_contigs; i++ ){
+    // get contig_id, parse out cov_## and compare this value to the avg
+    string contig_id = contigs[i].get_contig_id();
+    double cov = get_cov( contig_id );
+
+    if( cov > cov_avg * 1.7 ){
+      // Push an extra copy of the contig onto contigs and prepend "2x_" onto the contig_id
+      contigs[i].set_contig_id( contig_id.insert( 0, "2x_" ) );
+      contigs.push_back( contigs[i] );
+    }
+  }
+}
 
 // put contigs from contfile into contlist
 void Process::add_contigs( string fnames ){
@@ -292,6 +328,18 @@ void Process::print_to_outfile(){
   }
 
   outfile_fp.close();
+
+  // open outfile for contigs that have been fused and removed from the contigs vector
+  ofstream outfile_fp2( outfile+".fasta");
+
+  // print out each line to the 
+  for( int i=0; i<contigs.size(); i++ ){
+    outfile_fp2 << ">" << contigs_fused[i].get_contig_id() << "_" << outfile << endl;
+    outfile_fp2 << get_contig(i) << endl;
+  }
+
+  outfile_fp2.close();
+
 } 
 
 // prints notes to file as the program progresses

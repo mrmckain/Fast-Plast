@@ -33,10 +33,14 @@ tuple<long,long,long,long> get_read_range( string read_seg ){
 
 ////////// Contig FUNCTIONS ////////////
 Contig::Contig( string str, string id, int cov ) : min_cov( cov ), contig( str ), contig_id(id){
+  bp_added_fr = 0;
+  bp_added_rr = 0;
 }
 
 Contig::Contig( string str, string id ) : contig( str ), contig_id(id){
   min_cov = min_cov_init;
+  bp_added_fr = 0;
+  bp_added_rr = 0;
 }   
 
 // adds a read to the read list
@@ -50,6 +54,11 @@ void Contig::push_match( string read, int pos, bool revcomp ){
 
 string Contig::getContig(){
   return contig;
+}
+
+// set contig_id
+void Contig::set_contig_id( string new_contig_id ){
+  contig_id = new_contig_id;
 }
 
 // return contig_id
@@ -71,6 +80,16 @@ int Contig::getStart( int i ){
 
 Read Contig::getRead( int i ){
   return matchlist[i];
+}
+
+// returns bp_added_fr
+int Contig::get_bp_added_fr(){
+  return bp_added_fr;
+}
+
+// returns bp_added_rr
+int Contig::get_bp_added_rr(){
+  return bp_added_rr;
 }
 
 // clear matchlist to make room for new matches
@@ -364,6 +383,7 @@ string Contig::create_extension( int len, bool back ){
     // add next base
     if( back ){
       extension.append( ATCGstr.substr( max, 1 ) );
+
     }
     else{
       extension.insert( 0, ATCGstr.substr( max, 1 ) );
@@ -377,7 +397,12 @@ string Contig::create_extension( int len, bool back ){
 void Contig::extend( bool back ){
   string extension("");
   string contig_sub_str("");
-  
+ 
+  // skip over any contigs that present at least double coverage
+  if( contig_id.compare( 0,3,"2x_" ) ){
+    return;
+  }
+
   // use the end of the contig len characters long and create new contig object to process and get extension from
   for( int i=0; i<max_search_loops; i++ ){
     printf( "extend loop#: %2.d  time: ", i );
@@ -401,9 +426,11 @@ void Contig::extend( bool back ){
 
     if( back ){
       contig.append( extension );
+      bp_added_rr += contig_sub.get_bp_added_rr();
     }
     else{
       contig.insert( 0, extension );
+      bp_added_fr += contig_sub.get_bp_added_fr();
     }
     printf( "extend loop#: %2.d  time: ", i );
     print_time();

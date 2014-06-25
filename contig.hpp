@@ -26,6 +26,8 @@ class Contig{
     string contig_id;
     int first_read; // indicates the postition in contig where the first matching read begins    
     int min_cov;
+    int bp_added_fr;
+    int bp_added_rr;
 
   public:
     Contig( string str, string id, int cov );
@@ -39,6 +41,9 @@ class Contig{
 
     // return contig
     string getContig();
+
+    // set contig_id
+    void set_contig_id( string new_contig_id );
     
     // return contig_id
     string get_contig_id();
@@ -50,6 +55,12 @@ class Contig{
     int getStart( int i );
 
     Read getRead( int i );
+
+    // returns bp_added_fr
+    int get_bp_added_fr();
+
+    // returns bp_added_rr
+    int get_bp_added_rr();
 
     // clear matchlist to make room for new matches
     void clear_matches();

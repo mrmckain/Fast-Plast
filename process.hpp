@@ -34,6 +34,7 @@ extern int max_threads;
 class Process{
   public:
     vector<Contig> contigs;
+    vector<Contig> contigs_2x;
     vector<Contig> contigs_fused;
     string outfile;
     
@@ -51,6 +52,12 @@ class Process{
     // creates a hash table within the process object that contains the ranges corresponding to equivalent first max_sort_char characters in the reads
     // This increases the efficiency of searching
     void create_read_range();
+
+    // parses the cov value from the contig_id and passes the result back as a double
+    double get_cov( string contig_id );
+
+    // check coverage of each contig, calculate the average coverage, then remove into a separate data structure any contigs that have more than 2xAvg coverage
+    void contig_cov();
 
     // put reads from readfile into readlist
     void add_reads( string fnames );

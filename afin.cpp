@@ -47,6 +47,8 @@
 
 using namespace std;
 
+// TASK:: Check limits of readlist size and other limits at all points of the program
+// TASK:: Discuss calculation for cov_avg and number of times to add contig to contigs_2x.. Determine the best way to know how many times a contig is duplicated within the genome.. Or should this be genome specific? Not portable this way
 // TASK:: Clean up functions, break long functions into smaller ones and eliminate unused functions
 // TASK:: Remove add_reads() and add_contigs() from the options section and place them in the Process constructor
 // TASK:: expand Process::print_to_outfile() to include contigs_fused vector
