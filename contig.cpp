@@ -383,10 +383,11 @@ string Contig::create_extension( int len, bool back ){
     // add next base
     if( back ){
       extension.append( ATCGstr.substr( max, 1 ) );
-
+      bp_added_rr++;
     }
     else{
       extension.insert( 0, ATCGstr.substr( max, 1 ) );
+      bp_added_fr++;
     }
   }
  
@@ -399,7 +400,7 @@ void Contig::extend( bool back ){
   string contig_sub_str("");
  
   // skip over any contigs that present at least double coverage
-  if( contig_id.compare( 0,3,"2x_" ) ){
+  if( contig_id.compare( 0,3,"2x_" ) == 0 ){
     return;
   }
 
@@ -427,10 +428,12 @@ void Contig::extend( bool back ){
     if( back ){
       contig.append( extension );
       bp_added_rr += contig_sub.get_bp_added_rr();
+      cout << "bp_added_rr: " << get_bp_added_rr() << " contig_id: " << contig_id << endl;
     }
     else{
       contig.insert( 0, extension );
       bp_added_fr += contig_sub.get_bp_added_fr();
+      cout << "bp_added_fr: " << get_bp_added_fr() << " contig_id: " << contig_id << endl;
     }
     printf( "extend loop#: %2.d  time: ", i );
     print_time();

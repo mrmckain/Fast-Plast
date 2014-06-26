@@ -34,7 +34,6 @@ extern int max_threads;
 class Process{
   public:
     vector<Contig> contigs;
-    vector<Contig> contigs_2x;
     vector<Contig> contigs_fused;
     string outfile;
     
@@ -65,6 +64,9 @@ class Process{
     // put contigs from contfile into contlist
     void add_contigs( string fnames );
 
+    // return contig from contigs_fused with index contig_ind
+    string get_contig_fused( int contig_ind );
+    
     // return contig with index contig_ind
     string get_contig( int contig_ind );
 

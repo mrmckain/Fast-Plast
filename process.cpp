@@ -309,6 +309,13 @@ void Process::add_contigs( string fnames ){
   if( buffer.length() != 0 ){
     contigs.push_back( Contig( buffer, contig_id, min_cov_init ) );
   }
+
+  contig_cov();
+}
+
+// return contig from contigs_fused with index contig_ind
+string Process::get_contig_fused( int contig_ind ){
+  return contigs_fused[ contig_ind ].getContig();
 }
 
 // return contig with index contig_ind
@@ -318,27 +325,34 @@ string Process::get_contig( int contig_ind ){
 
 // prints results to fasta file with outfile prefix and additional information is printed to a text based file with outfile prefix
 void Process::print_to_outfile(){
+  // remove directories from outfile to form id_suffix if necessary
+  size_t id_suffix_pos = outfile.find_last_of( "/" );
+  string id_suffix = outfile;
+  if( id_suffix_pos != string::npos ){
+    id_suffix = id_suffix.substr( id_suffix_pos + 1 );
+  }
+
   // open outfile
   ofstream outfile_fp( outfile+".fasta");
 
   // print out each line to the 
   for( int i=0; i<contigs.size(); i++ ){
-    outfile_fp << ">" << contigs[i].get_contig_id() << "_" << outfile << endl;
+    outfile_fp << ">" << contigs[i].get_contig_id() << "_" << id_suffix << endl;
     outfile_fp << get_contig(i) << endl;
   }
 
   outfile_fp.close();
 
   // open outfile for contigs that have been fused and removed from the contigs vector
-  ofstream outfile_fp2( outfile+".fasta");
+  ofstream fusedout_fp( outfile+"_fused.fasta");
 
   // print out each line to the 
-  for( int i=0; i<contigs.size(); i++ ){
-    outfile_fp2 << ">" << contigs_fused[i].get_contig_id() << "_" << outfile << endl;
-    outfile_fp2 << get_contig(i) << endl;
+  for( int i=0; i<contigs_fused.size(); i++ ){
+    fusedout_fp << ">" << contigs_fused[i].get_contig_id() << "_" << id_suffix << endl;
+    fusedout_fp << get_contig_fused(i) << endl;
   }
 
-  outfile_fp2.close();
+  fusedout_fp.close();
 
 } 
 
@@ -366,7 +380,7 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
   if( back ){
     int len = contig_j.length() - pos;
     string contig_i_sub = contig_i.substr( 0, len );
-    if( contig_j.compare( pos, contig_j.length(), contig_i ) == 0 ){
+    if( contig_j.compare( pos, len, contig_i_sub ) == 0 ){
       // form fused contig and its id
       string fused( contig_j );
       fused.append( contig_i.substr( len, contig_i.length()-len ) );
@@ -394,7 +408,7 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
   else{
     int len = contig_i.length() - pos;
     string contig_i_sub = contig_i.substr( len, pos );
-    if( contig_j.compare( 0, pos, contig_i ) == 0 ){
+    if( contig_j.compare( 0, pos, contig_i_sub ) == 0 ){
       // form fused contig and its id
       string fused( contig_i );
       fused.append( contig_j.substr( len, contig_j.length()-len ) );
@@ -426,7 +440,7 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
 void Process::contig_fusion(){
   int end_length = 20;
   int end_depth = 100;
-  
+
   // loop through each contig to get the end of the contig
   for( int i=0; i<contigs.size(); i++ ){
     string contig_i( get_contig( i ) );

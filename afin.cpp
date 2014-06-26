@@ -231,6 +231,8 @@ int main( int argc, char** argv ){
     t[i].join();
   }
 
+  process.contig_fusion();
+
   // print out each contig and the number of bp added
   for( int i=0; i<process.contigs.size(); i++ ){
     cout << "Contig[" << i << "]: " << process.get_contig(i) << endl;
