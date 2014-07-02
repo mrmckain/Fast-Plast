@@ -30,6 +30,10 @@ class Contig{
     int bp_added_rr;
 
   public:
+    Contig( string str, string id, int cov, int init_added_fr, int init_added_rr );
+    
+    Contig( string str, string id, int cov, int bp_added_init );
+    
     Contig( string str, string id, int cov );
 
     Contig( string str, string id );
@@ -62,6 +66,9 @@ class Contig{
     // returns bp_added_rr
     int get_bp_added_rr();
 
+    // resets bp_added variables to 0
+    int reset_bp_added();
+    
     // clear matchlist to make room for new matches
     void clear_matches();
 

@@ -32,6 +32,13 @@ tuple<long,long,long,long> get_read_range( string read_seg ){
 }
 
 ////////// Contig FUNCTIONS ////////////
+Contig::Contig( string str, string id, int cov, int init_added_fr, int init_added_rr ) : min_cov( cov ), contig( str ), contig_id(id), bp_added_fr(init_added_fr), bp_added_rr(init_added_rr){}
+
+Contig::Contig( string str, string id, int cov, int bp_added_init ) : min_cov( cov ), contig( str ), contig_id(id){
+  bp_added_fr = bp_added_init;
+  bp_added_rr = bp_added_init;
+}
+
 Contig::Contig( string str, string id, int cov ) : min_cov( cov ), contig( str ), contig_id(id){
   bp_added_fr = 0;
   bp_added_rr = 0;
@@ -90,6 +97,12 @@ int Contig::get_bp_added_fr(){
 // returns bp_added_rr
 int Contig::get_bp_added_rr(){
   return bp_added_rr;
+}
+
+// resets bp_added variables to 0
+int Contig::reset_bp_added(){
+  bp_added_rr = 0;
+  bp_added_fr = 0;
 }
 
 // clear matchlist to make room for new matches
@@ -404,39 +417,35 @@ void Contig::extend( bool back ){
     return;
   }
 
-  // use the end of the contig len characters long and create new contig object to process and get extension from
-  for( int i=0; i<max_search_loops; i++ ){
-    printf( "extend loop#: %2.d  time: ", i );
-    print_time();
- 
-    // get extension through create_extension
-    if( back ){
-      contig_sub_str = contig.substr( contig.length() - ( contig_sub_len ) );
-    }
-    else{
-      contig_sub_str = contig.substr( 0, contig_sub_len );
-    }
+  // get extension through create_extension
+  if( back ){
+    contig_sub_str = contig.substr( contig.length() - ( contig_sub_len ) );
+  }
+  else{
+    contig_sub_str = contig.substr( 0, contig_sub_len );
+  }
 
-    Contig contig_sub( contig_sub_str, "temp", min_cov_init );
-    extension = contig_sub.create_extension( extend_len, back );
-    
-    cout << "extension:" << extension << endl;
-    if( extension.length() == 0 ){
-      break;
-    }
+  Contig contig_sub( contig_sub_str, "temp", min_cov_init );
+  extension = contig_sub.create_extension( extend_len, back );
+  
+  //cout << "extension:" << extension << endl;
+  if( extension.length() == 0 ){
+    return;
+  }
 
-    if( back ){
-      contig.append( extension );
-      bp_added_rr += contig_sub.get_bp_added_rr();
-      cout << "bp_added_rr: " << get_bp_added_rr() << " contig_id: " << contig_id << endl;
-    }
-    else{
-      contig.insert( 0, extension );
-      bp_added_fr += contig_sub.get_bp_added_fr();
-      cout << "bp_added_fr: " << get_bp_added_fr() << " contig_id: " << contig_id << endl;
-    }
-    printf( "extend loop#: %2.d  time: ", i );
-    print_time();
+  if( back ){
+    contig.append( extension );
+    bp_added_rr += contig_sub.get_bp_added_rr();
+      
+    // print messages to logfile about current actions
+    //Process::print_to_logfile( contig_sub.get_bp_added_rr() + " basepairs were added to the back of " + contig_id ); 
+  }
+  else{
+    contig.insert( 0, extension );
+    bp_added_fr += contig_sub.get_bp_added_fr();
+      
+    // print messages to logfile about current actions
+    //Process::print_to_logfile( contig_sub.get_bp_added_fr() + " basepairs were added to the front of " + contig_id ); 
   }
 }
 

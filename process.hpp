@@ -32,10 +32,21 @@ extern int max_threads;
 // Process object, contains all classes, methods, data, and data references necessary for processing the contigs
 // There will be only one Process object needed per iteration of this program
 class Process{
+  private:
+    int trim_length;
+    int tip_length;
+    int end_depth;
+    int tip_depth;
+    string logfile;
+    time_t timer;
+    fstream log_fs;
+
   public:
     vector<Contig> contigs;
     vector<Contig> contigs_fused;
     string outfile;
+    string readsfiles;
+    string contigsfiles;
     
     Process();
 
@@ -59,10 +70,10 @@ class Process{
     void contig_cov();
 
     // put reads from readfile into readlist
-    void add_reads( string fnames );
+    void add_reads();
 
     // put contigs from contfile into contlist
-    void add_contigs( string fnames );
+    void add_contigs();
 
     // return contig from contigs_fused with index contig_ind
     string get_contig_fused( int contig_ind );
@@ -72,6 +83,12 @@ class Process{
 
     // prints results to fasta file with outfile prefix and additional information is printed to a text based file with outfile prefix
     void print_to_outfile();
+
+    // return a string of the current time in the program
+    string get_time();
+
+    // initalize logfile
+    void logfile_init();
 
     // prints notes to file as the program progresses
     void print_to_logfile( string note );
@@ -84,8 +101,23 @@ class Process{
     // returns boolean value that indicates if a fusion was made
     bool contig_end_compare( int index_i, int index_j, int pos, bool back, bool rev );
 
+    // front end search for contig_fusion algorithm
+    bool contig_fusion_front_search( string contig_i, string contig_j, string contig_tip, string contig_rev_tip, int index_i, int index_j );
+
+    // back end search for contig_fusion algorithm
+    bool contig_fusion_rear_search( string contig_i, string contig_j, string contig_tip, string contig_rev_tip, int index_i, int index_j );
+
     // fuse contigs wherever possible
     void contig_fusion();
+
+    // Initializes data structures and turns over control to run_manager()
+    void start_run();
+    
+    // Manages run 
+    void run_manager();
+
+    // closes logfile
+    void close_log();
 };
 
 ///////////////////////

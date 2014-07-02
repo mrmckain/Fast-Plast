@@ -33,24 +33,23 @@
 #include <fstream>
 #include <vector>
 #include <unistd.h>
-#include <tuple>
-#include <utility>
-#include <unordered_map>
-#include <thread>
 #include <functional>
 #include "contig.hpp"
 #include "print_time.hpp"
 #include "process.hpp"
 #include "read.hpp"
 #include "afin_util.hpp"
-#include "queue.tcc"
 
 using namespace std;
 
+// TASK:: make global variables and options for the variables that need it
+// TASK:: Change names of any functions that no longer title their function
+// TASK:: Add initial contig match.. clean up contig match according to rules outlined in notes file *************************************************
+// TASK:: Write up documentation explaining each option, its purpose, and why the default is set the way it is
+// TASK:: switch loop variables so that the most outer for..loop uses i as its iterator and then j then k.....
 // TASK:: Check limits of readlist size and other limits at all points of the program
 // TASK:: Discuss calculation for cov_avg and number of times to add contig to contigs_2x.. Determine the best way to know how many times a contig is duplicated within the genome.. Or should this be genome specific? Not portable this way
 // TASK:: Clean up functions, break long functions into smaller ones and eliminate unused functions
-// TASK:: Remove add_reads() and add_contigs() from the options section and place them in the Process constructor
 // TASK:: expand Process::print_to_outfile() to include contigs_fused vector
 // TASK:: develop Process::print_to_logfile( string )
 // TASK:: Remove using line from each file and add std:: where necessary
@@ -60,7 +59,7 @@ using namespace std;
 // TASK:: Throws out_of_range error when min_overlap < 4.... ? Not that it should ever be that low
 //
 // TASK:: align contigs? Remove mismatched bp's at the end of contigs?
-// TASK:: add contigs together
+// TASK:: add contigs together.. now do it better
 // TASK:: make considerations for splits in possibility (eg IR boundaries, RPL23 gene copy)
 //
 // TASK:: output information about where contigs are combined and where contigs have had two or more options due to duplicate regions
@@ -84,7 +83,6 @@ int main( int argc, char** argv ){
   max_threads = 6;
   int c;
   Process process;
-  Queue<int> qu;
   
   // prevent output to stderr if erroneous option is found
   opterr = 0;
@@ -132,11 +130,11 @@ int main( int argc, char** argv ){
         break;
       // readfile option
       case 'r':
-        process.add_reads( optarg );
+        process.readsfiles = optarg;
         break;
       // contig file option
       case 'c':
-        process.add_contigs( optarg );
+        process.contigsfiles = optarg;
         break;
       case '?':
         if ( optopt == 'r' ){
@@ -165,16 +163,6 @@ int main( int argc, char** argv ){
     }
   }
   
-  // output starting option values
-  cout << "OPTION VALUES" << endl;
-  cout << "contig_sub_len: " << contig_sub_len << endl;
-  cout << "extend_len: " << extend_len << endl;
-  cout << "max_search_loops: " << max_search_loops << endl;
-  cout << "max_sort_char: " << max_sort_char << endl;
-  cout << "min_cov_init: " << min_cov_init << endl;
-  cout << "min_overlap: " << min_overlap << endl;
-  cout << "max_threads: " << max_threads << endl;
-
   while ( optind < argc ) {
     cout << argv[optind] << endl;
     optind++;
@@ -188,50 +176,13 @@ int main( int argc, char** argv ){
   // Test Thread Queue //
   ///////////////////////
 
+  // start run
+  process.start_run();
+
   int length[process.contigs.size()];
   for( int i=0; i<process.contigs.size(); i++ ){
     length[i] = process.get_contig(i).length();
   }
-  
-  cout << "sort_reads start: ";
-  print_time();
-  process.sort_reads();
-  cout << "sort_rc start: ";
-  print_time();
-  process.sort_rc();
-  cout << "create_reads_range start: ";
-  print_time();
-  process.create_read_range();
-
-  cout << "extend start: ";
-  print_time();
-
-  cout << "This is testing thread methods with a queue and a max thread count" << endl;
-
-  // create thread array with max_thread entries
-  thread t[max_threads];
-
-  // initialize threads
-  for( int i=0; i<max_threads; i++ ){
-    t[i] = thread( thread_worker, ref(process.contigs), ref(qu), i );
-  }
-
-  // push each thread onto queue
-  for( int i=0; i<process.contigs.size(); i++ ){
-    qu.push( i );
-  }
-
-  // push stop signals onto queue for each thread
-  for( int i=0; i<max_threads; i++ ){
-    qu.push( -1 );
-  }
-
-  // join threads
-  for( int i=0; i<max_threads; i++ ){
-    t[i].join();
-  }
-
-  process.contig_fusion();
 
   // print out each contig and the number of bp added
   for( int i=0; i<process.contigs.size(); i++ ){
