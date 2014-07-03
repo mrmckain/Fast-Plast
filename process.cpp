@@ -247,8 +247,8 @@ double Process::get_cov( string contig_id ){
     pos = contig_cov_str.find( "_" );
     if( pos != string::npos ){
       contig_cov_str = contig_cov_str.substr( 0, pos );
-      cov = atof( contig_cov_str.c_str() );
     }
+    cov = atof( contig_cov_str.c_str() );
   }
 
   return cov;
@@ -273,13 +273,15 @@ void Process::contig_cov(){
 
   // find average of all cov values
   double cov_avg = cov_total / total_contigs;
-
+  
+  cout << "cov_avg: " << cov_avg << endl;
   for( int i=0; i<total_contigs; i++ ){
     // get contig_id, parse out cov_## and compare this value to the avg
     string contig_id = contigs[i].get_contig_id();
     double cov = get_cov( contig_id );
 
-    if( cov > cov_avg * 1.7 ){
+    cout << "contig_id: " << contig_id << " cov: " << cov << endl;
+    if( cov > cov_avg * 1.6 ){
       // Push an extra copy of the contig onto contigs and prepend "2x_" onto the contig_id
       contigs[i].set_contig_id( contig_id.insert( 0, "2x_" ) );
       contigs.push_back( contigs[i] );
@@ -423,15 +425,21 @@ void Process::print_to_logfile( string note ){
 // rev indicates whether contig_i is the reverse compliment of the original contig
 // returns boolean value that indicates if a fusion was made
 bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, bool rev ){
+      cout << "cec_1 i: " << index_i << " j: " << index_j << " pos: " << pos << endl;
   string log_text = "";
   int max_missed = 3;
   string contig_j = get_contig( index_j );
+      cout << "cec_1.2 i: " << index_i << " j: " << index_j << " pos: " << pos << endl;
   string contig_i = get_contig( index_i );
+      cout << "cec_1.3 i: " << index_i << " j: " << index_j << " pos: " << pos << endl;
   string i_rev( "" );
   
+      cout << "cec_1.4 i: " << index_i << " j: " << index_j << " pos: " << pos << endl;
   // set variables for creating new contig objects if necessary
   int bp_added_rr_i = contigs[index_i].get_bp_added_rr();
+      cout << "cec_1.5 i: " << index_i << " j: " << index_j << " pos: " << pos << endl;
   int bp_added_fr_i = contigs[index_i].get_bp_added_fr();
+      cout << "cec_1.6 i: " << index_i << " j: " << index_j << " pos: " << pos << endl;
 
   // set variables impacted by direction of contig_i
   if( rev ){
@@ -441,14 +449,17 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
     contig_i = revcomp( contig_i );
     i_rev = "_rev_comp";
   }
+      cout << "cec_2" << endl;
 
   // back section
   if( back ){
+      cout << "cec_3" << endl;
     pos -= trim_length;
     int len = contig_j.length() - pos;
     string contig_i_sub = contig_i.substr( 0, len );
     cout << "len: " << len << " contig_i_id: " << contigs[index_i].get_contig_id() << " contig_i_sub: " << contig_i_sub << endl;
     if( contig_j.compare( pos, len, contig_i_sub ) == 0 ){
+      cout << "cec_4" << endl;
       // form fused contig and its id
       string fused( contig_j );
       fused.append( contig_i.substr( len, contig_i.length()-len ) );
@@ -459,6 +470,7 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
       print_to_logfile( "Contig moved to fused file: " + contigs[index_i].get_contig_id() );
       print_to_logfile( "Contig moved to fused file: " + contigs[index_j].get_contig_id() );
       print_to_logfile( "" );
+      cout << "cec_5" << endl;
 
       // put pre-fused contigs in contigs_fused vector and post-fused contig in contigs vector
       contigs_fused.push_back( contigs[index_i] );
@@ -467,13 +479,16 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
       
       // remove pre-fused vectors from contigs vector
       if( index_i>index_j ){
+      cout << "cec_6" << endl;
         contigs.erase( contigs.begin() + index_i );
         contigs.erase( contigs.begin() + index_j );
       }
       else{
+      cout << "cec_7" << endl;
         contigs.erase( contigs.begin() + index_j );
         contigs.erase( contigs.begin() + index_i );
       }
+      cout << "cec_8" << endl;
 
       // successful fusion, return true
       return true;
@@ -481,6 +496,7 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
     // check to see if the unmatched portion is in the trim_length bp's at the end of either contig, if it is and the number of mismatched bp's is under max_missed, 
     //    then add contigs together ignoring trim_length section
     else{
+      cout << "cec_9" << endl;
       pos += trim_length;
       int overlap = len;
       len -= 2*trim_length;
@@ -488,7 +504,9 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
 
       // check to make sure len>=0
       if( len>=0 ){
+      cout << "cec_10" << endl;
         if( contig_j.compare( pos, len, contig_i_sub.substr( trim_length, len ) ) == 0 ){
+      cout << "cec_11" << endl;
           string trim_section_i = contig_i.substr( 0, trim_length );
           string trim_section_j = contig_j.substr( contig_j.length()-trim_length, trim_length );
           int total_missed_i = 0;
@@ -509,6 +527,7 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
 
           // verify each trim section doesn't have too many misses
           if( total_missed_i <= max_missed && total_missed_j <= max_missed ){
+      cout << "cec_12" << endl;
             int total_missed = total_missed_i + total_missed_j;
             // form fused contig and its id
             string fused( contig_j.substr( 0, contig_j.length() - trim_length ) );
@@ -522,6 +541,7 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
             print_to_logfile( "Contig moved to fused file: " + contigs[index_j].get_contig_id() );
             print_to_logfile( "" );
 
+      cout << "cec_13" << endl;
             // put pre-fused contigs in contigs_fused vector and post-fused contig in contigs vector
             contigs_fused.push_back( contigs[index_i] );
             contigs_fused.push_back( contigs[index_j] );
@@ -529,10 +549,12 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
             
             // remove pre-fused vectors from contigs vector
             if( index_i>index_j ){
+      cout << "cec_14" << endl;
               contigs.erase( contigs.begin() + index_i );
               contigs.erase( contigs.begin() + index_j );
             }
             else{
+      cout << "cec_15" << endl;
               contigs.erase( contigs.begin() + index_j );
               contigs.erase( contigs.begin() + index_i );
             }
@@ -546,10 +568,12 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
   }
   // front section
   else{
+      cout << "cec_15" << endl;
     int len = tip_depth + pos;
     cout << "front len: " << len << " contig_i_id: " << contigs[index_i].get_contig_id() << endl;
     string contig_i_sub = contig_i.substr( contig_i.length() - len );
     if( contig_j.compare( 0, len, contig_i_sub ) == 0 ){
+      cout << "cec_15" << endl;
       // form fused contig and its id
       string fused( contig_i );
       fused.append( contig_j.substr( len ) );
@@ -561,17 +585,21 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
       print_to_logfile( "Contig moved to fused file: " + contigs[index_j].get_contig_id() );
       print_to_logfile( "" );
 
+      cout << "cec_15" << endl;
       // put pre-fused contigs in contigs_fused vector and post-fused contig in contigs vector
       contigs_fused.push_back( contigs[index_i] );
       contigs_fused.push_back( contigs[index_j] );
       contigs.push_back( Contig( fused, fused_id, min_cov_init, bp_added_fr_i, contigs[index_j].get_bp_added_rr() ));
       
+      cout << "cec_15" << endl;
       // remove pre-fused vectors from contigs vector
       if( index_i>index_j ){
+      cout << "cec_15" << endl;
         contigs.erase( contigs.begin() + index_i );
         contigs.erase( contigs.begin() + index_j );
       }
       else{
+      cout << "cec_15" << endl;
         contigs.erase( contigs.begin() + index_j );
         contigs.erase( contigs.begin() + index_i );
       }
@@ -582,13 +610,16 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
     // check to see if the unmatched portion is in the trim_length bp's at the end of either contig, if it is and the number of mismatched bp's is under max_missed, 
     //    then add contigs together ignoring trim_length section
     else{
+      cout << "cec_15" << endl;
       int overlap = len;
       len -= 2*trim_length;
     cout << "front len: " << len << " contig_i_id: " << contigs[index_i].get_contig_id() << endl;
 
       // check to make sure len>=0
       if( len>=0 ){
+      cout << "cec_15" << endl;
         if( contig_j.compare( trim_length, len, contig_i_sub.substr( trim_length, len ) ) == 0 ){
+      cout << "cec_15" << endl;
           string trim_section_i = contig_i.substr( contig_i.length()-trim_length, trim_length );
           string trim_section_j = contig_j.substr( 0, trim_length );
           int total_missed_i = 0;
@@ -609,6 +640,7 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
 
           // verify each trim section doesn't have too many misses
           if( total_missed_i <= max_missed && total_missed_j <= max_missed ){
+      cout << "cec_15" << endl;
             int total_missed = total_missed_i + total_missed_j;
             // form fused contig and its id
             string fused( contig_i.substr( 0, contig_i.length() - trim_length ) );
@@ -621,6 +653,7 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
             print_to_logfile( "Contig moved to fused file: " + contigs[index_i].get_contig_id() );
             print_to_logfile( "Contig moved to fused file: " + contigs[index_j].get_contig_id() );
             print_to_logfile( "" );
+      cout << "cec_15" << endl;
 
 
             // put pre-fused contigs in contigs_fused vector and post-fused contig in contigs vector
@@ -630,10 +663,12 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
             
             // remove pre-fused vectors from contigs vector
             if( index_i>index_j ){
+      cout << "cec_15" << endl;
               contigs.erase( contigs.begin() + index_i );
               contigs.erase( contigs.begin() + index_j );
             }
             else{
+      cout << "cec_15" << endl;
               contigs.erase( contigs.begin() + index_j );
               contigs.erase( contigs.begin() + index_i );
             }
@@ -736,14 +771,12 @@ void Process::contig_fusion(){
         if( contig_fusion_front_search( contig_i, contig_j, contig_tip_rr, contig_rev_tip_rr, i, j ) ){
           // if the two contigs match and are fused, adjustments must be made to the index markers so all contigs are checked
           if( i>j ){
-            j--;
             i-=2;
           }
           else{
-            j-=2;
             i--;
           }
-          continue;
+          break;
         }
 
         //////////////////////
@@ -752,14 +785,12 @@ void Process::contig_fusion(){
         if( contig_fusion_rear_search( contig_i, contig_j, contig_tip_fr, contig_rev_tip_fr, i, j ) ){
           // if the two contigs match and are fused, adjustments must be made to the index markers so all contigs are checked
           if( i>j ){
-            j--;
             i-=2;
           }
           else{
-            j-=2;
             i--;
           }
-          continue;
+          break;
         }
       }
     }

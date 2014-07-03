@@ -33,6 +33,7 @@ void print_usage( string prog ){
   cout << "  -l max_search_loops  [default:  10] Will search against each contig a maximum of max_search_loops times before comparing them" << endl;
   cout << "  -i min_cov_init      [default:   5] Will stop adding bp's once the coverage falls below min_cov_init" << endl;
   cout << "  -p min_overlap       [default:  20] Only those reads overlapping the contig by at least min_overlap bp's will be returned in each search" << endl;
-  cout << "  -t max_threads       [default:   6] Will only run max_threads threads at a time" << endl << endl;
+  cout << "  -t max_threads       [default:   6] Will only run max_threads threads at a time" << endl;
+  cout << "  -x extend_len        [default:  80] Will add a max of 80 bp's each search loop" << endl << endl;
 }
 
