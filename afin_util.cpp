@@ -34,6 +34,8 @@ void print_usage( string prog ){
   cout << "  -i min_cov_init      [default:   5] Will stop adding bp's once the coverage falls below min_cov_init" << endl;
   cout << "  -p min_overlap       [default:  20] Only those reads overlapping the contig by at least min_overlap bp's will be returned in each search" << endl;
   cout << "  -t max_threads       [default:   6] Will only run max_threads threads at a time" << endl;
+  cout << "  -a trim_length       [default:  30] Distance from the end of each contig from which to grab the search section for contig fusion" << endl;
+  cout << "  -b max_threads       [default:  10] Length of the search section of each contig used for contig fusion" << endl;
   cout << "  -x extend_len        [default:  80] Will add a max of 80 bp's each search loop" << endl << endl;
 }
 

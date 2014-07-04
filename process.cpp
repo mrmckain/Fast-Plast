@@ -35,6 +35,10 @@ int max_sort_char;
 int min_cov_init;
 int min_overlap;
 int max_threads;
+int trim_length;
+int tip_length;
+int end_depth;
+int tip_depth;
 
 ////////////////////////////////////
 //////// PROCESS DEFINITIONS ///////
@@ -69,11 +73,6 @@ void merge_sort( Iter first, Iter last, Order order ){
 // Process constructor
 Process::Process(){
   outfile = "afin_out";
-  trim_length = 20;
-  tip_length = 20;
-  end_depth = 100;
-  tip_depth = trim_length + tip_length;
-
 }
 
 // uses a mergesort to sort the read list based on the first max_sort_char characters of each read
@@ -279,17 +278,17 @@ void Process::contig_cov(){
     string contig_id = contigs[i].get_contig_id();
     double cov = get_cov( contig_id );
 
-    if( cov > cov_avg * 1.8 ){
+    if( cov > cov_avg * 2.0 ){
       // Push an extra copy of the contig onto contigs and prepend "2x_" onto the contig_id
       contigs[i].set_contig_id( contig_id.insert( 0, "2x_" ) );
-      contigs.push_back( contigs[i] );
+      //contigs.push_back( contigs[i] );
     }
   }
 }
 
 // put contigs from contfile into contlist
 void Process::add_contigs(){
-  int bp_added_init = 20;
+  int bp_added_init = 40;
   stringstream ss;
   ss.str( contigsfiles );
   string filename;
@@ -408,6 +407,10 @@ void Process::logfile_init(){
   log_fs << "max_sort_char: " << max_sort_char << endl;
   log_fs << "min_cov_init: " << min_cov_init << endl;
   log_fs << "min_overlap: " << min_overlap << endl;
+  log_fs << "trim_length: " << trim_length << endl;
+  log_fs << "tip_length: " << tip_length << endl;
+  log_fs << "end_depth: " << end_depth << endl;
+  log_fs << "tip_depth: " << tip_depth << endl;
   log_fs << "max_threads: " << max_threads << endl << endl;
 }
 
@@ -424,7 +427,7 @@ void Process::print_to_logfile( string note ){
 // returns boolean value that indicates if a fusion was made
 bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, bool rev ){
   string log_text = "";
-  int max_missed = 3;
+  int max_missed = 10;
   string contig_j = get_contig( index_j );
   string contig_i = get_contig( index_i );
   string i_rev( "" );
@@ -784,7 +787,8 @@ void Process::start_run(){
   create_read_range();
   
   // make initial attempt to fuse contigs  
-  contig_fusion();
+  // removed for master branch until algorithm can be adjusted
+  //contig_fusion();
 
   run_manager();
 }
@@ -818,7 +822,8 @@ void Process::run_manager(){
       t[i].join();
     }
 
-    contig_fusion();
+    // removed for master branch until algorithm can be adjusted
+    //contig_fusion();
   }
 } 
 

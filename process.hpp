@@ -23,6 +23,10 @@ extern int max_sort_char;
 extern int min_cov_init;
 extern int min_overlap;
 extern int max_threads;
+extern int trim_length;
+extern int tip_length;
+extern int end_depth;
+extern int tip_depth;
 
 /////////////////////////////////////////////\
 // Process Class: ////////////////////////////>
@@ -33,10 +37,6 @@ extern int max_threads;
 // There will be only one Process object needed per iteration of this program
 class Process{
   private:
-    int trim_length;
-    int tip_length;
-    int end_depth;
-    int tip_depth;
     string logfile;
     time_t timer;
     fstream log_fs;

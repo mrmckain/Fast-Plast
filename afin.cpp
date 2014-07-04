@@ -42,6 +42,7 @@
 
 using namespace std;
 
+// TASK:: maybe move end_depth and tip_depth back to process
 // TASK:: make global variables and options for the variables that need it
 // TASK:: Change names of any functions that no longer title their function
 // TASK:: Add initial contig match.. clean up contig match according to rules outlined in notes file *************************************************
@@ -81,6 +82,10 @@ int main( int argc, char** argv ){
   min_cov_init = 5;
   min_overlap = 20;
   max_threads = 6;
+  trim_length = 30;
+  tip_length = 10;
+  end_depth = 100;
+  tip_depth = trim_length + tip_length;
   int c;
   Process process;
   
@@ -88,7 +93,7 @@ int main( int argc, char** argv ){
   opterr = 0;
 
   // get all options that have been provided on the command line
-  while (( c = getopt (argc, argv, "hr:c:o:s:l:x:m:i:p:t:" )) != -1 ) {
+  while (( c = getopt (argc, argv, "hr:c:o:s:l:x:m:i:p:t:a:b:" )) != -1 ) {
     switch( c ) {
       case 'h':
         print_usage( argv[0] );
@@ -121,6 +126,14 @@ int main( int argc, char** argv ){
       // max_threads option
       case 't':
         max_threads = atoi(optarg);
+        break;
+      // trim_length option
+      case 'a':
+        trim_length = atoi(optarg);
+        break;
+      // tip_length option
+      case 'b':
+        tip_length = atoi(optarg);
         break;
       // outputfile option
       case 'o':
