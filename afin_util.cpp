@@ -36,6 +36,9 @@ void print_usage( string prog ){
   cout << "  -t max_threads       [default:   6] Will only run max_threads threads at a time" << endl;
   cout << "  -a trim_length       [default:  30] Distance from the end of each contig from which to grab the search section for contig fusion" << endl;
   cout << "  -b max_threads       [default:  10] Length of the search section of each contig used for contig fusion" << endl;
+  cout << "  -d initial_trim      [default: 100] Length to trim off the beginning and end of each contig at the start of the program" << endl;
+  cout << "  -e max_missed        [default:   5] Maximum allowable mismatched bp's for contig fusion in the trim_length bp's at the end of each contig" << endl;
+  cout << "  -f max_missed        [default:  20] Initial bp_added value for each end of a contig" << endl;
   cout << "  -x extend_len        [default:  80] Will add a max of 80 bp's each search loop" << endl << endl;
 }
 

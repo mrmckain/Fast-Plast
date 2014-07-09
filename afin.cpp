@@ -42,10 +42,10 @@
 
 using namespace std;
 
+// TASK:: Add algorithm to check reads against poorly matching ends
 // TASK:: maybe move end_depth and tip_depth back to process
 // TASK:: make global variables and options for the variables that need it
 // TASK:: Change names of any functions that no longer title their function
-// TASK:: Add initial contig match.. clean up contig match according to rules outlined in notes file *************************************************
 // TASK:: Write up documentation explaining each option, its purpose, and why the default is set the way it is
 // TASK:: switch loop variables so that the most outer for..loop uses i as its iterator and then j then k.....
 // TASK:: Check limits of readlist size and other limits at all points of the program
@@ -85,6 +85,9 @@ int main( int argc, char** argv ){
   trim_length = 30;
   tip_length = 10;
   end_depth = 100;
+  initial_trim = 100;
+  bp_added_init = 20;
+  max_missed = 5;
   tip_depth = trim_length + tip_length;
   int c;
   Process process;
@@ -93,7 +96,7 @@ int main( int argc, char** argv ){
   opterr = 0;
 
   // get all options that have been provided on the command line
-  while (( c = getopt (argc, argv, "hr:c:o:s:l:x:m:i:p:t:a:b:" )) != -1 ) {
+  while (( c = getopt (argc, argv, "hr:c:o:s:l:x:m:i:p:t:a:b:d:e:f:" )) != -1 ) {
     switch( c ) {
       case 'h':
         print_usage( argv[0] );
@@ -134,6 +137,18 @@ int main( int argc, char** argv ){
       // tip_length option
       case 'b':
         tip_length = atoi(optarg);
+        break;
+      // initial_trim option
+      case 'd':
+        initial_trim = atoi(optarg);
+        break;
+      // max_missed option
+      case 'e':
+        max_missed = atoi(optarg);
+        break;
+      // bp_added_init option
+      case 'f':
+        bp_added_init = atoi(optarg);
         break;
       // outputfile option
       case 'o':

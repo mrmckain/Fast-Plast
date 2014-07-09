@@ -27,6 +27,9 @@ extern int trim_length;
 extern int tip_length;
 extern int end_depth;
 extern int tip_depth;
+extern int initial_trim;
+extern int max_missed;
+extern int bp_added_init;
 
 /////////////////////////////////////////////\
 // Process Class: ////////////////////////////>
@@ -92,6 +95,18 @@ class Process{
 
     // prints notes to file as the program progresses
     void print_to_logfile( string note );
+
+    // complete contig_fusion process
+    void contig_fusion_wrapup( string fused, string fused_id, int index_i, int index_j, int bp_added_fr, int bp_added_rr, int total_missed, string overlap_seq );
+
+    // complete contig_fusion process
+    void contig_fusion_wrapup( string fused, string fused_id, int index_i, int index_j, int bp_added_fr, int bp_added_rr );
+
+    // process the ends of the contigs for fusion at the front end of the second contig
+    bool contig_end_compare_fr( int index_i, int index_j, int pos, int bp_added_fr_i, string i_rev );
+
+    // process the ends of the contigs for fusion at the rear end of the second contig
+    bool contig_end_compare_rr( int index_i, int index_j, int pos, int bp_added_rr_i, string i_rev );
 
     // Compares the ends of the contigs with indices index_i and index_j which are related to the contigs from Process::contig_fusion()
     // back indicates whether contig_i comes off the front or back of contig_j and changes the behavior of pos as follows:

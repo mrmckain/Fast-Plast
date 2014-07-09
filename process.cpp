@@ -39,6 +39,9 @@ int trim_length;
 int tip_length;
 int end_depth;
 int tip_depth;
+int initial_trim;
+int max_missed;
+int bp_added_init;
 
 ////////////////////////////////////
 //////// PROCESS DEFINITIONS ///////
@@ -288,7 +291,6 @@ void Process::contig_cov(){
 
 // put contigs from contfile into contlist
 void Process::add_contigs(){
-  int bp_added_init = 40;
   stringstream ss;
   ss.str( contigsfiles );
   string filename;
@@ -307,8 +309,10 @@ void Process::add_contigs(){
     // read in contig objects
     while( getline( cont, line ) ){
       if( line[0] == '>' && buffer.length() != 0 ){
-        //cout << buffer << endl;
-        contigs.push_back( Contig( buffer, contig_id, min_cov_init, bp_added_init ));
+        if( buffer.length() > 2*initial_trim ){
+          buffer = buffer.substr( initial_trim, buffer.length() - 2*initial_trim );
+          contigs.push_back( Contig( buffer, contig_id, min_cov_init, bp_added_init ));
+        }
         buffer = "";
         contig_id = line.substr(1);
       }
@@ -411,12 +415,191 @@ void Process::logfile_init(){
   log_fs << "tip_length: " << tip_length << endl;
   log_fs << "end_depth: " << end_depth << endl;
   log_fs << "tip_depth: " << tip_depth << endl;
+  log_fs << "initial_trim: " << initial_trim << endl;
+  log_fs << "max_missed: " << max_missed << endl;
   log_fs << "max_threads: " << max_threads << endl << endl;
 }
 
 // prints notes to file as the program progresses
 void Process::print_to_logfile( string note ){
   log_fs << get_time() << "\t" << note << endl;
+}
+
+// complete contig_fusion process
+void Process::contig_fusion_wrapup( string fused, string fused_id, int index_i, int index_j, int bp_added_fr, int bp_added_rr, int total_missed, string overlap_seq ){ 
+  // print messages to logfile about current actions
+  print_to_logfile( "Fused contigs to form " + fused_id ); 
+  print_to_logfile( "Total of " + to_string(total_missed) + " basepairs did not match in the overlap section: " + overlap_seq );
+  print_to_logfile( "Contig moved to fused file: " + contigs[index_i].get_contig_id() );
+  print_to_logfile( "Contig moved to fused file: " + contigs[index_j].get_contig_id() );
+  print_to_logfile( "" );
+
+  // put pre-fused contigs in contigs_fused vector and post-fused contig in contigs vector
+  contigs_fused.push_back( contigs[index_i] );
+  contigs_fused.push_back( contigs[index_j] );
+  contigs.push_back( Contig( fused, fused_id, min_cov_init, bp_added_fr, bp_added_rr ));
+  
+  // remove pre-fused vectors from contigs vector
+  if( index_i>index_j ){
+    contigs.erase( contigs.begin() + index_i );
+    contigs.erase( contigs.begin() + index_j );
+  }
+  else{
+    contigs.erase( contigs.begin() + index_j );
+    contigs.erase( contigs.begin() + index_i );
+  }
+}
+
+// complete contig_fusion process
+void Process::contig_fusion_wrapup( string fused, string fused_id, int index_i, int index_j, int bp_added_fr, int bp_added_rr ){ 
+  // print messages to logfile about current actions
+  print_to_logfile( "Fused contigs to form " + fused_id ); 
+  print_to_logfile( "Contig moved to fused file: " + contigs[index_i].get_contig_id() );
+  print_to_logfile( "Contig moved to fused file: " + contigs[index_j].get_contig_id() );
+  print_to_logfile( "" );
+
+  // put pre-fused contigs in contigs_fused vector and post-fused contig in contigs vector
+  contigs_fused.push_back( contigs[index_i] );
+  contigs_fused.push_back( contigs[index_j] );
+  contigs.push_back( Contig( fused, fused_id, min_cov_init, bp_added_fr, bp_added_rr ));
+  
+  // remove pre-fused vectors from contigs vector
+  if( index_i>index_j ){
+    contigs.erase( contigs.begin() + index_i );
+    contigs.erase( contigs.begin() + index_j );
+  }
+  else{
+    contigs.erase( contigs.begin() + index_j );
+    contigs.erase( contigs.begin() + index_i );
+  }
+}
+
+// process the ends of the contigs for fusion at the front end of the second contig
+bool Process::contig_end_compare_fr( int index_i, int index_j, int pos, int bp_added_fr_i, string i_rev ){
+  string contig_j = get_contig( index_j );
+  string contig_i = get_contig( index_i );
+  int len = tip_depth + pos;
+  string contig_i_sub = contig_i.substr( contig_i.length() - len );
+  if( contig_j.compare( 0, len, contig_i_sub ) == 0 ){
+    // form fused contig and its id
+    string fused( contig_i );
+    fused.append( contig_j.substr( len ) );
+    string fused_id( "fused("+contigs[index_i].get_contig_id()+i_rev+"_||_"+contigs[index_j].get_contig_id()+")" );
+
+    contig_fusion_wrapup( fused, fused_id, index_i, index_j, bp_added_fr_i, contigs[index_j].get_bp_added_rr() );
+
+    // successful fusion, return true
+    return true;
+  }
+  // check to see if the unmatched portion is in the trim_length bp's at the end of either contig, if it is and the number of mismatched bp's is under max_missed, 
+  //    then add contigs together ignoring trim_length section
+  else{
+    int overlap = len;
+    len -= 2*trim_length;
+
+    // check to make sure len>=0
+    if( len>=0 ){
+      if( contig_j.compare( trim_length, len, contig_i_sub.substr( trim_length, len ) ) == 0 ){
+        string trim_section_i = contig_i.substr( contig_i.length()-trim_length, trim_length );
+        string trim_section_j = contig_j.substr( 0, trim_length );
+        int total_missed_i = 0;
+        int total_missed_j = 0;
+
+        // loop through bp's in trim_section for contig_i
+        for( int k=0; k<trim_length; k++ ){
+          // check trim_section_i
+          if( trim_section_i.compare( k, 1, contig_j.substr( overlap - trim_length + k, 1 ) ) != 0 ){
+            total_missed_i++;
+          }
+
+          // check trim_section_j
+          if( trim_section_j.compare( k, 1, contig_i.substr( contig_i.length() - overlap + k, 1 ) ) != 0 ){
+            total_missed_j++;
+          }
+        }
+
+        // verify each trim section doesn't have too many misses
+        if( total_missed_i <= max_missed && total_missed_j <= max_missed ){
+          int total_missed = total_missed_i + total_missed_j;
+          // form fused contig and its id
+          string fused( contig_i.substr( 0, contig_i.length() - trim_length ) );
+          fused.append( contig_j.substr( len + trim_length ) );
+          string fused_id( "fused("+contigs[index_i].get_contig_id()+i_rev+"_||_"+contigs[index_j].get_contig_id()+")" );
+          
+          contig_fusion_wrapup( fused, fused_id, index_i, index_j, bp_added_fr_i, contigs[index_j].get_bp_added_rr(), total_missed, contig_i.substr( contig_i.length() - overlap ) );
+
+          // successful fusion, return true
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+// process the ends of the contigs for fusion at the rear end of the second contig
+bool Process::contig_end_compare_rr( int index_i, int index_j, int pos, int bp_added_rr_i, string i_rev ){
+  string contig_j = get_contig( index_j );
+  string contig_i = get_contig( index_i );
+  pos -= trim_length;
+  int len = contig_j.length() - pos;
+  string contig_i_sub = contig_i.substr( 0, len );
+  if( contig_j.compare( pos, len, contig_i_sub ) == 0 ){
+    // form fused contig and its id
+    string fused( contig_j );
+    fused.append( contig_i.substr( len, contig_i.length()-len ) );
+    string fused_id( "fused("+contigs[index_j].get_contig_id()+"_||_"+contigs[index_i].get_contig_id()+i_rev+")" );
+
+    contig_fusion_wrapup( fused, fused_id, index_i, index_j, contigs[index_j].get_bp_added_fr(), bp_added_rr_i );
+
+    // successful fusion, return true
+    return true;
+  }
+  // check to see if the unmatched portion is in the trim_length bp's at the end of either contig, if it is and the number of mismatched bp's is under max_missed, 
+  //    then add contigs together ignoring trim_length section
+  else{
+    pos += trim_length;
+    int overlap = len;
+    len -= 2*trim_length;
+
+    // check to make sure len>=0
+    if( len>=0 ){
+      if( contig_j.compare( pos, len, contig_i_sub.substr( trim_length, len ) ) == 0 ){
+        string trim_section_i = contig_i.substr( 0, trim_length );
+        string trim_section_j = contig_j.substr( contig_j.length()-trim_length, trim_length );
+        int total_missed_i = 0;
+        int total_missed_j = 0;
+
+        // loop through bp's in trim_section for contig_i
+        for( int k=0; k<trim_length; k++ ){
+          // check trim_section_i
+          if( trim_section_i.compare( k, 1, contig_j.substr( contig_j.length() - overlap + k, 1 ) ) != 0 ){
+            total_missed_i++;
+          }
+
+          // check trim_section_j
+          if( trim_section_j.compare( k, 1, contig_i.substr( overlap - trim_length + k, 1 ) ) != 0 ){
+            total_missed_j++;
+          }
+        }
+
+        // verify each trim section doesn't have too many misses
+        if( total_missed_i <= max_missed && total_missed_j <= max_missed ){
+          int total_missed = total_missed_i + total_missed_j;
+          // form fused contig and its id
+          string fused( contig_j.substr( 0, contig_j.length() - trim_length ) );
+          fused.append( contig_i.substr( len + trim_length ) );
+          string fused_id( "fused("+contigs[index_j].get_contig_id()+"_||_"+contigs[index_i].get_contig_id()+i_rev+")" );
+    
+          contig_fusion_wrapup( fused, fused_id, index_i, index_j, contigs[index_j].get_bp_added_fr(), bp_added_rr_i, total_missed, contig_j.substr( contig_j.length() - overlap ) );
+
+          // successful fusion, return true
+          return true;
+        }
+      }
+    }
+  }
+  return false;
 }
 
 // Compares the ends of the contigs with indices index_i and index_j which are related to the contigs from Process::contig_fusion()
@@ -427,7 +610,6 @@ void Process::print_to_logfile( string note ){
 // returns boolean value that indicates if a fusion was made
 bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, bool rev ){
   string log_text = "";
-  int max_missed = 10;
   string contig_j = get_contig( index_j );
   string contig_i = get_contig( index_i );
   string i_rev( "" );
@@ -446,202 +628,12 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
   }
 
   // back section
-  if( back ){
-    pos -= trim_length;
-    int len = contig_j.length() - pos;
-    string contig_i_sub = contig_i.substr( 0, len );
-    if( contig_j.compare( pos, len, contig_i_sub ) == 0 ){
-      // form fused contig and its id
-      string fused( contig_j );
-      fused.append( contig_i.substr( len, contig_i.length()-len ) );
-      string fused_id( "fused("+contigs[index_j].get_contig_id()+"_||_"+contigs[index_i].get_contig_id()+i_rev+")" );
-
-      // print messages to logfile about current actions
-      print_to_logfile( "Fused contigs to form " + fused_id ); 
-      print_to_logfile( "Contig moved to fused file: " + contigs[index_i].get_contig_id() );
-      print_to_logfile( "Contig moved to fused file: " + contigs[index_j].get_contig_id() );
-      print_to_logfile( "" );
-
-      // put pre-fused contigs in contigs_fused vector and post-fused contig in contigs vector
-      contigs_fused.push_back( contigs[index_i] );
-      contigs_fused.push_back( contigs[index_j] );
-      contigs.push_back( Contig( fused, fused_id, min_cov_init, contigs[index_j].get_bp_added_fr(), bp_added_rr_i ));
-      
-      // remove pre-fused vectors from contigs vector
-      if( index_i>index_j ){
-        contigs.erase( contigs.begin() + index_i );
-        contigs.erase( contigs.begin() + index_j );
-      }
-      else{
-        contigs.erase( contigs.begin() + index_j );
-        contigs.erase( contigs.begin() + index_i );
-      }
-
-      // successful fusion, return true
-      return true;
-    }
-    // check to see if the unmatched portion is in the trim_length bp's at the end of either contig, if it is and the number of mismatched bp's is under max_missed, 
-    //    then add contigs together ignoring trim_length section
-    else{
-      pos += trim_length;
-      int overlap = len;
-      len -= 2*trim_length;
-
-      // check to make sure len>=0
-      if( len>=0 ){
-        if( contig_j.compare( pos, len, contig_i_sub.substr( trim_length, len ) ) == 0 ){
-          string trim_section_i = contig_i.substr( 0, trim_length );
-          string trim_section_j = contig_j.substr( contig_j.length()-trim_length, trim_length );
-          int total_missed_i = 0;
-          int total_missed_j = 0;
-
-          // loop through bp's in trim_section for contig_i
-          for( int k=0; k<trim_length; k++ ){
-            // check trim_section_i
-            if( trim_section_i.compare( k, 1, contig_j.substr( contig_j.length() - overlap + k, 1 ) ) != 0 ){
-              total_missed_i++;
-            }
-
-            // check trim_section_j
-            if( trim_section_j.compare( k, 1, contig_i.substr( overlap - trim_length + k, 1 ) ) != 0 ){
-              total_missed_j++;
-            }
-          }
-
-          // verify each trim section doesn't have too many misses
-          if( total_missed_i <= max_missed && total_missed_j <= max_missed ){
-            int total_missed = total_missed_i + total_missed_j;
-            // form fused contig and its id
-            string fused( contig_j.substr( 0, contig_j.length() - trim_length ) );
-            fused.append( contig_i.substr( len + trim_length ) );
-            string fused_id( "fused("+contigs[index_j].get_contig_id()+"_||_"+contigs[index_i].get_contig_id()+i_rev+")" );
-
-            // print messages to logfile about current actions
-            print_to_logfile( "Fused contigs to form " + fused_id ); 
-            print_to_logfile( "Total of " + to_string(total_missed) + " basepairs did not match in the overlap section: " + contig_j.substr( contig_j.length() - overlap ) );
-            print_to_logfile( "Contig moved to fused file: " + contigs[index_i].get_contig_id() );
-            print_to_logfile( "Contig moved to fused file: " + contigs[index_j].get_contig_id() );
-            print_to_logfile( "" );
-
-            // put pre-fused contigs in contigs_fused vector and post-fused contig in contigs vector
-            contigs_fused.push_back( contigs[index_i] );
-            contigs_fused.push_back( contigs[index_j] );
-            contigs.push_back( Contig( fused, fused_id, min_cov_init, contigs[index_j].get_bp_added_fr(), bp_added_rr_i ));
-            
-            // remove pre-fused vectors from contigs vector
-            if( index_i>index_j ){
-              contigs.erase( contigs.begin() + index_i );
-              contigs.erase( contigs.begin() + index_j );
-            }
-            else{
-              contigs.erase( contigs.begin() + index_j );
-              contigs.erase( contigs.begin() + index_i );
-            }
-
-            // successful fusion, return true
-            return true;
-          }
-        }
-      }
-    }
+  if( back && contig_end_compare_rr( index_i, index_j, pos, bp_added_rr_i, i_rev ) ){
+    return true;
   }
   // front section
-  else{
-    int len = tip_depth + pos;
-    string contig_i_sub = contig_i.substr( contig_i.length() - len );
-    if( contig_j.compare( 0, len, contig_i_sub ) == 0 ){
-      // form fused contig and its id
-      string fused( contig_i );
-      fused.append( contig_j.substr( len ) );
-      string fused_id( "fused("+contigs[index_i].get_contig_id()+i_rev+"_||_"+contigs[index_j].get_contig_id()+")" );
-
-      // print messages to logfile about current actions
-      print_to_logfile( "Fused contigs to form " + fused_id ); 
-      print_to_logfile( "Contig moved to fused file: " + contigs[index_i].get_contig_id() );
-      print_to_logfile( "Contig moved to fused file: " + contigs[index_j].get_contig_id() );
-      print_to_logfile( "" );
-
-      // put pre-fused contigs in contigs_fused vector and post-fused contig in contigs vector
-      contigs_fused.push_back( contigs[index_i] );
-      contigs_fused.push_back( contigs[index_j] );
-      contigs.push_back( Contig( fused, fused_id, min_cov_init, bp_added_fr_i, contigs[index_j].get_bp_added_rr() ));
-      
-      // remove pre-fused vectors from contigs vector
-      if( index_i>index_j ){
-        contigs.erase( contigs.begin() + index_i );
-        contigs.erase( contigs.begin() + index_j );
-      }
-      else{
-        contigs.erase( contigs.begin() + index_j );
-        contigs.erase( contigs.begin() + index_i );
-      }
-
-      // successful fusion, return true
-      return true;
-    }
-    // check to see if the unmatched portion is in the trim_length bp's at the end of either contig, if it is and the number of mismatched bp's is under max_missed, 
-    //    then add contigs together ignoring trim_length section
-    else{
-      int overlap = len;
-      len -= 2*trim_length;
-
-      // check to make sure len>=0
-      if( len>=0 ){
-        if( contig_j.compare( trim_length, len, contig_i_sub.substr( trim_length, len ) ) == 0 ){
-          string trim_section_i = contig_i.substr( contig_i.length()-trim_length, trim_length );
-          string trim_section_j = contig_j.substr( 0, trim_length );
-          int total_missed_i = 0;
-          int total_missed_j = 0;
-
-          // loop through bp's in trim_section for contig_i
-          for( int k=0; k<trim_length; k++ ){
-            // check trim_section_i
-            if( trim_section_i.compare( k, 1, contig_j.substr( overlap - trim_length + k, 1 ) ) != 0 ){
-              total_missed_i++;
-            }
-
-            // check trim_section_j
-            if( trim_section_j.compare( k, 1, contig_i.substr( contig_i.length() - overlap + k, 1 ) ) != 0 ){
-              total_missed_j++;
-            }
-          }
-
-          // verify each trim section doesn't have too many misses
-          if( total_missed_i <= max_missed && total_missed_j <= max_missed ){
-            int total_missed = total_missed_i + total_missed_j;
-            // form fused contig and its id
-            string fused( contig_i.substr( 0, contig_i.length() - trim_length ) );
-            fused.append( contig_j.substr( len + trim_length ) );
-            string fused_id( "fused("+contigs[index_i].get_contig_id()+i_rev+"_||_"+contigs[index_j].get_contig_id()+")" );
-
-            // print messages to logfile about current actions
-            print_to_logfile( string( "Fused contigs to form " + fused_id ) ); 
-            print_to_logfile( "Total of " + to_string(total_missed) + " basepairs did not match in the overlap section: " + contig_i.substr( contig_i.length() - overlap ) );
-            print_to_logfile( "Contig moved to fused file: " + contigs[index_i].get_contig_id() );
-            print_to_logfile( "Contig moved to fused file: " + contigs[index_j].get_contig_id() );
-            print_to_logfile( "" );
-
-            // put pre-fused contigs in contigs_fused vector and post-fused contig in contigs vector
-            contigs_fused.push_back( contigs[index_i] );
-            contigs_fused.push_back( contigs[index_j] );
-            contigs.push_back( Contig( fused, fused_id, min_cov_init, bp_added_fr_i, contigs[index_j].get_bp_added_rr() ));
-            
-            // remove pre-fused vectors from contigs vector
-            if( index_i>index_j ){
-              contigs.erase( contigs.begin() + index_i );
-              contigs.erase( contigs.begin() + index_j );
-            }
-            else{
-              contigs.erase( contigs.begin() + index_j );
-              contigs.erase( contigs.begin() + index_i );
-            }
-
-            // successful fusion, return true
-            return true;
-          }
-        }
-      }
-    }
+  else if( contig_end_compare_fr( index_i, index_j, pos, bp_added_fr_i, i_rev ) ){
+    return true;
   }
 
   // unsuccessful fusion, return false
@@ -788,7 +780,7 @@ void Process::start_run(){
   
   // make initial attempt to fuse contigs  
   // removed for master branch until algorithm can be adjusted
-  //contig_fusion();
+  contig_fusion();
 
   run_manager();
 }
@@ -823,7 +815,7 @@ void Process::run_manager(){
     }
 
     // removed for master branch until algorithm can be adjusted
-    //contig_fusion();
+    contig_fusion();
   }
 } 
 
