@@ -487,6 +487,9 @@ bool Process::contig_end_compare_fr( int index_i, int index_j, int pos, int bp_a
   int total_missed = 0;
   bool fuse_success = false;
 
+  cout << "contig_i_sub.length(): " << contig_i_sub.length() << endl;
+  cout << "contig_j.length(): " << contig_j.length() << endl;
+  cout << "pos: " << pos << endl;
   // tally misses in end of contig_j
   for( int k=0; k<pos; k++ ){
     if( contig_j.compare(k, 1, contig_i_sub.substr(k, 1) ) ){     // contig_i_sub starts at the beginning of contig_j here
@@ -519,6 +522,8 @@ bool Process::contig_end_compare_fr( int index_i, int index_j, int pos, int bp_a
     }
   }
 
+  cout << "contig_end_compare_fr() complete" << endl;
+
   if( fuse_success ){
     // form fused contig and its id
     string fused( contig_i.substr( 0, contig_i.length() - tip_depth ) );
@@ -548,6 +553,9 @@ bool Process::contig_end_compare_rr( int index_i, int index_j, int pos, int bp_a
   int total_missed = 0;
   bool fuse_success = false;
 
+  cout << "contig_i_sub.length(): " << contig_i_sub.length() << endl;
+  cout << "contig_j.length(): " << contig_j.length() << endl;
+  cout << "pos: " << pos << endl;
   // tally misses for contig_i end
   for( int k=0; k<trim_length; k++ ){
     if( contig_j.compare(pos-trim_length+k, 1, contig_i_sub.substr(k, 1) ) ){
@@ -579,6 +587,8 @@ bool Process::contig_end_compare_rr( int index_i, int index_j, int pos, int bp_a
       fuse_success = true;
     }
   }
+
+  cout << "contig_end_compare_rr() complete" << endl;
 
   if( fuse_success ){
     string fused( contig_j );
