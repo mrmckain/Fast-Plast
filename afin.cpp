@@ -42,6 +42,10 @@
 
 using namespace std;
 
+// TASK:: Look into whether N's and misses should be counted together? Or how they should relate to each other
+// TASK:: Add consideration for N's to contig extension similar to contig_fusion_support()
+// TASK:: Exact matching in the contig_fusion_support() may be too conservative
+// TASK:: Review check_cov() and use a coverage that incorporates only the matching bp at that position
 // TASK:: Add algorithm to check reads against poorly matching ends
 // TASK:: maybe move end_depth and tip_depth back to process
 // TASK:: make global variables and options for the variables that need it

@@ -72,14 +72,11 @@ class Contig{
     // clear matchlist to make room for new matches
     void clear_matches();
 
-    // should this be a class? return an object containing how many matches of each and where from? Prolly not
-		void check_pos( int pos );
-
     // finds the initial point at which the matches meet the min_cov requirement
     int find_start();
 
-    // checks each matched read against the contig one bp at a time and filters out poorly aligning reads
-    string check_match();
+    // returns value associated with index of ATCG[] or -1 if not a member of ATCG
+    int get_ATCG_value( int ATCG_char );
 
     // determines where the read passed matches the contig if at all for off the front matches
     void match_contig_fr();
@@ -87,14 +84,29 @@ class Contig{
     // determines where the read passed matches the contig if at all for off the back matches
     void match_contig_rr();
     
+    // first step of create_extension: determine bp count and max represented bp at each position
+    void extension_bp_count( vector<vector<int>> &ATCG, int start, int pos_mult );
+
+    // second step of the create_extension process: count missed bp's per read, or in other words, the bp's represented below the max for that position
+    void extension_missed_count( vector<vector<int>> &ATCG, vector<int> &missed_bp, int &missed_bp_tot, int start, int pos_mult );
+
+    // third step in create_extension(): removal of reads that have errors over the threshold
+    void extension_error_removal( vector<int> &missed_bp, int missed_bp_avg );
+
+    // fourth step in create_extension: build extension string
+    string extension_build_string( int start, int pos_mult, bool back );
+
     /// checks the matches against each other and the contig, compiles an extension of length len (or less if the length is limited by matches) that is returned 
-    string create_extension( int len, bool back );
+    string create_extension( bool back );
 
     // extend() performs loops iterations of create_extension with length extend_len of each extension, at each iteration the extension is added to contig, and uses contig_sub_len characters from the front or back of the contig, which end is determined by the boolean value back
     void extend( bool back );
 
     // checks the coverage of matches at the given positions, returns the coverage
     long check_cov( long pos );
+
+    // contig_fusion: Attempt to support fusion in case of possibly poorly constructed end
+    bool check_fusion_support( string contig_f, int pos, bool back );
 };
 //////////////////////
 // End Contig Class //

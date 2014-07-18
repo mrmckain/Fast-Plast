@@ -103,10 +103,10 @@ class Process{
     void contig_fusion_wrapup( string fused, string fused_id, int index_i, int index_j, int bp_added_fr, int bp_added_rr );
 
     // process the ends of the contigs for fusion at the front end of the second contig
-    bool contig_end_compare_fr( int index_i, int index_j, int pos, int bp_added_fr_i, string i_rev );
+    bool contig_end_compare_fr( int index_i, int index_j, int pos, int bp_added_fr_i, string contig_i, string i_rev );
 
     // process the ends of the contigs for fusion at the rear end of the second contig
-    bool contig_end_compare_rr( int index_i, int index_j, int pos, int bp_added_rr_i, string i_rev );
+    bool contig_end_compare_rr( int index_i, int index_j, int pos, int bp_added_rr_i, string contig_i, string i_rev );
 
     // Compares the ends of the contigs with indices index_i and index_j which are related to the contigs from Process::contig_fusion()
     // back indicates whether contig_i comes off the front or back of contig_j and changes the behavior of pos as follows:

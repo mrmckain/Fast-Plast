@@ -475,10 +475,11 @@ void Process::contig_fusion_wrapup( string fused, string fused_id, int index_i, 
 }
 
 // process the ends of the contigs for fusion at the front end of the second contig
-bool Process::contig_end_compare_fr( int index_i, int index_j, int pos, int bp_added_fr_i, string i_rev ){
+bool Process::contig_end_compare_fr( int index_i, int index_j, int pos, int bp_added_fr_i, string contig_i, string i_rev ){
   string contig_j = get_contig( index_j );
-  string contig_i = get_contig( index_i );
+  // length of overlapping section
   int len = tip_depth + pos;
+  //substring of contig_i to do comparisons with that represents the overlapping section from contig_i's point of view
   string contig_i_sub = contig_i.substr( contig_i.length() - len );
   if( contig_j.compare( 0, len, contig_i_sub ) == 0 ){
     // form fused contig and its id
@@ -494,43 +495,68 @@ bool Process::contig_end_compare_fr( int index_i, int index_j, int pos, int bp_a
   // check to see if the unmatched portion is in the trim_length bp's at the end of either contig, if it is and the number of mismatched bp's is under max_missed, 
   //    then add contigs together ignoring trim_length section
   else{
-    int overlap = len;
-    len -= 2*trim_length;
-
-    // check to make sure len>=0
-    if( len>=0 ){
-      if( contig_j.compare( trim_length, len, contig_i_sub.substr( trim_length, len ) ) == 0 ){
-        string trim_section_i = contig_i.substr( contig_i.length()-trim_length, trim_length );
-        string trim_section_j = contig_j.substr( 0, trim_length );
-        int total_missed_i = 0;
-        int total_missed_j = 0;
-
-        // loop through bp's in trim_section for contig_i
-        for( int k=0; k<trim_length; k++ ){
-          // check trim_section_i
-          if( trim_section_i.compare( k, 1, contig_j.substr( overlap - trim_length + k, 1 ) ) != 0 ){
-            total_missed_i++;
-          }
-
-          // check trim_section_j
-          if( trim_section_j.compare( k, 1, contig_i.substr( contig_i.length() - overlap + k, 1 ) ) != 0 ){
-            total_missed_j++;
-          }
+    // if contig_i is clean check contig_j side for mismatches
+    if( contig_j.compare( pos+tip_length, trim_length, contig_i_sub.substr( contig_i_sub.length()-trim_length ) ) == 0 ){
+      int missed = 0;
+      for( int k=0; k<pos; k++ ){
+        if( contig_j.compare(k, 1, contig_i_sub.substr(k, 1) ) ){     // contig_i_sub starts at the beginning of contig_j here
+          missed++;
         }
+      }
 
-        // verify each trim section doesn't have too many misses
-        if( total_missed_i <= max_missed && total_missed_j <= max_missed ){
-          int total_missed = total_missed_i + total_missed_j;
+      // if missed bp's is greater than max_missed, attempt to match reads to check for support in fusion, else fuse contigs no question
+      if( missed > max_missed ){
+        Contig contig_alt( contig_j.substr( pos ), "temp" );
+        if( contig_alt.check_fusion_support( contig_i_sub, pos-1, false ) ){
           // form fused contig and its id
-          string fused( contig_i.substr( 0, contig_i.length() - trim_length ) );
-          fused.append( contig_j.substr( len + trim_length ) );
+          string fused( contig_i.substr( 0, contig_i.length() - tip_depth ) );
+          fused.append( contig_j.substr( pos, contig_j.length()-pos ) );
           string fused_id( "fused("+contigs[index_i].get_contig_id()+i_rev+"_||_"+contigs[index_j].get_contig_id()+")" );
-          
-          contig_fusion_wrapup( fused, fused_id, index_i, index_j, bp_added_fr_i, contigs[index_j].get_bp_added_rr(), total_missed, contig_i.substr( contig_i.length() - overlap ) );
 
-          // successful fusion, return true
+          contig_fusion_wrapup( fused, fused_id, index_i, index_j, bp_added_fr_i, contigs[index_j].get_bp_added_rr() );
           return true;
         }
+      }
+      else{
+        // form fused contig and its id
+        string fused( contig_i.substr( 0, contig_i.length() - tip_depth ) );
+        fused.append( contig_j.substr( pos, contig_j.length()-pos ) );
+        string fused_id( "fused("+contigs[index_i].get_contig_id()+i_rev+"_||_"+contigs[index_j].get_contig_id()+")" );
+
+        contig_fusion_wrapup( fused, fused_id, index_i, index_j, bp_added_fr_i, contigs[index_j].get_bp_added_rr() );
+        return true;
+      }
+    }
+    // if contig_j is clean, check contig_i for mismatches
+    else if( contig_j.compare( 0, pos, contig_i_sub.substr( 0, pos ) ) == 0 ){
+      int missed = 0;
+      for( int k=0; k<trim_length; k++ ){
+        if( contig_j.compare(k+pos+tip_length, 1, contig_i_sub.substr(k+pos+tip_length, 1) ) ){
+          missed++;
+        }
+      }
+
+      // if missed bp's is greater than max_missed, attempt to match reads to check for support in fusion, else fuse contigs no question
+      if( missed > max_missed ){
+        Contig contig_alt( contig_i.substr( 0, contig_i.length()-trim_length ), "temp" );
+        if( contig_alt.check_fusion_support( contig_j.substr(pos+tip_length), contig_i.length()-trim_length+1, true ) ){
+          // form fused contig and its id
+          string fused( contig_i.substr( 0, contig_i.length() - tip_depth ) );
+          fused.append( contig_j.substr( pos, contig_j.length()-pos ) );
+          string fused_id( "fused("+contigs[index_i].get_contig_id()+i_rev+"_||_"+contigs[index_j].get_contig_id()+")" );
+
+          contig_fusion_wrapup( fused, fused_id, index_i, index_j, bp_added_fr_i, contigs[index_j].get_bp_added_rr() );
+          return true;
+        }
+      }
+      else{
+        // form fused contig and its id
+        string fused( contig_i.substr( 0, contig_i.length() - tip_depth ) );
+        fused.append( contig_j.substr( pos, contig_j.length()-pos ) );
+        string fused_id( "fused("+contigs[index_i].get_contig_id()+i_rev+"_||_"+contigs[index_j].get_contig_id()+")" );
+
+        contig_fusion_wrapup( fused, fused_id, index_i, index_j, bp_added_fr_i, contigs[index_j].get_bp_added_rr() );
+        return true;
       }
     }
   }
@@ -538,13 +564,11 @@ bool Process::contig_end_compare_fr( int index_i, int index_j, int pos, int bp_a
 }
 
 // process the ends of the contigs for fusion at the rear end of the second contig
-bool Process::contig_end_compare_rr( int index_i, int index_j, int pos, int bp_added_rr_i, string i_rev ){
+bool Process::contig_end_compare_rr( int index_i, int index_j, int pos, int bp_added_rr_i, string contig_i, string i_rev ){
   string contig_j = get_contig( index_j );
-  string contig_i = get_contig( index_i );
-  pos -= trim_length;
-  int len = contig_j.length() - pos;
+  int len = contig_j.length() - pos + trim_length;
   string contig_i_sub = contig_i.substr( 0, len );
-  if( contig_j.compare( pos, len, contig_i_sub ) == 0 ){
+  if( contig_j.compare( pos - trim_length, len, contig_i_sub ) == 0 ){
     // form fused contig and its id
     string fused( contig_j );
     fused.append( contig_i.substr( len, contig_i.length()-len ) );
@@ -558,44 +582,68 @@ bool Process::contig_end_compare_rr( int index_i, int index_j, int pos, int bp_a
   // check to see if the unmatched portion is in the trim_length bp's at the end of either contig, if it is and the number of mismatched bp's is under max_missed, 
   //    then add contigs together ignoring trim_length section
   else{
-    pos += trim_length;
-    int overlap = len;
-    len -= 2*trim_length;
-
-    // check to make sure len>=0
-    if( len>=0 ){
-      if( contig_j.compare( pos, len, contig_i_sub.substr( trim_length, len ) ) == 0 ){
-        string trim_section_i = contig_i.substr( 0, trim_length );
-        string trim_section_j = contig_j.substr( contig_j.length()-trim_length, trim_length );
-        int total_missed_i = 0;
-        int total_missed_j = 0;
-
-        // loop through bp's in trim_section for contig_i
-        for( int k=0; k<trim_length; k++ ){
-          // check trim_section_i
-          if( trim_section_i.compare( k, 1, contig_j.substr( contig_j.length() - overlap + k, 1 ) ) != 0 ){
-            total_missed_i++;
-          }
-
-          // check trim_section_j
-          if( trim_section_j.compare( k, 1, contig_i.substr( overlap - trim_length + k, 1 ) ) != 0 ){
-            total_missed_j++;
-          }
+    // if contig_j is clean check contig_i side for mismatches
+    if( contig_j.compare( pos+tip_length, contig_j.length() - pos - tip_length, contig_i_sub.substr( tip_depth ) ) == 0 ){
+      int missed = 0;
+      for( int k=0; k<trim_length; k++ ){
+        if( contig_j.compare(pos-trim_length+k, 1, contig_i_sub.substr(k, 1) ) ){
+          missed++;
         }
+      }
 
-        // verify each trim section doesn't have too many misses
-        if( total_missed_i <= max_missed && total_missed_j <= max_missed ){
-          int total_missed = total_missed_i + total_missed_j;
+      // if missed bp's is greater than max_missed, attempt to match reads to check for support in fusion, else fuse contigs no question
+      if( missed > max_missed ){
+        Contig contig_alt( contig_i.substr( trim_length ), "temp" );
+        if( contig_alt.check_fusion_support( contig_j, pos-1, false ) ){
           // form fused contig and its id
-          string fused( contig_j.substr( 0, contig_j.length() - trim_length ) );
-          fused.append( contig_i.substr( len + trim_length ) );
+          string fused( contig_j.substr( 0, pos ) );
+          fused.append( contig_i.substr( trim_length, contig_i.length()-trim_length ) );
           string fused_id( "fused("+contigs[index_j].get_contig_id()+"_||_"+contigs[index_i].get_contig_id()+i_rev+")" );
-    
-          contig_fusion_wrapup( fused, fused_id, index_i, index_j, contigs[index_j].get_bp_added_fr(), bp_added_rr_i, total_missed, contig_j.substr( contig_j.length() - overlap ) );
 
-          // successful fusion, return true
+          contig_fusion_wrapup( fused, fused_id, index_i, index_j, contigs[index_j].get_bp_added_fr(), bp_added_rr_i );
+
           return true;
         }
+      }
+      else{
+        string fused( contig_j );
+        fused.append( contig_i.substr( trim_length, contig_i.length()-trim_length ) );
+        string fused_id( "fused("+contigs[index_j].get_contig_id()+"_||_"+contigs[index_i].get_contig_id()+i_rev+")" );
+
+        contig_fusion_wrapup( fused, fused_id, index_i, index_j, contigs[index_j].get_bp_added_fr(), bp_added_rr_i );
+        return true;
+      }
+    }
+    // if contig_i is clean, check contig_j for mismatches
+    else if( contig_j.compare( pos-trim_length, trim_length, contig_i.substr( 0, trim_length ) ) == 0 ){
+      int missed = 0;
+      for( int k=0; k<contig_j.length()-pos-tip_length; k++ ){
+        if( contig_j.compare(k+pos+tip_length, 1, contig_i_sub.substr(k+tip_depth, 1) ) ){
+          missed++;
+        }
+      }
+
+      // if missed bp's is greater than max_missed, attempt to match reads to check for support in fusion, else fuse contigs no question
+      if( missed > max_missed ){
+        Contig contig_alt( contig_j.substr( 0, pos+tip_length ), "temp" );
+        if( contig_alt.check_fusion_support( contig_i, tip_depth, true ) ){
+          // form fused contig and its id
+          string fused( contig_j.substr( 0, pos ) );
+          fused.append( contig_i.substr( trim_length, contig_i.length()-trim_length ) );
+          string fused_id( "fused("+contigs[index_j].get_contig_id()+"_||_"+contigs[index_i].get_contig_id()+i_rev+")" );
+
+          contig_fusion_wrapup( fused, fused_id, index_i, index_j, contigs[index_j].get_bp_added_fr(), bp_added_rr_i );
+
+          return true;
+        }
+      }
+      else{
+        string fused( contig_j );
+        fused.append( contig_i.substr( trim_length, contig_i.length()-trim_length ) );
+        string fused_id( "fused("+contigs[index_j].get_contig_id()+"_||_"+contigs[index_i].get_contig_id()+i_rev+")" );
+
+        contig_fusion_wrapup( fused, fused_id, index_i, index_j, contigs[index_j].get_bp_added_fr(), bp_added_rr_i );
+        return true;
       }
     }
   }
@@ -610,9 +658,8 @@ bool Process::contig_end_compare_rr( int index_i, int index_j, int pos, int bp_a
 // returns boolean value that indicates if a fusion was made
 bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, bool rev ){
   string log_text = "";
-  string contig_j = get_contig( index_j );
-  string contig_i = get_contig( index_i );
   string i_rev( "" );
+  string contig_i = get_contig( index_i );
   
   // set variables for creating new contig objects if necessary
   int bp_added_rr_i = contigs[index_i].get_bp_added_rr();
@@ -628,11 +675,11 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
   }
 
   // back section
-  if( back && contig_end_compare_rr( index_i, index_j, pos, bp_added_rr_i, i_rev ) ){
+  if( back && contig_end_compare_rr( index_i, index_j, pos, bp_added_rr_i, contig_i, i_rev ) ){
     return true;
   }
   // front section
-  else if( contig_end_compare_fr( index_i, index_j, pos, bp_added_fr_i, i_rev ) ){
+  else if( contig_end_compare_fr( index_i, index_j, pos, bp_added_fr_i, contig_i, i_rev ) ){
     return true;
   }
 
