@@ -481,83 +481,57 @@ bool Process::contig_end_compare_fr( int index_i, int index_j, int pos, int bp_a
   int len = tip_depth + pos;
   //substring of contig_i to do comparisons with that represents the overlapping section from contig_i's point of view
   string contig_i_sub = contig_i.substr( contig_i.length() - len );
-  if( contig_j.compare( 0, len, contig_i_sub ) == 0 ){
+
+  int missed_i = 0;
+  int missed_j = 0;
+  int total_missed = 0;
+  bool fuse_success = false;
+
+  // tally misses in end of contig_j
+  for( int k=0; k<pos; k++ ){
+    if( contig_j.compare(k, 1, contig_i_sub.substr(k, 1) ) ){     // contig_i_sub starts at the beginning of contig_j here
+      missed_j++;
+    }
+  }
+
+  // tally misses in end of contig_i
+  for( int k=0; k<trim_length; k++ ){
+    if( contig_j.compare(k+pos+tip_length, 1, contig_i_sub.substr(k+pos+tip_length, 1) ) ){
+      missed_i++;
+    }
+  }
+
+  total_missed = missed_i + missed_j;
+
+  if( (missed_i <= max_missed) && (missed_j <= max_missed) ){
+    fuse_success = true;
+  }
+  else if( missed_i <= max_missed ){
+    Contig contig_alt( contig_j.substr( pos ), "temp" );
+    if( contig_alt.check_fusion_support( contig_i_sub, pos-1, false ) ){
+      fuse_success = true;
+    }
+  }
+  else if( missed_j <= max_missed ){
+    Contig contig_alt( contig_i.substr( 0, contig_i.length()-trim_length ), "temp" );
+    if( contig_alt.check_fusion_support( contig_j.substr(pos+tip_length), contig_i.length()-trim_length+1, true ) ){
+      fuse_success = true;
+    }
+  }
+
+  if( fuse_success ){
     // form fused contig and its id
-    string fused( contig_i );
-    fused.append( contig_j.substr( len ) );
+    string fused( contig_i.substr( 0, contig_i.length() - tip_depth ) );
+    fused.append( contig_j.substr( pos, contig_j.length()-pos ) );
     string fused_id( "fused("+contigs[index_i].get_contig_id()+i_rev+"_||_"+contigs[index_j].get_contig_id()+")" );
 
-    contig_fusion_wrapup( fused, fused_id, index_i, index_j, bp_added_fr_i, contigs[index_j].get_bp_added_rr() );
-
-    // successful fusion, return true
-    return true;
-  }
-  // check to see if the unmatched portion is in the trim_length bp's at the end of either contig, if it is and the number of mismatched bp's is under max_missed, 
-  //    then add contigs together ignoring trim_length section
-  else{
-    // if contig_i is clean check contig_j side for mismatches
-    if( contig_j.compare( pos+tip_length, trim_length, contig_i_sub.substr( contig_i_sub.length()-trim_length ) ) == 0 ){
-      int missed = 0;
-      for( int k=0; k<pos; k++ ){
-        if( contig_j.compare(k, 1, contig_i_sub.substr(k, 1) ) ){     // contig_i_sub starts at the beginning of contig_j here
-          missed++;
-        }
-      }
-
-      // if missed bp's is greater than max_missed, attempt to match reads to check for support in fusion, else fuse contigs no question
-      if( missed > max_missed ){
-        Contig contig_alt( contig_j.substr( pos ), "temp" );
-        if( contig_alt.check_fusion_support( contig_i_sub, pos-1, false ) ){
-          // form fused contig and its id
-          string fused( contig_i.substr( 0, contig_i.length() - tip_depth ) );
-          fused.append( contig_j.substr( pos, contig_j.length()-pos ) );
-          string fused_id( "fused("+contigs[index_i].get_contig_id()+i_rev+"_||_"+contigs[index_j].get_contig_id()+")" );
-
-          contig_fusion_wrapup( fused, fused_id, index_i, index_j, bp_added_fr_i, contigs[index_j].get_bp_added_rr() );
-          return true;
-        }
-      }
-      else{
-        // form fused contig and its id
-        string fused( contig_i.substr( 0, contig_i.length() - tip_depth ) );
-        fused.append( contig_j.substr( pos, contig_j.length()-pos ) );
-        string fused_id( "fused("+contigs[index_i].get_contig_id()+i_rev+"_||_"+contigs[index_j].get_contig_id()+")" );
-
-        contig_fusion_wrapup( fused, fused_id, index_i, index_j, bp_added_fr_i, contigs[index_j].get_bp_added_rr() );
-        return true;
-      }
+    if( total_missed == 0 ){
+      contig_fusion_wrapup( fused, fused_id, index_i, index_j, bp_added_fr_i, contigs[index_j].get_bp_added_rr() );
     }
-    // if contig_j is clean, check contig_i for mismatches
-    else if( contig_j.compare( 0, pos, contig_i_sub.substr( 0, pos ) ) == 0 ){
-      int missed = 0;
-      for( int k=0; k<trim_length; k++ ){
-        if( contig_j.compare(k+pos+tip_length, 1, contig_i_sub.substr(k+pos+tip_length, 1) ) ){
-          missed++;
-        }
-      }
-
-      // if missed bp's is greater than max_missed, attempt to match reads to check for support in fusion, else fuse contigs no question
-      if( missed > max_missed ){
-        Contig contig_alt( contig_i.substr( 0, contig_i.length()-trim_length ), "temp" );
-        if( contig_alt.check_fusion_support( contig_j.substr(pos+tip_length), contig_i.length()-trim_length+1, true ) ){
-          // form fused contig and its id
-          string fused( contig_i.substr( 0, contig_i.length() - tip_depth ) );
-          fused.append( contig_j.substr( pos, contig_j.length()-pos ) );
-          string fused_id( "fused("+contigs[index_i].get_contig_id()+i_rev+"_||_"+contigs[index_j].get_contig_id()+")" );
-
-          contig_fusion_wrapup( fused, fused_id, index_i, index_j, bp_added_fr_i, contigs[index_j].get_bp_added_rr() );
-          return true;
-        }
-      }
-      else{
-        // form fused contig and its id
-        string fused( contig_i.substr( 0, contig_i.length() - tip_depth ) );
-        fused.append( contig_j.substr( pos, contig_j.length()-pos ) );
-        string fused_id( "fused("+contigs[index_i].get_contig_id()+i_rev+"_||_"+contigs[index_j].get_contig_id()+")" );
-
-        contig_fusion_wrapup( fused, fused_id, index_i, index_j, bp_added_fr_i, contigs[index_j].get_bp_added_rr() );
-        return true;
-      }
+    else{
+      contig_fusion_wrapup( fused, fused_id, index_i, index_j, bp_added_fr_i, contigs[index_j].get_bp_added_rr(), total_missed, 
+          fused.substr( contig_i.length() - pos - tip_depth, pos + tip_depth ) );
+      return true;
     }
   }
   return false;
@@ -568,84 +542,57 @@ bool Process::contig_end_compare_rr( int index_i, int index_j, int pos, int bp_a
   string contig_j = get_contig( index_j );
   int len = contig_j.length() - pos + trim_length;
   string contig_i_sub = contig_i.substr( 0, len );
-  if( contig_j.compare( pos - trim_length, len, contig_i_sub ) == 0 ){
-    // form fused contig and its id
+
+  int missed_i = 0;
+  int missed_j = 0;
+  int total_missed = 0;
+  bool fuse_success = false;
+
+  // tally misses for contig_i end
+  for( int k=0; k<trim_length; k++ ){
+    if( contig_j.compare(pos-trim_length+k, 1, contig_i_sub.substr(k, 1) ) ){
+      missed_i++;
+    }
+  }
+
+  // tally misses for contig_j end
+  for( int k=0; k<contig_j.length()-pos-tip_length; k++ ){
+    if( contig_j.compare(k+pos+tip_length, 1, contig_i_sub.substr(k+tip_depth, 1) ) ){
+      missed_j++;
+    }
+  }
+
+  total_missed = missed_i + missed_j;
+
+  if( (missed_i <= max_missed) && (missed_j <= max_missed) ){
+    fuse_success = true;
+  }
+  else if ( missed_j <= max_missed ){
+    Contig contig_alt( contig_i.substr( trim_length ), "temp" );
+    if( contig_alt.check_fusion_support( contig_j, pos-1, false ) ){
+      fuse_success = true;
+    }
+  }
+  else if ( missed_i <= max_missed ){
+    Contig contig_alt( contig_j.substr( 0, pos+tip_length ), "temp" );
+    if( contig_alt.check_fusion_support( contig_i, tip_depth, true ) ){
+      fuse_success = true;
+    }
+  }
+
+  if( fuse_success ){
     string fused( contig_j );
-    fused.append( contig_i.substr( len, contig_i.length()-len ) );
+    fused.append( contig_i.substr( trim_length, contig_i.length()-trim_length ) );
     string fused_id( "fused("+contigs[index_j].get_contig_id()+"_||_"+contigs[index_i].get_contig_id()+i_rev+")" );
 
-    contig_fusion_wrapup( fused, fused_id, index_i, index_j, contigs[index_j].get_bp_added_fr(), bp_added_rr_i );
-
-    // successful fusion, return true
+    if( total_missed == 0 ){
+      contig_fusion_wrapup( fused, fused_id, index_i, index_j, contigs[index_j].get_bp_added_fr(), bp_added_rr_i );
+    }
+    else{
+      contig_fusion_wrapup( fused, fused_id, index_i, index_j, contigs[index_j].get_bp_added_fr(), bp_added_rr_i, total_missed,
+          fused.substr( pos - trim_length, contig_j.length() - pos ) );
+    }
     return true;
-  }
-  // check to see if the unmatched portion is in the trim_length bp's at the end of either contig, if it is and the number of mismatched bp's is under max_missed, 
-  //    then add contigs together ignoring trim_length section
-  else{
-    // if contig_j is clean check contig_i side for mismatches
-    if( contig_j.compare( pos+tip_length, contig_j.length() - pos - tip_length, contig_i_sub.substr( tip_depth ) ) == 0 ){
-      int missed = 0;
-      for( int k=0; k<trim_length; k++ ){
-        if( contig_j.compare(pos-trim_length+k, 1, contig_i_sub.substr(k, 1) ) ){
-          missed++;
-        }
-      }
-
-      // if missed bp's is greater than max_missed, attempt to match reads to check for support in fusion, else fuse contigs no question
-      if( missed > max_missed ){
-        Contig contig_alt( contig_i.substr( trim_length ), "temp" );
-        if( contig_alt.check_fusion_support( contig_j, pos-1, false ) ){
-          // form fused contig and its id
-          string fused( contig_j.substr( 0, pos ) );
-          fused.append( contig_i.substr( trim_length, contig_i.length()-trim_length ) );
-          string fused_id( "fused("+contigs[index_j].get_contig_id()+"_||_"+contigs[index_i].get_contig_id()+i_rev+")" );
-
-          contig_fusion_wrapup( fused, fused_id, index_i, index_j, contigs[index_j].get_bp_added_fr(), bp_added_rr_i );
-
-          return true;
-        }
-      }
-      else{
-        string fused( contig_j );
-        fused.append( contig_i.substr( trim_length, contig_i.length()-trim_length ) );
-        string fused_id( "fused("+contigs[index_j].get_contig_id()+"_||_"+contigs[index_i].get_contig_id()+i_rev+")" );
-
-        contig_fusion_wrapup( fused, fused_id, index_i, index_j, contigs[index_j].get_bp_added_fr(), bp_added_rr_i );
-        return true;
-      }
-    }
-    // if contig_i is clean, check contig_j for mismatches
-    else if( contig_j.compare( pos-trim_length, trim_length, contig_i.substr( 0, trim_length ) ) == 0 ){
-      int missed = 0;
-      for( int k=0; k<contig_j.length()-pos-tip_length; k++ ){
-        if( contig_j.compare(k+pos+tip_length, 1, contig_i_sub.substr(k+tip_depth, 1) ) ){
-          missed++;
-        }
-      }
-
-      // if missed bp's is greater than max_missed, attempt to match reads to check for support in fusion, else fuse contigs no question
-      if( missed > max_missed ){
-        Contig contig_alt( contig_j.substr( 0, pos+tip_length ), "temp" );
-        if( contig_alt.check_fusion_support( contig_i, tip_depth, true ) ){
-          // form fused contig and its id
-          string fused( contig_j.substr( 0, pos ) );
-          fused.append( contig_i.substr( trim_length, contig_i.length()-trim_length ) );
-          string fused_id( "fused("+contigs[index_j].get_contig_id()+"_||_"+contigs[index_i].get_contig_id()+i_rev+")" );
-
-          contig_fusion_wrapup( fused, fused_id, index_i, index_j, contigs[index_j].get_bp_added_fr(), bp_added_rr_i );
-
-          return true;
-        }
-      }
-      else{
-        string fused( contig_j );
-        fused.append( contig_i.substr( trim_length, contig_i.length()-trim_length ) );
-        string fused_id( "fused("+contigs[index_j].get_contig_id()+"_||_"+contigs[index_i].get_contig_id()+i_rev+")" );
-
-        contig_fusion_wrapup( fused, fused_id, index_i, index_j, contigs[index_j].get_bp_added_fr(), bp_added_rr_i );
-        return true;
-      }
-    }
   }
   return false;
 }
