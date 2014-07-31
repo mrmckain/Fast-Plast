@@ -28,13 +28,14 @@ class Contig{
     int min_cov;
     int bp_added_fr;
     int bp_added_rr;
+    double cov;
 
   public:
-    Contig( string str, string id, int cov, int init_added_fr, int init_added_rr );
+    Contig( string str, string id, double cov, int min_cov, int init_added_fr, int init_added_rr );
     
-    Contig( string str, string id, int cov, int bp_added_init );
+    Contig( string str, string id, double cov, int min_cov, int bp_added_init );
     
-    Contig( string str, string id, int cov );
+    Contig( string str, string id, double cov, int min_cov );
 
     Contig( string str, string id );
 
@@ -60,11 +61,17 @@ class Contig{
 
     Read getRead( int i );
 
+    // return cov
+    double get_cov();
+
     // returns bp_added_fr
     int get_bp_added_fr();
 
     // returns bp_added_rr
     int get_bp_added_rr();
+
+    // sets bp_added values to val
+    void set_bp_added( int val );
 
     // resets bp_added variables to 0
     int reset_bp_added();
@@ -85,19 +92,19 @@ class Contig{
     void match_contig_rr();
     
     // first step of create_extension: determine bp count and max represented bp at each position
-    void extension_bp_count( vector<vector<int>> &ATCG, int start, int pos_mult );
+    void extension_bp_count( vector<vector<int>> &ATCG, int start, int pos_mult, int &len );
 
     // second step of the create_extension process: count missed bp's per read, or in other words, the bp's represented below the max for that position
-    void extension_missed_count( vector<vector<int>> &ATCG, vector<int> &missed_bp, int &missed_bp_tot, int start, int pos_mult );
+    void extension_missed_count( vector<vector<int>> &ATCG, vector<int> &missed_bp, int &missed_bp_tot, int start, int pos_mult, int len );
 
     // third step in create_extension(): removal of reads that have errors over the threshold
     void extension_error_removal( vector<int> &missed_bp, int missed_bp_avg );
 
     // fourth step in create_extension: build extension string
-    string extension_build_string( int start, int pos_mult, bool back );
+    string extension_build_string( int start, int pos_mult, int len, bool back );
 
     /// checks the matches against each other and the contig, compiles an extension of length len (or less if the length is limited by matches) that is returned 
-    string create_extension( bool back );
+    string create_extension( int len, bool back );
 
     // extend() performs loops iterations of create_extension with length extend_len of each extension, at each iteration the extension is added to contig, and uses contig_sub_len characters from the front or back of the contig, which end is determined by the boolean value back
     void extend( bool back );

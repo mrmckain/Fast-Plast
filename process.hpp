@@ -67,7 +67,10 @@ class Process{
     void create_read_range();
 
     // parses the cov value from the contig_id and passes the result back as a double
-    double get_cov( string contig_id );
+    double parse_cov( string contig_id );
+
+    // cycles through each contig and parses out the first section of the id
+    void parse_ids();
 
     // check coverage of each contig, calculate the average coverage, then remove into a separate data structure any contigs that have more than 2xAvg coverage
     void contig_cov();
@@ -95,6 +98,9 @@ class Process{
 
     // prints notes to file as the program progresses
     void print_to_logfile( string note );
+
+    // creates id of fused contigs
+    string get_fused_id( string contig1_id, string contig2_id );
 
     // complete contig_fusion process
     void contig_fusion_wrapup( string fused, string fused_id, int index_i, int index_j, int bp_added_fr, int bp_added_rr, int total_missed, string overlap_seq );

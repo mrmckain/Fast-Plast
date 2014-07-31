@@ -4,6 +4,7 @@
 #include "afin_util.hpp"
 #include "contig.hpp"
 #include "queue.tcc"
+#include "print_time.hpp"
 
 // Consume function which will act as the driver for an individual thread
 void thread_worker(vector<Contig>& contigs, Queue<int>& q, unsigned int id) {

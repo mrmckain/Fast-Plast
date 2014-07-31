@@ -32,19 +32,19 @@ tuple<long,long,long,long> get_read_range( string read_seg ){
 }
 
 ////////// Contig FUNCTIONS ////////////
-Contig::Contig( string str, string id, int cov, int init_added_fr, int init_added_rr ) : min_cov( cov ), contig( str ), contig_id(id), bp_added_fr(init_added_fr), bp_added_rr(init_added_rr){}
+Contig::Contig( string str, string id, double cov, int min_cov, int init_added_fr, int init_added_rr ) : cov(cov),  min_cov(min_cov), contig(str), contig_id(id), bp_added_fr(init_added_fr), bp_added_rr(init_added_rr){}
 
-Contig::Contig( string str, string id, int cov, int bp_added_init ) : min_cov( cov ), contig( str ), contig_id(id){
+Contig::Contig( string str, string id, double cov, int min_cov, int bp_added_init ) : cov(cov), min_cov(min_cov), contig(str), contig_id(id){
   bp_added_fr = bp_added_init;
   bp_added_rr = bp_added_init;
 }
 
-Contig::Contig( string str, string id, int cov ) : min_cov( cov ), contig( str ), contig_id(id){
+Contig::Contig( string str, string id, double cov, int min_cov ) : cov(cov), min_cov(min_cov), contig(str), contig_id(id){
   bp_added_fr = 0;
   bp_added_rr = 0;
 }
 
-Contig::Contig( string str, string id ) : contig( str ), contig_id(id){
+Contig::Contig( string str, string id ) : cov(cov), contig(str), contig_id(id){
   min_cov = min_cov_init;
   bp_added_fr = 0;
   bp_added_rr = 0;
@@ -89,6 +89,11 @@ Read Contig::getRead( int i ){
   return matchlist[i];
 }
 
+// return cov
+double Contig::get_cov(){
+  return cov;
+}
+
 // returns bp_added_fr
 int Contig::get_bp_added_fr(){
   return bp_added_fr;
@@ -99,10 +104,21 @@ int Contig::get_bp_added_rr(){
   return bp_added_rr;
 }
 
+// sets bp_added values to val
+void Contig::set_bp_added( int val ){
+  bp_added_rr = val;
+  bp_added_fr = val;
+}
+
+
 // resets bp_added variables to 0
 int Contig::reset_bp_added(){
-  bp_added_rr = 0;
-  bp_added_fr = 0;
+  if( bp_added_rr != -1 ){
+    bp_added_rr = bp_added_rr/2;
+  }
+  if( bp_added_fr != -1 ){
+    bp_added_fr = bp_added_fr/2;
+  }
 }
 
 // clear matchlist to make room for new matches
@@ -230,8 +246,8 @@ void Contig::match_contig_rr(){
 }
 
 // first step of create_extension: determine bp count and max represented bp at each position
-void Contig::extension_bp_count( vector<vector<int>> &ATCG, int start, int pos_mult ){
-  for( int i=0; i<extend_len; i++ ){
+void Contig::extension_bp_count( vector<vector<int>> &ATCG, int start, int pos_mult, int &len ){
+  for( int i=0; i<len; i++ ){
     // initialize temporary vector 
     vector<int> ATCG_curr = { 0,0,0,0,0 };
     
@@ -262,7 +278,7 @@ void Contig::extension_bp_count( vector<vector<int>> &ATCG, int start, int pos_m
 
     // check coverage level and break if below min
     if( ATCG_curr[4] < min_cov ){
-      extend_len = i;
+      len = i;
       break;
     }
 
@@ -272,8 +288,8 @@ void Contig::extension_bp_count( vector<vector<int>> &ATCG, int start, int pos_m
 }
 
 // second step of the create_extension process: count missed bp's per read, or in other words, the bp's represented below the max for that position
-void Contig::extension_missed_count( vector<vector<int>> &ATCG, vector<int> &missed_bp, int &missed_bp_tot, int start, int pos_mult ){
-  for( int i=0; i<extend_len; i++ ){
+void Contig::extension_missed_count( vector<vector<int>> &ATCG, vector<int> &missed_bp, int &missed_bp_tot, int start, int pos_mult, int len ){
+  for( int i=0; i<len; i++ ){
     for( int j=0; j<matchlist.size(); j++ ){
       int next_char = matchlist[j].getPos( start+(pos_mult*i));
       switch( next_char ){
@@ -320,12 +336,12 @@ void Contig::extension_error_removal( vector<int> &missed_bp, int missed_bp_avg 
 }
 
 // fourth step in create_extension: build extension string
-string Contig::extension_build_string( int start, int pos_mult, bool back ){
+string Contig::extension_build_string( int start, int pos_mult, int len, bool back ){
   string ATCGstr( "ATCG" );
   string extension = "";
 
-  // loop extend_len times processing 1 basepair at a time
-  for( int i=0; i<extend_len; i++ ){
+  // loop len times processing 1 basepair at a time
+  for( int i=0; i<len; i++ ){
     vector<int> ATCG_curr = { 0,0,0,0 };
     int max = 0;
     int avg = 0;
@@ -375,7 +391,7 @@ string Contig::extension_build_string( int start, int pos_mult, bool back ){
 
 /// checks the matches against each other and the contig, compiles an extension of length len (or less if the length is limited by matches) that is returned 
 /// used for off the front matching
-string Contig::create_extension( bool back ){
+string Contig::create_extension( int len, bool back ){
   // contains multiplier for position calculation
   int pos_mult = -1;
   int start = -1;
@@ -407,13 +423,13 @@ string Contig::create_extension( bool back ){
   /////////////////////////////////////
   // STEP 1: First Pass Over Matches //
   // loop through bp's for initial pass to tally up missed nucleotides
-  extension_bp_count( ATCG, start, pos_mult );
+  extension_bp_count( ATCG, start, pos_mult, len );
   
   /////////////////////////////////////////////
   // STEP 2: Mark Errant Reads For Removal //
   // loop through bp's to determine which reads, if any, should be eliminated from the matchlist
   // if nucleotide of read is < max for that position, count it against the read, otherwise don't count it
-  extension_missed_count( ATCG, missed_bp, missed_bp_tot, start, pos_mult );
+  extension_missed_count( ATCG, missed_bp, missed_bp_tot, start, pos_mult, len );
 
   if( matchlist.size() != 0 ){
     // calculate avg missed_bp's
@@ -430,7 +446,7 @@ string Contig::create_extension( bool back ){
   
   //////////////////////////////
   // STEP 4: Create Extension //
-  return extension_build_string( start, pos_mult, back );
+  return extension_build_string( start, pos_mult, len, back );
 }
 
 // extend performs loops iterations of create_extension with length extend_len of each extension, at each iteration the extension is added to contig, and uses contig_sub_len characters from the front or back of the contig, which end is determined by the boolean value of back
@@ -439,7 +455,10 @@ void Contig::extend( bool back ){
   string contig_sub_str("");
  
   // skip over any contigs that present at least double coverage
-  if( contig_id.compare( 0,3,"2x_" ) == 0 ){
+  if( back && bp_added_rr == -1 ){
+    return;
+  }
+  else if( bp_added_fr == -1 ){
     return;
   }
 
@@ -451,8 +470,8 @@ void Contig::extend( bool back ){
     contig_sub_str = contig.substr( 0, contig_sub_len );
   }
 
-  Contig contig_sub( contig_sub_str, "temp", min_cov_init );
-  extension = contig_sub.create_extension( back );
+  Contig contig_sub( contig_sub_str, "temp" );
+  extension = contig_sub.create_extension( extend_len, back );
   
   //cout << "extension:" << extension << endl;
   if( extension.length() == 0 ){
@@ -509,14 +528,16 @@ bool Contig::check_fusion_support( string contig_f, int pos, bool back ){
     match_contig_fr();
   }
 
-  // return if no matches are found
-  if( matchlist.size() == 0 ){
+  // return if matches found is less than min_cov
+  if( matchlist.size() < min_cov ){
     return false;
   }
 
+  cout << "matchlist1: " << matchlist.size() << endl;
+
   // create missed bp's vector to keep track of how many bp's each read contains that are below the max at that position
   vector<int> missed_bp( matchlist.size(), 0 );
-  vector<int> ambiguous_bp(matchlist.size(), 0 );
+  vector<int> ambiguous_bp( matchlist.size(), 0 );
   int missed_bp_tot = 0;
   int missed_bp_avg = 0;
   int cov = min_cov;
@@ -538,8 +559,12 @@ bool Contig::check_fusion_support( string contig_f, int pos, bool back ){
 
   // remove reads with more than the max_missed
   extension_error_removal( missed_bp, max_missed );
+  cout << "matchlist2: " << matchlist.size() << endl;
+
   // remove reads with more than 3 N's
   extension_error_removal( ambiguous_bp, 3 );
+  cout << "matchlist3: " << matchlist.size() << endl;
+
   
   // if matchlist is smaller than min_cov, bail, return false
   if( matchlist.size() < min_cov ){
@@ -547,7 +572,7 @@ bool Contig::check_fusion_support( string contig_f, int pos, bool back ){
   }
 
   // get string built from remaining matches.
-  support_string = extension_build_string( start, pos_mult, back );
+  support_string = extension_build_string( start, pos_mult, tip_length*2, back );
   cmp_len = support_string.length();
 
   // use tip_length as min_length to compare support_string with matching contig

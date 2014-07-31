@@ -241,7 +241,7 @@ void Process::add_reads(){
 
 // parses the cov value from the contig_id and passes the result back as a double
 // If cov is not in the header, return 1
-double Process::get_cov( string contig_id ){
+double Process::parse_cov( string contig_id ){
   double cov = 1;
   size_t pos = contig_id.find( "cov_" ) + 4;
   if( pos != string::npos ){
@@ -268,8 +268,7 @@ void Process::contig_cov(){
 
   for( int i=0; i<total_contigs; i++ ){
     // get contig id, parse out cov_##, add to the total of all cov values
-    string contig_id = contigs[i].get_contig_id();
-    double cov = get_cov( contig_id );
+    double cov = contigs[i].get_cov();
     cov_total += cov;
   }
 
@@ -278,13 +277,26 @@ void Process::contig_cov(){
   
   for( int i=0; i<total_contigs; i++ ){
     // get contig_id, parse out cov_## and compare this value to the avg
-    string contig_id = contigs[i].get_contig_id();
-    double cov = get_cov( contig_id );
+    double cov = contigs[i].get_cov();
 
     if( cov > cov_avg * 2.0 ){
-      // Push an extra copy of the contig onto contigs and prepend "2x_" onto the contig_id
-      contigs[i].set_contig_id( contig_id.insert( 0, "2x_" ) );
+      // set the value of bp_added to -1 to indicate ignoring when extending contigs 
+      contigs[i].set_bp_added( -1 );
       //contigs.push_back( contigs[i] );
+    }
+  }
+}
+
+// cycles through each contig and parses out the first section of the id
+void Process::parse_ids(){
+  for( int i=0; i<contigs.size(); i++ ){
+    string contig_id = contigs[i].get_contig_id(); 
+    size_t pos = contig_id.find( "_", 5, 1 );
+
+    if( pos != string::npos ){
+      cout << "contig_id premod: " << contig_id << endl;
+      contig_id = contig_id.substr( 0, pos );
+      cout << "contig_id postmod: " << contig_id << endl;
     }
   }
 }
@@ -309,10 +321,16 @@ void Process::add_contigs(){
     // read in contig objects
     while( getline( cont, line ) ){
       if( line[0] == '>' && buffer.length() != 0 ){
-        if( buffer.length() > 2*initial_trim ){
+        if( buffer.length() > 2*initial_trim + contig_sub_len ){
           buffer = buffer.substr( initial_trim, buffer.length() - 2*initial_trim );
-          contigs.push_back( Contig( buffer, contig_id, min_cov_init, bp_added_init ));
+          contigs.push_back( Contig( buffer, contig_id, parse_cov( contig_id ), min_cov_init, bp_added_init ));
         }
+        else if( buffer.length() > contig_sub_len ){
+          int trim = (buffer.length() - contig_sub_len) / 2;
+          buffer = buffer.substr( trim, buffer.length() - 2*trim );
+          contigs.push_back( Contig( buffer, contig_id, parse_cov( contig_id ), min_cov_init, bp_added_init ));
+        }
+
         buffer = "";
         contig_id = line.substr(1);
       }
@@ -331,10 +349,11 @@ void Process::add_contigs(){
 
   // insert last line into contigs list
   if( buffer.length() != 0 ){
-    contigs.push_back( Contig( buffer, contig_id, min_cov_init, bp_added_init ) );
+    contigs.push_back( Contig( buffer, contig_id, parse_cov( contig_id ), min_cov_init, bp_added_init ) );
   }
 
   contig_cov();
+  parse_ids();
 }
 
 // return contig from contigs_fused with index contig_ind
@@ -437,7 +456,7 @@ void Process::contig_fusion_wrapup( string fused, string fused_id, int index_i, 
   // put pre-fused contigs in contigs_fused vector and post-fused contig in contigs vector
   contigs_fused.push_back( contigs[index_i] );
   contigs_fused.push_back( contigs[index_j] );
-  contigs.push_back( Contig( fused, fused_id, min_cov_init, bp_added_fr, bp_added_rr ));
+  contigs.push_back( Contig( fused, fused_id, 1, min_cov_init, bp_added_fr, bp_added_rr ));
   
   // remove pre-fused vectors from contigs vector
   if( index_i>index_j ){
@@ -448,6 +467,25 @@ void Process::contig_fusion_wrapup( string fused, string fused_id, int index_i, 
     contigs.erase( contigs.begin() + index_j );
     contigs.erase( contigs.begin() + index_i );
   }
+}
+
+// creates id of fused contigs
+string Process::get_fused_id( string contig1_id, string contig2_id ){
+  cout << "1contig1_id: |" << contig1_id << "|" << endl;
+  cout << "1contig2_id: |" << contig2_id << "|" << endl;
+  if( contig1_id.length() >= 5 && contig1_id.compare( 0, 5, "fused" ) == 0 ){
+    contig1_id = contig1_id.substr( 5 );
+  }
+  cout << "2contig1_id: |" << contig1_id << "|" << endl;
+  cout << "2contig2_id: |" << contig2_id << "|" << endl;
+  
+  if( contig1_id.length() >= 5 && contig2_id.compare( 0, 5, "fused" ) == 0 ){
+    contig2_id = contig2_id.substr( 5 );
+  }
+  cout << "3contig1_id: |" << contig1_id << "|" << endl;
+  cout << "3contig2_id: |" << contig2_id << "|" << endl;
+    
+  return "fused("+contig1_id+"_<>_"+contig2_id+")";
 }
 
 // complete contig_fusion process
@@ -461,7 +499,7 @@ void Process::contig_fusion_wrapup( string fused, string fused_id, int index_i, 
   // put pre-fused contigs in contigs_fused vector and post-fused contig in contigs vector
   contigs_fused.push_back( contigs[index_i] );
   contigs_fused.push_back( contigs[index_j] );
-  contigs.push_back( Contig( fused, fused_id, min_cov_init, bp_added_fr, bp_added_rr ));
+  contigs.push_back( Contig( fused, fused_id, 1, min_cov_init, bp_added_fr, bp_added_rr ));
   
   // remove pre-fused vectors from contigs vector
   if( index_i>index_j ){
@@ -487,9 +525,6 @@ bool Process::contig_end_compare_fr( int index_i, int index_j, int pos, int bp_a
   int total_missed = 0;
   bool fuse_success = false;
 
-  cout << "contig_i_sub.length(): " << contig_i_sub.length() << endl;
-  cout << "contig_j.length(): " << contig_j.length() << endl;
-  cout << "pos: " << pos << endl;
   // tally misses in end of contig_j
   for( int k=0; k<pos; k++ ){
     if( contig_j.compare(k, 1, contig_i_sub.substr(k, 1) ) ){     // contig_i_sub starts at the beginning of contig_j here
@@ -504,6 +539,7 @@ bool Process::contig_end_compare_fr( int index_i, int index_j, int pos, int bp_a
     }
   }
 
+  
   total_missed = missed_i + missed_j;
 
   if( (missed_i <= max_missed) && (missed_j <= max_missed) ){
@@ -522,13 +558,12 @@ bool Process::contig_end_compare_fr( int index_i, int index_j, int pos, int bp_a
     }
   }
 
-  cout << "contig_end_compare_fr() complete" << endl;
 
   if( fuse_success ){
     // form fused contig and its id
     string fused( contig_i.substr( 0, contig_i.length() - tip_depth ) );
     fused.append( contig_j.substr( pos, contig_j.length()-pos ) );
-    string fused_id( "fused("+contigs[index_i].get_contig_id()+i_rev+"_||_"+contigs[index_j].get_contig_id()+")" );
+    string fused_id = get_fused_id( contigs[index_i].get_contig_id()+i_rev, contigs[index_j].get_contig_id());
 
     if( total_missed == 0 ){
       contig_fusion_wrapup( fused, fused_id, index_i, index_j, bp_added_fr_i, contigs[index_j].get_bp_added_rr() );
@@ -536,8 +571,8 @@ bool Process::contig_end_compare_fr( int index_i, int index_j, int pos, int bp_a
     else{
       contig_fusion_wrapup( fused, fused_id, index_i, index_j, bp_added_fr_i, contigs[index_j].get_bp_added_rr(), total_missed, 
           fused.substr( contig_i.length() - pos - tip_depth, pos + tip_depth ) );
-      return true;
     }
+    return true;
   }
   return false;
 }
@@ -553,9 +588,6 @@ bool Process::contig_end_compare_rr( int index_i, int index_j, int pos, int bp_a
   int total_missed = 0;
   bool fuse_success = false;
 
-  cout << "contig_i_sub.length(): " << contig_i_sub.length() << endl;
-  cout << "contig_j.length(): " << contig_j.length() << endl;
-  cout << "pos: " << pos << endl;
   // tally misses for contig_i end
   for( int k=0; k<trim_length; k++ ){
     if( contig_j.compare(pos-trim_length+k, 1, contig_i_sub.substr(k, 1) ) ){
@@ -569,6 +601,7 @@ bool Process::contig_end_compare_rr( int index_i, int index_j, int pos, int bp_a
       missed_j++;
     }
   }
+
 
   total_missed = missed_i + missed_j;
 
@@ -588,12 +621,11 @@ bool Process::contig_end_compare_rr( int index_i, int index_j, int pos, int bp_a
     }
   }
 
-  cout << "contig_end_compare_rr() complete" << endl;
 
   if( fuse_success ){
     string fused( contig_j );
     fused.append( contig_i.substr( trim_length, contig_i.length()-trim_length ) );
-    string fused_id( "fused("+contigs[index_j].get_contig_id()+"_||_"+contigs[index_i].get_contig_id()+i_rev+")" );
+    string fused_id = get_fused_id( contigs[index_j].get_contig_id(), contigs[index_i].get_contig_id()+i_rev );
 
     if( total_missed == 0 ){
       contig_fusion_wrapup( fused, fused_id, index_i, index_j, contigs[index_j].get_bp_added_fr(), bp_added_rr_i );
@@ -636,7 +668,7 @@ bool Process::contig_end_compare( int index_i, int index_j, int pos, bool back, 
     return true;
   }
   // front section
-  else if( contig_end_compare_fr( index_i, index_j, pos, bp_added_fr_i, contig_i, i_rev ) ){
+  else if( !back && contig_end_compare_fr( index_i, index_j, pos, bp_added_fr_i, contig_i, i_rev ) ){
     return true;
   }
 
@@ -649,10 +681,18 @@ bool Process::contig_fusion_front_search( string contig_i, string contig_j, stri
   // end_depth places the cursor at the depth of bp_added. Because this is at the front of contig_j, the matching segment extends further into contig_j and overlaps the old bp's that 
   //    were not covered in the last run
   end_depth = contigs[index_j].get_bp_added_fr();
+  
+  if( end_depth == -1 ){
+    end_depth = bp_added_init;
+  } 
 
   // limit to prevent out_of_bounds errors
   if( end_depth > contig_i.length() ){
     end_depth = contig_i.length();
+  }
+
+  if( end_depth > contig_j.length() ){
+    end_depth = contig_j.length() - tip_length;
   }
 
   //// search the front of the contig_j for the contig_tips created above
@@ -683,7 +723,7 @@ bool Process::contig_fusion_rear_search( string contig_i, string contig_j, strin
   }
 
   //// search the back of the contig_j for the contig_tips created above
-  for( int k=contig_j.length()-end_depth; k<=contig_j.length()-tip_length; k++ ){
+  for( int k=contig_j.length()-end_depth; k<contig_j.length()-tip_length; k++ ){
     if( contig_j.compare( k, tip_length, contig_tip ) == 0 ){
       if( contig_end_compare( index_i, index_j, k, true, false ) ){
         return true;
@@ -723,7 +763,8 @@ void Process::contig_fusion(){
     for( int j=0; j<contigs.size(); j++ ){
       if( j != i ){
         string contig_j( get_contig( j ) );
-        
+
+        //cout << "1 index_i: " << i << " index_j: " << j << " contig_i.length(): " << contig_i.length() << " contig_j.length(): " << contig_j.length() << endl;
         //////////////////////
         // FRONT END SEARCH //
         //////////////////////
@@ -737,10 +778,11 @@ void Process::contig_fusion(){
           }
           break;
         }
+        //cout << "2 index_i: " << i << " index_j: " << j << endl;
 
-        //////////////////////
+        /////////////////////
         // BACK END SEARCH //
-        //////////////////////
+        /////////////////////
         if( contig_fusion_rear_search( contig_i, contig_j, contig_tip_fr, contig_rev_tip_fr, i, j ) ){
           // if the two contigs match and are fused, adjustments must be made to the index markers so all contigs are checked
           if( i>j ){
@@ -751,6 +793,7 @@ void Process::contig_fusion(){
           }
           break;
         }
+        //cout << "3 index_i: " << i << " index_j: " << j << endl;
       }
     }
   }
@@ -781,6 +824,8 @@ void Process::start_run(){
   cout << "create_reads_range start: ";
   print_time();
   create_read_range();
+  cout << "End initialization phase";
+  print_time();
   
   // make initial attempt to fuse contigs  
   // removed for master branch until algorithm can be adjusted
@@ -800,8 +845,11 @@ void Process::run_manager(){
       
     // initialize threads
     for( int i=0; i<max_threads; i++ ){
+      cout << "Thread" << i << endl;
       t[i] = thread( thread_worker, ref(contigs), ref(qu), i );
     }
+
+    cout << "contigs.size(): " << contigs.size() << " max_threads: " << max_threads << endl;
 
     // push each thread onto queue
     for( int i=0; i<contigs.size(); i++ ){
