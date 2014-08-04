@@ -85,6 +85,9 @@ class Contig{
     // returns value associated with index of ATCG[] or -1 if not a member of ATCG
     int get_ATCG_value( int ATCG_char );
 
+    // checks if string is a homopolymer
+    bool homopolymer_check( string seq );
+
     // determines where the read passed matches the contig if at all for off the front matches
     void match_contig_fr();
 

@@ -173,6 +173,44 @@ int Contig::get_ATCG_value( int ATCG_char ){
   return -1;
 }
 
+// checks if string is a homopolymer
+bool Contig::homopolymer_check( string seq ){
+  int i = 0;
+  if( seq[0] == 'A' ){
+    for( i=1; i<seq.length(); i++ ){
+      if( seq[i] != 'A' ){
+        break;
+      }
+    }
+  }
+  else if( seq[0] == 'T' ){
+    for( i=1; i<seq.length(); i++ ){
+      if( seq[i] != 'T' ){
+        break;
+      }
+    }
+  }
+  else if( seq[0] == 'C' ){
+    for( i=1; i<seq.length(); i++ ){
+      if( seq[i] != 'C' ){
+        break;
+      }
+    }
+  }
+  else if( seq[0] == 'G' ){
+    for( i=1; i<seq.length(); i++ ){
+      if( seq[i] != 'G' ){
+        break;
+      }
+    }
+  }
+  if( i == seq.length() ){
+    return true;
+  }
+
+  return false;
+}
+
 // determines where the read passed matches the contig if at all for off the front matches
 void Contig::match_contig_fr(){
   // loop through possible substrings of contig_sub to check for matches in readlist
@@ -186,7 +224,7 @@ void Contig::match_contig_fr(){
       if( get<0>(range) != 0 ){
         for( int j=get<0>(range)-1; j<get<1>(range); j++ ){
           // check if the current read matches the contig from this point
-          if( readlist[j].compare( 0, contig_sub_rc.length(), contig_sub_rc ) == 0 ){
+          if( readlist[j].compare( 0, contig_sub_rc.length(), contig_sub_rc ) == 0 && !homopolymer_check( contig_sub_rc ) ){
             string read_rc = revcomp( readlist[j] );
             push_match( read_rc, i-contig.length(), true );
           }
@@ -201,7 +239,7 @@ void Contig::match_contig_fr(){
           string read_ = readlist[rc_reflist[j]];
           string rc = revcomp( read_ );
 
-          if( rc.compare( 0, contig_sub_rc.length(), contig_sub_rc ) == 0 ){
+          if( rc.compare( 0, contig_sub_rc.length(), contig_sub_rc ) == 0 && !homopolymer_check( contig_sub_rc ) ){
             push_match( read_, i-contig.length() );
           }
         }
@@ -222,7 +260,7 @@ void Contig::match_contig_rr(){
       if( get<0>(range) != 0 ){
         for( int j=get<0>(range)-1; j<get<1>(range); j++ ){
           // check if the current read matches the contig from this point
-          if( readlist[j].compare( 0, contig_sub.length(), contig_sub ) == 0 ){
+          if( readlist[j].compare( 0, contig_sub.length(), contig_sub ) == 0 && !homopolymer_check( contig_sub ) ){
             push_match( readlist[j], i );
           }
         }
@@ -236,7 +274,7 @@ void Contig::match_contig_rr(){
           string rc = readlist[rc_reflist[j]];
           rc = revcomp( rc );
 
-          if( rc.compare( 0, contig_sub.length(), contig_sub ) == 0 ){
+          if( rc.compare( 0, contig_sub.length(), contig_sub ) == 0 && !homopolymer_check( contig_sub ) ){
             push_match( rc, i, true );
           }
         }
@@ -469,6 +507,20 @@ void Contig::extend( bool back ){
   else{
     contig_sub_str = contig.substr( 0, contig_sub_len );
   }
+
+  // ensure end of contig is not an endless homopolymer
+  while( homopolymer_check( contig_sub_str ) ){
+    // get extension through create_extension
+    if( back ){
+      contig = contig.substr( 0, contig.length() - ( contig_sub_len / 2 ) );
+      contig_sub_str = contig.substr( contig.length() - ( contig_sub_len ) );
+    }
+    else{
+      contig = contig.substr( contig_sub_len / 2 );
+      contig_sub_str = contig.substr( 0, contig_sub_len );
+    }
+  }
+
 
   Contig contig_sub( contig_sub_str, "temp" );
   extension = contig_sub.create_extension( extend_len, back );
