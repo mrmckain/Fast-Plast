@@ -471,19 +471,13 @@ void Process::contig_fusion_wrapup( string fused, string fused_id, int index_i, 
 
 // creates id of fused contigs
 string Process::get_fused_id( string contig1_id, string contig2_id ){
-  cout << "1contig1_id: |" << contig1_id << "|" << endl;
-  cout << "1contig2_id: |" << contig2_id << "|" << endl;
   if( contig1_id.length() >= 5 && contig1_id.compare( 0, 5, "fused" ) == 0 ){
     contig1_id = contig1_id.substr( 5 );
   }
-  cout << "2contig1_id: |" << contig1_id << "|" << endl;
-  cout << "2contig2_id: |" << contig2_id << "|" << endl;
   
   if( contig1_id.length() >= 5 && contig2_id.compare( 0, 5, "fused" ) == 0 ){
     contig2_id = contig2_id.substr( 5 );
   }
-  cout << "3contig1_id: |" << contig1_id << "|" << endl;
-  cout << "3contig2_id: |" << contig2_id << "|" << endl;
     
   return "fused("+contig1_id+"_<>_"+contig2_id+")";
 }
@@ -824,7 +818,7 @@ void Process::start_run(){
   cout << "create_reads_range start: ";
   print_time();
   create_read_range();
-  cout << "End initialization phase";
+  cout << "End initialization phase: ";
   print_time();
   
   // make initial attempt to fuse contigs  

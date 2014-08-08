@@ -92,7 +92,6 @@ int main( int argc, char** argv ){
   initial_trim = 100;
   bp_added_init = 20;
   max_missed = 5;
-  tip_depth = trim_length + tip_length;
   int c;
   Process process;
   
@@ -199,6 +198,8 @@ int main( int argc, char** argv ){
     cout << argv[optind] << endl;
     optind++;
   }
+  
+  tip_depth = trim_length + tip_length;
   /////////////////
   // End Options //
   /////////////////
