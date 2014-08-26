@@ -45,7 +45,7 @@ class Contig{
     void push_match( string read, int pos, bool revcomp );
 
     // return contig
-    string getContig();
+    string get_contig();
 
     // set contig_id
     void set_contig_id( string new_contig_id );

@@ -59,7 +59,7 @@ void Contig::push_match( string read, int pos, bool revcomp ){
   matchlist.push_back(Read( read, pos, revcomp ));
 }
 
-string Contig::getContig(){
+string Contig::get_contig(){
   return contig;
 }
 

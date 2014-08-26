@@ -8,6 +8,7 @@
 
 #include <unordered_map>
 #include "contig.hpp"
+#include "mismatch.hpp"
 
 using namespace std;
 
@@ -30,6 +31,7 @@ extern int tip_depth;
 extern int initial_trim;
 extern int max_missed;
 extern int bp_added_init;
+extern int mismatch_threshold;
 
 /////////////////////////////////////////////\
 // Process Class: ////////////////////////////>
@@ -103,30 +105,28 @@ class Process{
     string get_fused_id( string contig1_id, string contig2_id );
 
     // complete contig_fusion process
-    void contig_fusion_wrapup( string fused, string fused_id, int index_i, int index_j, int bp_added_fr, int bp_added_rr, int total_missed, string overlap_seq );
+    void contig_fusion_log( Mismatch fusion );
 
     // complete contig_fusion process
-    void contig_fusion_wrapup( string fused, string fused_id, int index_i, int index_j, int bp_added_fr, int bp_added_rr );
+    void commit_fusion( string fused, string fused_id, vector<Mismatch> fusion_chain );
 
-    // process the ends of the contigs for fusion at the front end of the second contig
-    bool contig_end_compare_fr( int index_i, int index_j, int pos, int bp_added_fr_i, string contig_i, string i_rev );
+    // tally mismatches in substrings passed and return score in the form of misatches per length
+    double mismatch_score( string contig_sub1, string contig_sub2 );
 
-    // process the ends of the contigs for fusion at the rear end of the second contig
-    bool contig_end_compare_rr( int index_i, int index_j, int pos, int bp_added_rr_i, string contig_i, string i_rev );
+    // check overlap section for mismatches
+    Mismatch overlap_check( string contig_a, string contig_b, int overlap, int orientation );
 
-    // Compares the ends of the contigs with indices index_i and index_j which are related to the contigs from Process::contig_fusion()
-    // back indicates whether contig_i comes off the front or back of contig_j and changes the behavior of pos as follows:
-    //  1:  pos indicates the position in contig_j from which contig_i starts
-    //  0:  pos indicates the position in contig_j to which contig_i extends
-    // rev indicates whether contig_i is the reverse compliment of the original contig
-    // returns boolean value that indicates if a fusion was made
-    bool contig_end_compare( int index_i, int index_j, int pos, bool back, bool rev );
+    // create fused contig string
+    string build_fusion_string( string contig_a, string contig_b, int overlap );
 
-    // front end search for contig_fusion algorithm
-    bool contig_fusion_front_search( string contig_i, string contig_j, string contig_tip, string contig_rev_tip, int index_i, int index_j );
+    // finds a chained list of mismatch objects, sorts them and orients them properly
+    vector< Mismatch > find_chain( vector< Mismatch > &fusion_list );
 
-    // back end search for contig_fusion algorithm
-    bool contig_fusion_rear_search( string contig_i, string contig_j, string contig_tip, string contig_rev_tip, int index_i, int index_j );
+    // returns overlap length based on the indexes passed
+    int get_overlap( int i, int j, int orientation );
+
+    // remove fused contigs from contigs list
+    void process_removals( vector<int> remove_list );
 
     // fuse contigs wherever possible
     void contig_fusion();
