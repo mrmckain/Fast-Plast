@@ -108,22 +108,28 @@ class Process{
     void contig_fusion_log( Mismatch fusion );
 
     // complete contig_fusion process
-    void commit_fusion( string fused, string fused_id, vector<Mismatch> fusion_chain );
+    void commit_fusion( string fused, string fused_id, int index_i, int index_j, int bp_added_fr, int bp_added_rr );
 
     // tally mismatches in substrings passed and return score in the form of misatches per length
     double mismatch_score( string contig_sub1, string contig_sub2 );
 
     // check overlap section for mismatches
-    Mismatch overlap_check( string contig_a, string contig_b, int overlap, int orientation );
+    Mismatch overlap_check( string contig_a, string contig_b, int overlap, int end_i, int end_j );
+
+    // sort the match_list for easier 
+    vector<Mismatch> sort_matches( vector<Mismatch> match_list );
+
+    // cleans match_list from conflicting matches
+    void clean_matches( vector<Mismatch> &match_list );
 
     // create fused contig string
     string build_fusion_string( string contig_a, string contig_b, int overlap );
 
-    // finds a chained list of mismatch objects, sorts them and orients them properly
-    vector< Mismatch > find_chain( vector< Mismatch > &fusion_list );
-
     // returns overlap length based on the indexes passed
     int get_overlap( int i, int j, int orientation );
+
+    // remove duplicates from contig remove list
+    void dedup_list( vector<int> &list );
 
     // remove fused contigs from contigs list
     void process_removals( vector<int> remove_list );

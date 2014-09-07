@@ -471,16 +471,14 @@ void Process::contig_fusion_log( Mismatch fusion ){
 }
 
 // complete contig_fusion process
-void Process::commit_fusion( string fused, string fused_id, vector<Mismatch> fusion_chain ){ 
-  contigs_fused.push_back( contigs[fusion_chain[0].get_index_i()] );
-  print_to_logfile( "Contig moved to fused file: " + contigs[fusion_chain[0].get_index_i()].get_contig_id() );
+void Process::commit_fusion( string fused, string fused_id, int index_i, int index_j, int bp_added_fr, int bp_added_rr ){ 
+  contigs_fused.push_back( contigs[index_i] );
+  print_to_logfile( "Contig moved to fused file: " + contigs[index_i].get_contig_id() );
 
-  for( int i=0; i<fusion_chain.size(); i++ ){
-    contigs_fused.push_back( contigs[fusion_chain[i].get_index_j()] );
-    print_to_logfile( "Contig moved to fused file: " + contigs[fusion_chain[i].get_index_j()].get_contig_id() );
-  }
-  
-  contigs.push_back( Contig( fused, fused_id, 1, min_cov_init, contigs[fusion_chain[0].get_index_i()].get_bp_added_fr(), contigs[fusion_chain.back().get_index_j()].get_bp_added_rr() ));
+  contigs_fused.push_back( contigs[index_j] );
+  print_to_logfile( "Contig moved to fused file: " + contigs[index_j].get_contig_id() );
+
+  contigs.push_back( Contig( fused, fused_id, 1, min_cov_init, bp_added_fr, bp_added_rr ));
 }
 
 // tally mismatches in substrings passed and return score in the form of misatches per length
@@ -497,12 +495,13 @@ double Process::mismatch_score( string contig_sub_a, string contig_sub_b ){
 }
 
 // check overlap section for mismatches
-Mismatch Process::overlap_check( string contig_a, string contig_b, int overlap, int orientation ){
+Mismatch Process::overlap_check( string contig_a, string contig_b, int overlap, int end_i, int end_j ){
   Mismatch mim;
-  mim.set_orientation( orientation );
+  mim.set_end_i( end_i );
+  mim.set_end_j( end_j );
   double score = 1.0;
 
-  for( int i=min_overlap; i<overlap; i++ ){
+  for( int i=overlap-1; i>=min_overlap; i-- ){
     score = mismatch_score( contig_a.substr( contig_a.length() - i, i ), contig_b.substr( 0, i ) );
 
     // check if this overlap is the best so far
@@ -575,6 +574,44 @@ int Process::get_overlap( int i, int j, int orientation ){
   return overlap;
 }
 
+// sort the match_list for easier 
+vector<Mismatch> Process::sort_matches( vector<Mismatch> match_list ){
+  vector<Mismatch> sorted_list;
+
+  for( int i=match_list.size(); i>0; i-- ){
+    int min_index = 0;
+    for( int j=1; j<match_list.size(); j++ ){
+      if( match_list[j].get_score() < match_list[min_index].get_score() ){
+        min_index = j;
+      }
+    }
+    sorted_list.push_back( match_list[min_index] );
+    match_list.erase( match_list.begin() + min_index );
+  }
+
+  return sorted_list;
+}
+
+// cleans match_list from conflicting matches
+void Process::clean_matches( vector<Mismatch> &match_list ){
+  for( int i=0; i<(int)match_list.size()-1; i++ ){
+    int index_i = match_list[i].get_index_i();
+    int end_i = match_list[i].get_end_i();
+    int index_j = match_list[i].get_index_j();
+    int end_j = match_list[i].get_end_j();
+    for( int j=i+1; j<match_list.size(); j++ ){
+      if( match_list[j].get_index_i() == index_i && match_list[j].get_end_i() == end_i ){
+        match_list.erase( match_list.begin() + j );
+        j--;
+      }
+      else if( match_list[j].get_index_j() == index_j && match_list[j].get_end_j() == end_j ){
+        match_list.erase( match_list.begin() + j );
+        j--;
+      }
+    }
+  }
+}
+
 // create fused contig string
 string Process::build_fusion_string( string contig_a, string contig_b, int overlap ){
   string fused( contig_a.substr( 0, contig_a.length() - (overlap/2) ) );
@@ -583,89 +620,23 @@ string Process::build_fusion_string( string contig_a, string contig_b, int overl
   return fused;
 }
 
-// finds a chained list of mismatch objects, sorts them and orients them properly
-vector< Mismatch > Process::find_chain( vector< Mismatch > &fusion_list ){
-  vector< Mismatch > fusion_chain;
-  fusion_chain.push_back( fusion_list[0] );
-  int front_index = fusion_list[0].get_index_i();
-  int rear_index = fusion_list[0].get_index_j();
-
-  for( int i=fusion_list.size()-1; i>0; i--){
-    // check orientation to mark if the match should be reversed to put index_i first
-    if( fusion_list[i].get_orientation() < 2 ){
-      // j<-i => contig
-      if( fusion_list[i].get_index_i() == front_index ){
-        fusion_list[i].set_rev(true);
-        front_index = fusion_list[i].get_index_j();
-        fusion_chain.insert( fusion_chain.begin(), fusion_list[i] );
-        fusion_list.erase( fusion_list.begin() + i );
-        continue;
-      }
-      // i->j => contig
-      else if( fusion_list[i].get_index_j() == front_index ){
-        front_index = fusion_list[i].get_index_i();
-        fusion_chain.insert( fusion_chain.begin(), fusion_list[i] );
-        fusion_list.erase( fusion_list.begin() + i );
-        continue;
-      }
-      // contig => i->j
-      else if( fusion_list[i].get_index_i() == rear_index ){
-        rear_index = fusion_list[i].get_index_j();
-        fusion_chain.push_back( fusion_list[i] );
-        fusion_list.erase( fusion_list.begin() + i );
-        continue;
-      }
-      // contig => j<-i
-      else if( fusion_list[i].get_index_j() == rear_index ){
-        fusion_list[i].set_rev(true);
-        rear_index = fusion_list[i].get_index_i();
-        fusion_chain.push_back( fusion_list[i] );
-        fusion_list.erase( fusion_list.begin() + i );
-        continue;
-      }
-    }
-    else{
-      // i->j => contig
-      if( fusion_list[i].get_index_j() == front_index ){
-        fusion_list[i].set_rev(true);
-        front_index = fusion_list[i].get_index_i();
-        fusion_chain.insert( fusion_chain.begin(), fusion_list[i] );
-        fusion_list.erase( fusion_list.begin() + i );
-        continue;
-      }
-      // j<-i => contig
-      else if( fusion_list[i].get_index_i() == front_index ){
-        front_index = fusion_list[i].get_index_j();
-        fusion_chain.insert( fusion_chain.begin(), fusion_list[i] );
-        fusion_list.erase( fusion_list.begin() + i );
-        continue;
-      }
-      // contig => j<-i
-      else if( fusion_list[i].get_index_j() == rear_index ){
-        rear_index = fusion_list[i].get_index_i();
-        fusion_chain.push_back( fusion_list[i] );
-        fusion_list.erase( fusion_list.begin() + i );
-        continue;
-      }
-      // contig => i->j
-      else if( fusion_list[i].get_index_i() == rear_index ){
-        fusion_list[i].set_rev(true);
-        rear_index = fusion_list[i].get_index_j();
-        fusion_chain.push_back( fusion_list[i] );
-        fusion_list.erase( fusion_list.begin() + i );
-        continue;
+// remove duplicates from contig remove list
+void Process::dedup_list( vector<int> &list ){
+  for( int i=0; i<list.size()-1; i++ ){
+    for( int j=i+1; j<list.size(); j++ ){
+      if( list[i] == list[j] ){
+        list.erase( list.begin() + j );
+        j--;
       }
     }
   }
-
-  fusion_list.erase( fusion_list.begin() );
-  return fusion_chain;
 }
 
 // remove fused contigs from contigs list
 void Process::process_removals( vector<int> remove_list ){
+  dedup_list( remove_list );
   for( int i=remove_list.size() - 1; i>=0; i-- ){
-    contigs.erase( contigs.begin() + i );
+    contigs.erase( contigs.begin() + remove_list[i] );
   }
 }
 
@@ -678,247 +649,156 @@ void Process::contig_fusion(){
   //    1:  i to j_rev
   //    2:  j to i
   //    3:  j_rev to i
-  vector< vector< Mismatch >> mismatch_scores;
+  vector< Mismatch > match_list;
   int id = 0;
-
+  
+  cout << "fusion1" << endl;
   /////////////////////////
   // GET MISMATCH SCORES //
   /////////////////////////
 
   // loop through each contig to get the end of the contig
   for( int i=0; i<contigs.size(); i++ ){
-    // vector to hold best mismatch scores for the current contig
-    vector< Mismatch > mim_vec;
-    
-    // push two Mismatch objects onto the vector to account for each end of the contig
-    mim_vec.push_back( Mismatch() );
-    mim_vec.push_back( Mismatch() );
-
-    // cycle through the remaining contigs
-    for( int j=i+1; j<contigs.size(); i++ ){
+    for( int j=i+1; j<contigs.size(); j++ ){
+  cout << "fusion2" << endl;
       string contig_i( get_contig( i ) );
       string contig_j( get_contig( j ) );
       string contig_j_rev( revcomp( contig_j ) );
+      int overlap = 0;
+      Mismatch mim;
 
-      // cycle through each possible orientation of the contigs
-      for( int k=0; k<4; k++ ){
-        Mismatch curr_mim;
-        int overlap = get_overlap( i, j, k );
+      //// Processing of rear end of the contig
+      // orientation: i to j
+      overlap = get_overlap( i, j, 0 );
+      mim = overlap_check( contig_i, contig_j, overlap, 1, 0 );
 
-        switch( k ){
-          case 0:
-            curr_mim = overlap_check( contig_i, contig_j, overlap, k );
-            
-            // replace back end position of mim_vec if the current mismatch score is better than the previous best
-            if( curr_mim.get_score() < mim_vec[0].get_score() ){
-              curr_mim.set_id( id );
-              id++;
-              curr_mim.set_indices( i, j );
-              mim_vec[0] = curr_mim;
-            }
-            break;
-          case 1:
-            curr_mim = overlap_check( contig_i, contig_j_rev, overlap, k );
-            
-            // replace back end position of mim_vec if the current mismatch score is better than the previous best
-            if( curr_mim.get_score() < mim_vec[0].get_score() ){
-              curr_mim.set_id( id );
-              id++;
-              curr_mim.set_indices( i, j );
-              mim_vec[0] = curr_mim;
-            }
-            break;
-          case 2:
-            curr_mim = overlap_check( contig_j, contig_i, overlap, k );
-            
-            // replace front end position of mim_vec if the current mismatch score is better than the previous best
-            if( curr_mim.get_score() < mim_vec[1].get_score() ){
-              curr_mim.set_id( id );
-              id++;
-              curr_mim.set_indices( i, j );
-              mim_vec[1] = curr_mim;
-            }
-            break;
-          case 3:
-            curr_mim = overlap_check( contig_j_rev, contig_i, overlap, k );
-            
-            // replace front end position of mim_vec if the current mismatch score is better than the previous best
-            if( curr_mim.get_score() < mim_vec[1].get_score() ){
-              curr_mim.set_id( id );
-              id++;
-              curr_mim.set_indices( i, j );
-              mim_vec[1] = curr_mim;
-            }
-            break;
-          default:
-            continue;
-            break;
-        }
+  cout << "fusion3" << endl;
+      if( mim.get_score() <= mismatch_threshold ){
+        mim.set_indices( i, j );
+        match_list.push_back( mim );
+      }
+
+  cout << "fusion4" << endl;
+      // orientation: i to j_rev
+      overlap = get_overlap( i, j, 1 );
+      mim = overlap_check( contig_i, contig_j_rev, overlap, 1, 1 );
+
+      if( mim.get_score() <= mismatch_threshold ){
+        mim.set_indices( i, j );
+        match_list.push_back( mim );
+      }
+  cout << "fusion5" << endl;
+
+      //// Processing of front end of the contig
+      // orientation: j to i
+      overlap = get_overlap( i, j, 2 );
+      mim = overlap_check( contig_j, contig_i, overlap, 0, 0);
+
+      if( mim.get_score() <= mismatch_threshold ){
+        mim.set_indices( i, j );
+        match_list.push_back( mim );
+      }
+
+  cout << "fusion6" << endl;
+      // orientation: j_rev to i
+      overlap = get_overlap( i, j, 3 );
+      mim = overlap_check( contig_j_rev, contig_i, overlap, 0, 1 );
+
+      if( mim.get_score() <= mismatch_threshold ){
+        mim.set_indices( i, j );
+        match_list.push_back( mim );
       }
     }
-
-    // loop through previously processed contigs
-    for( int j=0; j<i; j++ ){
-      // check back end best score of contig_j
-      if( mismatch_scores[j][0].get_index_j() == i ){
-        if( mismatch_scores[j][0].get_orientation() == 0 ){
-          if( mismatch_scores[j][0].get_score() < mim_vec[1].get_score() ){
-            mim_vec[1] = mismatch_scores[j][0];
-            mim_vec[1].set_indices( mismatch_scores[j][0].get_index_j(), mismatch_scores[j][0].get_index_i() );
-            mim_vec[1].set_orientation( 2 );
-          }
-          else if( mismatch_scores[j][0].get_score() >= mim_vec[1].get_score() ){
-            mismatch_scores[j][0] = mim_vec[1];
-            mismatch_scores[j][0].set_indices( mim_vec[1].get_index_i(), mim_vec[1].get_index_j() );
-            mismatch_scores[j][0].set_orientation( 2 );
-          }
-        }
-        else if( mismatch_scores[j][0].get_orientation() == 1 ){
-          if( mismatch_scores[j][0].get_score() < mim_vec[0].get_score() ){
-            mim_vec[0] = mismatch_scores[j][0];
-            mim_vec[0].set_indices( mismatch_scores[j][0].get_index_j(), mismatch_scores[j][0].get_index_i() );
-          }
-          else if( mismatch_scores[j][0].get_score() >= mim_vec[0].get_score() ){
-            mismatch_scores[j][0] = mim_vec[0];
-            mismatch_scores[j][0].set_indices( mim_vec[0].get_index_i(), mim_vec[0].get_index_j() );
-          }
-        }
-      }
-      
-      // check front end best score of contig_j
-      if( mismatch_scores[j][1].get_index_j() == i ){
-        if( mismatch_scores[j][1].get_orientation() == 2 ){
-          if( mismatch_scores[j][1].get_score() < mim_vec[0].get_score() ){
-            mim_vec[0] = mismatch_scores[j][1];
-            mim_vec[0].set_indices( mismatch_scores[j][1].get_index_j(), mismatch_scores[j][1].get_index_i() );
-            mim_vec[0].set_orientation( 0 );
-          }
-          else if( mismatch_scores[j][1].get_score() >= mim_vec[0].get_score() ){
-            mismatch_scores[j][1] = mim_vec[0];
-            mismatch_scores[j][1].set_indices( mim_vec[0].get_index_i(), mim_vec[0].get_index_j() );
-            mismatch_scores[j][1].set_orientation( 0 );
-          }
-        }
-        else if( mismatch_scores[j][1].get_orientation() == 3 ){
-          if( mismatch_scores[j][1].get_score() < mim_vec[1].get_score() ){
-            mim_vec[1] = mismatch_scores[j][1];
-            mim_vec[1].set_indices( mismatch_scores[j][1].get_index_j(), mismatch_scores[j][1].get_index_i() );
-          }
-          else if( mismatch_scores[j][1].get_score() >= mim_vec[1].get_score() ){
-            mismatch_scores[j][1] = mim_vec[1];
-            mismatch_scores[j][1].set_indices( mim_vec[1].get_index_i(), mim_vec[1].get_index_j() );
-          }
-        }
-      }
-    }
-
-    // add mismatch scores for current contig to mismatch_scores
-    mismatch_scores.push_back( mim_vec );
   }
 
   ////////////////
   // END SCORES //
   ////////////////
-
   
-  /////////////////////////
-  // CREATE FUSION QUEUE //
-  /////////////////////////
-  vector<Mismatch> fusion_list;
+  ///////////////////////////////
+  // SORT AND CLEAN MATCH LIST //
+  ///////////////////////////////
 
-  // loop through mismatch_scores
-  for( int i=0; i<mismatch_scores.size(); i++ ){
-    int match_index = mismatch_scores[i][0].get_index_j();
-    if( match_index > i && mismatch_scores[i][0].get_score() <= mismatch_threshold ){
-      if( mismatch_scores[i][0].get_id() == mismatch_scores[match_index][1].get_id() || mismatch_scores[i][0].get_id() == mismatch_scores[match_index][0].get_id() ){
-        fusion_list.push_back( mismatch_scores[i][0] );
-      }
-    }
-    
-    match_index = mismatch_scores[i][1].get_index_j();
-    if( match_index > i && mismatch_scores[i][1].get_score() <= mismatch_threshold ){      
-      if( mismatch_scores[i][1].get_id() == mismatch_scores[match_index][0].get_id() || mismatch_scores[i][1].get_id() == mismatch_scores[match_index][1].get_id() ){
-        fusion_list.push_back( mismatch_scores[i][1] );
-      }
-    }
+  cout << "fusion1.7 match_list.size(): " << match_list.size() << endl;
+  match_list = sort_matches( match_list );
+  cout << "fusion1.8 match_list.size(): " << match_list.size() << endl;
+  clean_matches( match_list );
+  cout << "fusion8" << endl;
+
+  ////////////////////////
+  // END SORT AND CLEAN //
+  ////////////////////////
+
+  for( int i=0; i<match_list.size(); i++ ){
+    print_to_logfile( "score[0]: " + to_string( match_list[i].get_score() ) + " score[1]: " + to_string( match_list[i].get_score() ) );
+    print_to_logfile( "i[0]: " + to_string( match_list[i].get_index_i() ) +  " j[0]: " + to_string( match_list[i].get_index_j() ) + " i[1]: " + to_string( match_list[i].get_index_i() ) +  " j[1]: " + to_string( match_list[i].get_index_j() ) );
   }
-
-  ////////////////
-  // END CREATE //
-  ////////////////
-
+ 
   //////////////////
   // FUSE CONTIGS //
   //////////////////
-  vector< int > contig_remove_list;
-////////////////////////////////////////////////////////// TASK:: Clean this up so that unnecessary storage of contig strings is not occurring  
-  while( !fusion_list.empty() ){
-    vector<Mismatch> fusion_chain = find_chain(fusion_list);
-    int bp_added_fr = 0;
-    int bp_added_rr = 0;
+  vector<int> contig_remove_list;
+  for( int i=0; i<match_list.size(); i++ ){
+    // fuse contigs
+    int index_i = match_list[i].get_index_i();
+    int index_j = match_list[i].get_index_j();
+    int bp_added_fr = contigs[index_i].get_bp_added_fr();
+    int bp_added_rr = contigs[index_j].get_bp_added_rr();
+    string contig_i = contigs[index_i].get_contig();
+    string contig_j = contigs[index_j].get_contig();
     string fused_id("");
-    // contig_i will represent the fused contig from the previous iteration
-    string contig_i("");
-    string contig_j("");
     string fused("");
-    int index_i = 0;
-    int index_j = 0;
 
-    // loop through the fusion_chain created by find_chain() in order to create one contig to add
-    for( int i=0; i<fusion_chain.size(); i++){
-      Mismatch current_fuse = fusion_chain[i];
-      index_i = current_fuse.get_index_i();
-      index_j = current_fuse.get_index_j();
-      contig_i = contigs[index_i].get_contig();
-      contig_j = contigs[index_j].get_contig();
-      int orientation = current_fuse.get_orientation();
-
-      // push each index onto the remove vector
-      contig_remove_list.push_back( index_i );
-
-      // log contig_fusion
-      contig_fusion_log( current_fuse );
-
-      // reverse the indices and revcomp the contigs if the fusion represented is reversed
-      if( current_fuse.get_rev() ){
-        index_i = current_fuse.get_index_j();
-        index_j = current_fuse.get_index_i();
-        contig_i = revcomp( contig_j );
-
-        // to avoid unnecessary double revcomps
-        if( orientation != 1 ){
-          contig_j = revcomp( contig_i );
-        }
-      }
-      else if( orientation == 1 ){
-        contig_j = revcomp( contig_j );
-      }
-
-      // set fused_id and if this is the first iteration, set fused
-      if( fused_id == "" ){
-        fused_id = get_fused_id( contigs[index_i].get_contig_id(), contigs[index_j].get_contig_id() );
-      }
-      else{
-        fused_id = get_fused_id( fused_id, contigs[index_j].get_contig_id() );
-      }
-
-      // create fused contig
-      fused = build_fusion_string( contig_i, contig_j, current_fuse.get_length() );
-            
-      // log fusion during each iteration for ease of recording details such as mismatch_score
+    // find the reverse compliment of the contigs where necessary
+    if( match_list[i].get_end_i() == 0 ){
+      contig_i = revcomp( contig_i );
+      bp_added_fr = contigs[index_i].get_bp_added_rr();
     }
-      
-    // push the last index onto the remove vector
-    contig_remove_list.push_back( index_j );
     
+    if( match_list[i].get_end_j() == 1 ){
+      contig_j = revcomp( contig_j );
+      bp_added_rr = contigs[index_j].get_bp_added_fr();
+    }
+
+    contig_fusion_log( match_list[i] );
+    fused_id = get_fused_id( contigs[index_i].get_contig_id(), contigs[index_j].get_contig_id() );
     fused_id = "fused(" + fused_id + ")";
+  
+    // push each index onto the remove vector
+    contig_remove_list.push_back( index_i );
+    contig_remove_list.push_back( index_j );
 
-    // commit_fusion() here..
-    commit_fusion( fused, fused_id, fusion_chain );
+    // create fused contig
+    fused = build_fusion_string( contig_i, contig_j, match_list[i].get_length() );
+            
+    // commit fusion here
+    commit_fusion( fused, fused_id, index_i, index_j, bp_added_fr, bp_added_rr );
+    int new_index = contigs.size()-1;
 
-    // remove fused contigs from the vector
-    process_removals( contig_remove_list );
+    // check for additional appearances of the current contigs in match_list
+    for( int j=i+1; j<match_list.size(); j++ ){
+      // change reference index and end variables where necessary
+      if( index_i == match_list[j].get_index_i() ){
+        match_list[j].set_index_i( new_index );
+        match_list[j].set_end_i( 0 );
+      }
+      else if( index_i == match_list[j].get_index_j() ){
+        match_list[j].set_index_j( new_index );
+        match_list[j].set_end_j( 0 );
+      }
+      else if( index_j == match_list[j].get_index_i() ){
+        match_list[j].set_index_i( new_index );
+        match_list[j].set_end_i( 1 );
+      }
+      else if( index_j == match_list[j].get_index_j() ){
+        match_list[j].set_index_j( new_index );
+        match_list[j].set_end_j( 1 );
+      }
+    }
   }
+
+  // remove fused contigs from the vector
+  process_removals( contig_remove_list );
 
   //////////////
   // END FUSE //

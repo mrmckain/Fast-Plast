@@ -92,6 +92,7 @@ int main( int argc, char** argv ){
   initial_trim = 100;
   bp_added_init = 20;
   max_missed = 5;
+  mismatch_threshold = 0.1;
   int c;
   Process process;
   
@@ -99,7 +100,7 @@ int main( int argc, char** argv ){
   opterr = 0;
 
   // get all options that have been provided on the command line
-  while (( c = getopt (argc, argv, "hr:c:o:s:l:x:m:i:p:t:a:b:d:e:f:" )) != -1 ) {
+  while (( c = getopt (argc, argv, "hr:c:o:s:l:x:m:i:p:t:a:b:d:e:f:g:" )) != -1 ) {
     switch( c ) {
       case 'h':
         print_usage( argv[0] );
@@ -152,6 +153,10 @@ int main( int argc, char** argv ){
       // bp_added_init option
       case 'f':
         bp_added_init = atoi(optarg);
+        break;
+      // mismatch_threshold option
+      case 'g':
+        mismatch_threshold = atof(optarg);
         break;
       // outputfile option
       case 'o':

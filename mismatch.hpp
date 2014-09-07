@@ -16,29 +16,17 @@ using namespace std;
 // There will be only one Process object needed per iteration of this program
 class Mismatch{
   private:
-    int id;
     double score;
     int length;
-    
-    // orientation is an integer 0-3 and corresponds as follows:
-    //    0:  i to j
-    //    1:  i to j_rev
-    //    2:  j to i
-    //    3:  j_rev to i
-    int orientation;
-    int match_index_i;
-    int match_index_j;
-    bool rev;
+    int index_i;
+    int index_j;
+    int end_i;
+    int end_j;
     
   public:
     Mismatch();
 
-    Mismatch( int id, double score, int length, int orientation, int match_index_i, int match_index_j );
-
-    Mismatch( int id, int orientation, int match_index_i, int match_index_j );
-
-    // set id
-    void set_id( int id );
+    Mismatch( double score, int length, int index_i, int index_j, int end_i, int end_j );
 
     // set mismatch score
     void set_score( double score );
@@ -46,17 +34,20 @@ class Mismatch{
     // set length
     void set_length( int length );
 
-    // set orientation
-    void set_orientation( int orientation );
+    // set index_i
+    void set_index_i( int index );
+
+    // set index_j
+    void set_index_j( int index );
 
     // set index
-    void set_indices( int match_index_i, int match_index_j );
+    void set_indices( int index_i, int index_j );
 
-    // set rev
-    void set_rev( bool rev );
+    // set end_i
+    void set_end_i( int end_i );
 
-    // return id
-    int get_id();
+    // set end_j
+    void set_end_j( int end_j );
 
     // return mismatch score
     double get_score();
@@ -64,17 +55,17 @@ class Mismatch{
     // return length
     int get_length();
 
-    // return orientation
-    int get_orientation();
-
     // return index i
     int get_index_i();
 
     // return index j
     int get_index_j();
-    
-    // return rev
-    bool get_rev();
+
+    // return end_i
+    int get_end_i();
+
+    // return end_j
+    int get_end_j();
 };
 
 #endif

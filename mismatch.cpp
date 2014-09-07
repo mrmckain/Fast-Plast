@@ -9,29 +9,15 @@ using namespace std;
 
 // Mismatch Class Code
 Mismatch::Mismatch(){
-  id = -1;
   score = 1.0;
   length = 0;
-  orientation = 0;
-  match_index_i = 0;
-  match_index_j = 0;
-  rev = false;
+  index_i = 0;
+  index_j = 0;
+  end_i = 0;
+  end_j = 0;
 }
 
-Mismatch::Mismatch( int id, double score, int length, int orientation, int match_index_i, int match_index_j ): id(id), score(score), length(length), orientation(orientation), match_index_i(match_index_i), match_index_j(match_index_j){
-  rev = false;
-}
-
-Mismatch::Mismatch( int id, int orientation, int match_index_i, int match_index_j ): id(id), orientation(orientation), match_index_i(match_index_i), match_index_j(match_index_j){
-  score = 1.0;
-  length = 0;
-  rev = false;
-}
-
-// set id
-void Mismatch::set_id( int id ){
-  this->id = id;
-}
+Mismatch::Mismatch( double score, int length, int index_i, int index_j, int end_i, int end_j ): score(score), length(length), index_i(index_i), index_j(index_j), end_i(end_i), end_j(end_j){}
 
 // set mismatch score
 void Mismatch::set_score( double score ){
@@ -43,25 +29,30 @@ void Mismatch::set_length( int length ){
   this->length = length;
 }
 
-// set orientation
-void Mismatch::set_orientation( int orientation ){
-  this->orientation = orientation;
+// set index_i
+void Mismatch::set_index_i( int index ){
+  index_i = index;
+}
+
+// set index_j
+void Mismatch::set_index_j( int index ){
+  index_j = index;
 }
 
 // set index
-void Mismatch::set_indices( int match_index_i, int match_index_j ){
-  this->match_index_i = match_index_i;
-  this->match_index_j = match_index_j;
+void Mismatch::set_indices( int index_i, int index_j ){
+  this->index_i = index_i;
+  this->index_j = index_j;
 }
 
-// set rev
-void Mismatch::set_rev( bool rev ){
-  this->rev = rev;
+// set end_i
+void Mismatch::set_end_i( int end_i ){
+  this->end_i = end_i;
 }
 
-// return id
-int Mismatch::get_id(){
-  return id;
+// set end_j
+void Mismatch::set_end_j( int end_j ){
+  this->end_j = end_j;
 }
 
 // return mismatch score
@@ -74,22 +65,22 @@ int Mismatch::get_length(){
   return length;
 }
 
-// return orientation
-int Mismatch::get_orientation(){
-  return orientation;
-}
-
 // return index i
 int Mismatch::get_index_i(){
-  return match_index_i;
+  return index_i;
 }
 
 // return index j
 int Mismatch::get_index_j(){
-  return match_index_j;
+  return index_j;
 }
 
-// return rev
-bool Mismatch::get_rev(){
-  return rev;
+//return end_i
+int Mismatch::get_end_i(){
+  return end_i;
+}
+
+//return end_j
+int Mismatch::get_end_j(){
+  return end_j;
 }
