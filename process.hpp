@@ -131,6 +131,9 @@ class Process{
     // remove duplicates from contig remove list
     void dedup_list( vector<int> &list );
 
+    // sort index list for removing contigs
+    void sort_removals( vector<int> &remove_list );
+
     // remove fused contigs from contigs list
     void process_removals( vector<int> remove_list );
 

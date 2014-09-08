@@ -507,7 +507,7 @@ Mismatch Process::overlap_check( string contig_a, string contig_b, int overlap, 
     // check if this overlap is the best so far
     if( score < mim.get_score() ){
       mim.set_score( score );
-      mim.set_length( overlap );
+      mim.set_length( i );
     }
   }
 
@@ -558,7 +558,7 @@ int Process::get_overlap( int i, int j, int orientation ){
       overlap = length_a - 1;
     }
   }
-  else{
+  else if( bp_added_a > bp_added_b ){
     if( bp_added_a < length_b ){
       overlap = bp_added_a;
     }
@@ -632,9 +632,28 @@ void Process::dedup_list( vector<int> &list ){
   }
 }
 
+// sort index list for removing contigs
+void Process::sort_removals( vector<int> &remove_list ){
+  int plc_hld;
+  for( int i=0; i<(int)remove_list.size()-1; i++ ){
+    int bst_idx = i;
+    for( int j=i+1; j<(int)remove_list.size(); j++ ){
+      if( remove_list[j] < remove_list[i] ){
+        bst_idx = j;
+      }
+    }
+    if( bst_idx != i ){
+      plc_hld = remove_list[i];
+      remove_list[i] = remove_list[bst_idx];
+      remove_list[bst_idx] = plc_hld;
+    }
+  }
+}
+
 // remove fused contigs from contigs list
 void Process::process_removals( vector<int> remove_list ){
   dedup_list( remove_list );
+  sort_removals( remove_list );
   for( int i=remove_list.size() - 1; i>=0; i-- ){
     contigs.erase( contigs.begin() + remove_list[i] );
   }
