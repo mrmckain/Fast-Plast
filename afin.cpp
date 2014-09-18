@@ -42,6 +42,7 @@
 
 using namespace std;
 
+// TASK:: Allow spaces between reads so wildcards can be used for input
 // TASK:: Look into whether N's and misses should be counted together? Or how they should relate to each other
 // TASK:: Add consideration for N's to contig extension similar to contig_fusion_support()
 // TASK:: Exact matching in the contig_fusion_support() may be too conservative
@@ -90,9 +91,9 @@ int main( int argc, char** argv ){
   tip_length = 10;
   end_depth = 100;
   initial_trim = 100;
-  bp_added_init = 20;
   max_missed = 5;
   mismatch_threshold = 0.1;
+  test_run = false;
   int c;
   Process process;
   
@@ -100,7 +101,7 @@ int main( int argc, char** argv ){
   opterr = 0;
 
   // get all options that have been provided on the command line
-  while (( c = getopt (argc, argv, "hr:c:o:s:l:x:m:i:p:t:a:b:d:e:f:g:" )) != -1 ) {
+  while (( c = getopt (argc, argv, "hr:c:o:s:l:x:m:i:p:t:a:b:d:e:f:g:z" )) != -1 ) {
     switch( c ) {
       case 'h':
         print_usage( argv[0] );
@@ -150,10 +151,6 @@ int main( int argc, char** argv ){
       case 'e':
         max_missed = atoi(optarg);
         break;
-      // bp_added_init option
-      case 'f':
-        bp_added_init = atoi(optarg);
-        break;
       // mismatch_threshold option
       case 'g':
         mismatch_threshold = atof(optarg);
@@ -171,6 +168,10 @@ int main( int argc, char** argv ){
       // contig file option
       case 'c':
         process.contigsfiles = optarg;
+        break;
+      // test_run option
+      case 'z':
+        test_run = true;
         break;
       case '?':
         if ( optopt == 'r' ){

@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include "afin_util.hpp"
+#include "process.hpp"
 #include "contig.hpp"
 #include "queue.tcc"
 #include "print_time.hpp"
@@ -18,6 +19,67 @@ void thread_worker(vector<Contig>& contigs, Queue<int>& q, unsigned int id) {
       contigs[item].extend( true );
     }
   }
+}
+
+// tally mismatches in substrings passed and return score in the form of misatches per length
+double mismatch_score( string contig_sub_a, string contig_sub_b ){
+  int mismatch = 0;
+
+  // protect against division by zero
+  if( contig_sub_a.length() == 0 ){
+    return 1.0;
+  }
+
+  for( int i=0; i<contig_sub_a.length(); i++ ){
+    if( contig_sub_a[i] != contig_sub_b[i] ){
+      mismatch++;
+    }
+    // bail when too many mismatches have been tallied.. avoid excessive processing
+    if( double(mismatch) /contig_sub_a.length() > mismatch_threshold ){
+      return 1.0;
+    }
+  }
+
+  double score = double(mismatch) / contig_sub_a.length();
+  return score;
+}
+
+// checks if string is a homopolymer
+bool homopolymer_check( string seq ){
+  int i = 0;
+  if( seq[0] == 'A' ){
+    for( i=1; i<seq.length(); i++ ){
+      if( seq[i] != 'A' ){
+        break;
+      }
+    }
+  }
+  else if( seq[0] == 'T' ){
+    for( i=1; i<seq.length(); i++ ){
+      if( seq[i] != 'T' ){
+        break;
+      }
+    }
+  }
+  else if( seq[0] == 'C' ){
+    for( i=1; i<seq.length(); i++ ){
+      if( seq[i] != 'C' ){
+        break;
+      }
+    }
+  }
+  else if( seq[0] == 'G' ){
+    for( i=1; i<seq.length(); i++ ){
+      if( seq[i] != 'G' ){
+        break;
+      }
+    }
+  }
+  if( i == seq.length() ){
+    return true;
+  }
+
+  return false;
 }
 
 // PRINT USAGE FUNCTION
@@ -39,7 +101,6 @@ void print_usage( string prog ){
   cout << "  -b max_threads         [default:  10] Length of the search section of each contig used for contig fusion" << endl;
   cout << "  -d initial_trim        [default: 100] Length to trim off the beginning and end of each contig at the start of the program" << endl;
   cout << "  -e max_missed          [default:   5] Maximum allowable mismatched bp's for contig fusion in the trim_length bp's at the end of each contig" << endl;
-  cout << "  -f bp_added_init       [default:  20] Initial bp_added value for each end of a contig" << endl;
   cout << "  -g mismatch_threshold  [default:  .1] maximum percentage of mismatches allowed when fusing two contigs" << endl;
   cout << "  -x extend_len          [default:  80] Will add a max of 80 bp's each search loop" << endl << endl;
 }

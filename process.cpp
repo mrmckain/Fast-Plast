@@ -42,8 +42,8 @@ int end_depth;
 int tip_depth;
 int initial_trim;
 int max_missed;
-int bp_added_init;
-int mismatch_threshold;
+bool test_run;
+double mismatch_threshold;
 
 ////////////////////////////////////
 //////// PROCESS DEFINITIONS ///////
@@ -215,7 +215,9 @@ void Process::add_reads(){
         while( getline( read, line ) ){
           if( line[0] == '>' && buffer.length() != 0 ){
             //cout << buffer << endl;
-            readlist.push_back( buffer);
+            if( !homopolymer_check( buffer ) ){
+              readlist.push_back( buffer );
+            }
             buffer = "";
           }
           else if ( line[0] == '>' ) {
@@ -237,7 +239,9 @@ void Process::add_reads(){
 
   // insert last line into readlist
   if( buffer.length() != 0 ){
-    readlist.push_back( buffer );
+    if( !homopolymer_check( buffer ) ){
+      readlist.push_back( buffer );
+    }
   }
 }
 
@@ -282,9 +286,8 @@ void Process::contig_cov(){
     double cov = contigs[i].get_cov();
 
     if( cov > cov_avg * 2.0 ){
-      // set the value of bp_added to -1 to indicate ignoring when extending contigs 
-      contigs[i].set_bp_added( -1 );
-      //contigs.push_back( contigs[i] );
+      // set the value of doub_cov to false to indicate ignoring when extending contigs 
+      contigs[i].set_doub_cov( true );
     }
   }
 }
@@ -325,12 +328,12 @@ void Process::add_contigs(){
       if( line[0] == '>' && buffer.length() != 0 ){
         if( buffer.length() > 2*initial_trim + contig_sub_len ){
           buffer = buffer.substr( initial_trim, buffer.length() - 2*initial_trim );
-          contigs.push_back( Contig( buffer, contig_id, parse_cov( contig_id ), min_cov_init, bp_added_init ));
+          contigs.push_back( Contig( buffer, contig_id, parse_cov( contig_id ), min_cov_init ));
         }
         else if( buffer.length() > contig_sub_len ){
           int trim = (buffer.length() - contig_sub_len) / 2;
           buffer = buffer.substr( trim, buffer.length() - 2*trim );
-          contigs.push_back( Contig( buffer, contig_id, parse_cov( contig_id ), min_cov_init, bp_added_init ));
+          contigs.push_back( Contig( buffer, contig_id, parse_cov( contig_id ), min_cov_init ));
         }
 
         buffer = "";
@@ -351,7 +354,7 @@ void Process::add_contigs(){
 
   // insert last line into contigs list
   if( buffer.length() != 0 ){
-    contigs.push_back( Contig( buffer, contig_id, parse_cov( contig_id ), min_cov_init, bp_added_init ) );
+    contigs.push_back( Contig( buffer, contig_id, parse_cov( contig_id ), min_cov_init ) );
   }
 
   contig_cov();
@@ -368,6 +371,20 @@ string Process::get_contig( int contig_ind ){
   return contigs[ contig_ind ].get_contig();
 }
 
+// print contigs
+void Process::print_contigs_to_file( string file, string id_suffix ){
+  // open outfile
+  ofstream outfile_fp( file+".fasta");
+
+  // print out each line to the 
+  for( int i=0; i<contigs.size(); i++ ){
+    outfile_fp << ">" << contigs[i].get_contig_id() << "_" << id_suffix << endl;
+    outfile_fp << get_contig(i) << endl;
+  }
+
+  outfile_fp.close();
+}
+
 // prints results to fasta file with outfile prefix and additional information is printed to a text based file with outfile prefix
 void Process::print_to_outfile(){
   // remove directories from outfile to form id_suffix if necessary
@@ -377,16 +394,8 @@ void Process::print_to_outfile(){
     id_suffix = id_suffix.substr( id_suffix_pos + 1 );
   }
 
-  // open outfile
-  ofstream outfile_fp( outfile+".fasta");
-
-  // print out each line to the 
-  for( int i=0; i<contigs.size(); i++ ){
-    outfile_fp << ">" << contigs[i].get_contig_id() << "_" << id_suffix << endl;
-    outfile_fp << get_contig(i) << endl;
-  }
-
-  outfile_fp.close();
+  // print completed contigs to file
+  print_contigs_to_file( outfile, id_suffix );
 
   // open outfile for contigs that have been fused and removed from the contigs vector
   ofstream fusedout_fp( outfile+"_fused.fasta");
@@ -438,6 +447,7 @@ void Process::logfile_init(){
   log_fs << "tip_depth: " << tip_depth << endl;
   log_fs << "initial_trim: " << initial_trim << endl;
   log_fs << "max_missed: " << max_missed << endl;
+  log_fs << "mismatch_threshold: " << mismatch_threshold << endl;
   log_fs << "max_threads: " << max_threads << endl << endl;
 }
 
@@ -471,27 +481,16 @@ void Process::contig_fusion_log( Mismatch fusion ){
 }
 
 // complete contig_fusion process
-void Process::commit_fusion( string fused, string fused_id, int index_i, int index_j, int bp_added_fr, int bp_added_rr ){ 
+void Process::commit_fusion( string fused, string fused_id, int index_i, int index_j ){ 
   contigs_fused.push_back( contigs[index_i] );
   print_to_logfile( "Contig moved to fused file: " + contigs[index_i].get_contig_id() );
 
   contigs_fused.push_back( contigs[index_j] );
   print_to_logfile( "Contig moved to fused file: " + contigs[index_j].get_contig_id() );
 
-  contigs.push_back( Contig( fused, fused_id, 1, min_cov_init, bp_added_fr, bp_added_rr ));
-}
-
-// tally mismatches in substrings passed and return score in the form of misatches per length
-double Process::mismatch_score( string contig_sub_a, string contig_sub_b ){
-  int mismatch = 0;
-
-  for( int i=0; i<contig_sub_a.length(); i++ ){
-    if( contig_sub_a[i] != contig_sub_b[i] ){
-      mismatch++;
-    }
-  }
-
-  return double(mismatch) / contig_sub_a.length();
+  print_to_logfile( "Committing: " + fused_id );
+  print_to_logfile( "\t" + fused );
+  contigs.push_back( Contig( fused, fused_id, 1, min_cov_init ));
 }
 
 // check overlap section for mismatches
@@ -499,97 +498,77 @@ Mismatch Process::overlap_check( string contig_a, string contig_b, int overlap, 
   Mismatch mim;
   mim.set_end_i( end_i );
   mim.set_end_j( end_j );
+  double score_f = 1.0;
+  double score_r = 1.0;
   double score = 1.0;
 
   for( int i=overlap-1; i>=min_overlap; i-- ){
-    score = mismatch_score( contig_a.substr( contig_a.length() - i, i ), contig_b.substr( 0, i ) );
+    score_f = mismatch_score( contig_a.substr( contig_a.length() - i, i/2 ), contig_b.substr( 0, i/2 ) );
+    score_r = mismatch_score( contig_a.substr( contig_a.length() - (i-i/2) ), contig_b.substr( i/2, i-i/2 ) );
+    score = (score_f + score_r)/2;
 
     // check if this overlap is the best so far
     if( score < mim.get_score() ){
       mim.set_score( score );
       mim.set_length( i );
     }
+    // if the score for the end of contig_a is better than the threshold, check the end of contig_b to see if there could be support in the reads for that end going in a different direction
+    else if( score_r <= mismatch_threshold ){
+      Contig temp_cont( contig_b.substr(i/2, i-i/2), "temp" );
+      score_f = temp_cont.check_fusion_support( contig_a.substr( contig_a.length() - i, i/2 ) );
+      // make sure the support score is at least as good as the threshold
+      if( score_f <= mismatch_threshold ){
+        score = (score_f + score_r)/2;
+        if( score < mim.get_score() ){
+          mim.set_score( score );
+          mim.set_length( i );
+        }
+      }
+    }
+    // if the score for the end of contig_b is better than the threshold, check the end of contig_a to see if there could be support in the reads for that end going in a different direction
+    else if( score_f <= mismatch_threshold ){
+      Contig temp_cont( contig_a.substr( contig_a.length() - (i-i/2) ), "temp" );
+      score_r = temp_cont.check_fusion_support( contig_b.substr( i/2, i-i/2 ) );
+      // make sure the support score is at least as good as the threshold
+      if( score_r <= mismatch_threshold ){
+        score = (score_r + score_f)/2;
+        if( score < mim.get_score() ){
+          mim.set_score( score );
+          mim.set_length( i );
+        }
+      }
+    }
   }
 
   return mim;
 }
 
-// returns overlap length based on the indexes passed
-int Process::get_overlap( int i, int j, int orientation ){
-  int overlap = min_overlap;
-  int bp_added_a, bp_added_b;
-  int length_a, length_b;
-
-  switch( orientation ){
-    case 0:
-      bp_added_a = contigs[i].get_bp_added_rr();
-      bp_added_b = contigs[j].get_bp_added_fr();
-      length_a = get_contig( i ).length();
-      length_b = get_contig( j ).length();
-      break;
-    case 1:
-      bp_added_a = contigs[i].get_bp_added_rr();
-      bp_added_b = contigs[j].get_bp_added_rr();
-      length_a = get_contig( i ).length();
-      length_b = get_contig( j ).length();
-      break;
-    case 2:
-      bp_added_a = contigs[j].get_bp_added_rr();
-      bp_added_b = contigs[i].get_bp_added_fr();
-      length_a = get_contig( j ).length();
-      length_b = get_contig( i ).length();
-      break;
-    case 3:
-      bp_added_a = contigs[j].get_bp_added_fr();
-      bp_added_b = contigs[i].get_bp_added_fr();
-      length_a = get_contig( j ).length();
-      length_b = get_contig( i ).length();
-      break;
-    default:
-      return 0;
-      break;
-  }
-
-  if( bp_added_a < bp_added_b ){
-    if( bp_added_b < length_a ){
-      overlap = bp_added_b;
-    }
-    else{
-      overlap = length_a - 1;
-    }
-  }
-  else if( bp_added_a > bp_added_b ){
-    if( bp_added_a < length_b ){
-      overlap = bp_added_a;
-    }
-    else{
-      overlap = length_b - 1;
-    }
-  }
-
-  if( overlap < min_overlap ){
-    overlap = min_overlap;
-  }
-
-  return overlap;
-}
-
 // sort the match_list for easier 
-vector<Mismatch> Process::sort_matches( vector<Mismatch> match_list ){
+void Process::sort_matches( vector<Mismatch> &match_list ){
   vector<Mismatch> sorted_list;
+  Mismatch temp_mim;
 
-  for( int i=match_list.size(); i>0; i-- ){
-    int min_index = 0;
-    for( int j=1; j<match_list.size(); j++ ){
-      if( match_list[j].get_score() < match_list[min_index].get_score() ){
-        min_index = j;
+  // sort by overlap length
+  for( int i=0; i<match_list.size(); i++ ){
+    for( int j=i; j<match_list.size(); j++ ){
+      if( match_list[i].get_length() < match_list[j].get_length() ){
+        temp_mim = match_list[i];
+        match_list[i] = match_list[j];
+        match_list[j] = temp_mim;
       }
     }
-    sorted_list.push_back( match_list[min_index] );
-    match_list.erase( match_list.begin() + min_index );
   }
 
-  return sorted_list;
+  // sort by score
+  for( int i=0; i<match_list.size(); i++ ){
+    for( int j=i; j<match_list.size(); j++ ){
+      if( match_list[i].get_score() > match_list[j].get_score() ){
+        temp_mim = match_list[i];
+        match_list[i] = match_list[j];
+        match_list[j] = temp_mim;
+      }
+    }
+  }
 }
 
 // cleans match_list from conflicting matches
@@ -604,7 +583,15 @@ void Process::clean_matches( vector<Mismatch> &match_list ){
         match_list.erase( match_list.begin() + j );
         j--;
       }
+      else if( match_list[j].get_index_j() == index_i && match_list[j].get_end_j() == end_i ){
+        match_list.erase( match_list.begin() + j );
+        j--;
+      }
       else if( match_list[j].get_index_j() == index_j && match_list[j].get_end_j() == end_j ){
+        match_list.erase( match_list.begin() + j );
+        j--;
+      }
+      else if( match_list[j].get_index_i() == index_j && match_list[j].get_end_i() == end_j ){
         match_list.erase( match_list.begin() + j );
         j--;
       }
@@ -615,14 +602,14 @@ void Process::clean_matches( vector<Mismatch> &match_list ){
 // create fused contig string
 string Process::build_fusion_string( string contig_a, string contig_b, int overlap ){
   string fused( contig_a.substr( 0, contig_a.length() - (overlap/2) ) );
-  fused.append( contig_b.substr( overlap/2 + overlap%2 ) );
+  fused.append( contig_b.substr( overlap/2 ) );
 
   return fused;
 }
 
 // remove duplicates from contig remove list
 void Process::dedup_list( vector<int> &list ){
-  for( int i=0; i<list.size()-1; i++ ){
+  for( int i=0; i<(int)list.size()-1; i++ ){
     for( int j=i+1; j<list.size(); j++ ){
       if( list[i] == list[j] ){
         list.erase( list.begin() + j );
@@ -636,16 +623,16 @@ void Process::dedup_list( vector<int> &list ){
 void Process::sort_removals( vector<int> &remove_list ){
   int plc_hld;
   for( int i=0; i<(int)remove_list.size()-1; i++ ){
-    int bst_idx = i;
+    int low_idx = i;
     for( int j=i+1; j<(int)remove_list.size(); j++ ){
-      if( remove_list[j] < remove_list[i] ){
-        bst_idx = j;
+      if( remove_list[j] < remove_list[low_idx] ){
+        low_idx = j;
       }
     }
-    if( bst_idx != i ){
+    if( low_idx != i ){
       plc_hld = remove_list[i];
-      remove_list[i] = remove_list[bst_idx];
-      remove_list[bst_idx] = plc_hld;
+      remove_list[i] = remove_list[low_idx];
+      remove_list[low_idx] = plc_hld;
     }
   }
 }
@@ -654,7 +641,7 @@ void Process::sort_removals( vector<int> &remove_list ){
 void Process::process_removals( vector<int> remove_list ){
   dedup_list( remove_list );
   sort_removals( remove_list );
-  for( int i=remove_list.size() - 1; i>=0; i-- ){
+  for( int i=(int)remove_list.size()-1; i>=0; i-- ){
     contigs.erase( contigs.begin() + remove_list[i] );
   }
 }
@@ -671,7 +658,6 @@ void Process::contig_fusion(){
   vector< Mismatch > match_list;
   int id = 0;
   
-  cout << "fusion1" << endl;
   /////////////////////////
   // GET MISMATCH SCORES //
   /////////////////////////
@@ -679,49 +665,46 @@ void Process::contig_fusion(){
   // loop through each contig to get the end of the contig
   for( int i=0; i<contigs.size(); i++ ){
     for( int j=i+1; j<contigs.size(); j++ ){
-  cout << "fusion2" << endl;
       string contig_i( get_contig( i ) );
       string contig_j( get_contig( j ) );
       string contig_j_rev( revcomp( contig_j ) );
-      int overlap = 0;
+      int overlap = extend_len * 2;
       Mismatch mim;
 
       //// Processing of rear end of the contig
       // orientation: i to j
-      overlap = get_overlap( i, j, 0 );
+      if( overlap > contig_i.length() ){
+        overlap = contig_i.length();
+      }
+      if( overlap > contig_j.length() ){
+        overlap = contig_j.length();
+      }
       mim = overlap_check( contig_i, contig_j, overlap, 1, 0 );
 
-  cout << "fusion3" << endl;
       if( mim.get_score() <= mismatch_threshold ){
         mim.set_indices( i, j );
         match_list.push_back( mim );
       }
 
-  cout << "fusion4" << endl;
       // orientation: i to j_rev
-      overlap = get_overlap( i, j, 1 );
       mim = overlap_check( contig_i, contig_j_rev, overlap, 1, 1 );
 
       if( mim.get_score() <= mismatch_threshold ){
         mim.set_indices( i, j );
         match_list.push_back( mim );
       }
-  cout << "fusion5" << endl;
 
       //// Processing of front end of the contig
       // orientation: j to i
-      overlap = get_overlap( i, j, 2 );
-      mim = overlap_check( contig_j, contig_i, overlap, 0, 0);
+      mim = overlap_check( contig_j, contig_i, overlap, 0, 1);
 
       if( mim.get_score() <= mismatch_threshold ){
         mim.set_indices( i, j );
         match_list.push_back( mim );
       }
 
-  cout << "fusion6" << endl;
       // orientation: j_rev to i
-      overlap = get_overlap( i, j, 3 );
-      mim = overlap_check( contig_j_rev, contig_i, overlap, 0, 1 );
+      mim = overlap_check( contig_j_rev, contig_i, overlap, 0, 0 );
 
       if( mim.get_score() <= mismatch_threshold ){
         mim.set_indices( i, j );
@@ -738,19 +721,16 @@ void Process::contig_fusion(){
   // SORT AND CLEAN MATCH LIST //
   ///////////////////////////////
 
-  cout << "fusion1.7 match_list.size(): " << match_list.size() << endl;
-  match_list = sort_matches( match_list );
-  cout << "fusion1.8 match_list.size(): " << match_list.size() << endl;
+  sort_matches( match_list );
   clean_matches( match_list );
-  cout << "fusion8" << endl;
 
   ////////////////////////
   // END SORT AND CLEAN //
   ////////////////////////
 
   for( int i=0; i<match_list.size(); i++ ){
-    print_to_logfile( "score[0]: " + to_string( match_list[i].get_score() ) + " score[1]: " + to_string( match_list[i].get_score() ) );
-    print_to_logfile( "i[0]: " + to_string( match_list[i].get_index_i() ) +  " j[0]: " + to_string( match_list[i].get_index_j() ) + " i[1]: " + to_string( match_list[i].get_index_i() ) +  " j[1]: " + to_string( match_list[i].get_index_j() ) );
+    print_to_logfile( "score: " + to_string( match_list[i].get_score() ) );
+    print_to_logfile( "i: " + to_string( match_list[i].get_index_i() ) +  " j: " + to_string( match_list[i].get_index_j() ) );
   }
  
   //////////////////
@@ -761,8 +741,6 @@ void Process::contig_fusion(){
     // fuse contigs
     int index_i = match_list[i].get_index_i();
     int index_j = match_list[i].get_index_j();
-    int bp_added_fr = contigs[index_i].get_bp_added_fr();
-    int bp_added_rr = contigs[index_j].get_bp_added_rr();
     string contig_i = contigs[index_i].get_contig();
     string contig_j = contigs[index_j].get_contig();
     string fused_id("");
@@ -771,18 +749,16 @@ void Process::contig_fusion(){
     // find the reverse compliment of the contigs where necessary
     if( match_list[i].get_end_i() == 0 ){
       contig_i = revcomp( contig_i );
-      bp_added_fr = contigs[index_i].get_bp_added_rr();
     }
     
     if( match_list[i].get_end_j() == 1 ){
       contig_j = revcomp( contig_j );
-      bp_added_rr = contigs[index_j].get_bp_added_fr();
     }
 
     contig_fusion_log( match_list[i] );
     fused_id = get_fused_id( contigs[index_i].get_contig_id(), contigs[index_j].get_contig_id() );
     fused_id = "fused(" + fused_id + ")";
-  
+ 
     // push each index onto the remove vector
     contig_remove_list.push_back( index_i );
     contig_remove_list.push_back( index_j );
@@ -791,8 +767,8 @@ void Process::contig_fusion(){
     fused = build_fusion_string( contig_i, contig_j, match_list[i].get_length() );
             
     // commit fusion here
-    commit_fusion( fused, fused_id, index_i, index_j, bp_added_fr, bp_added_rr );
-    int new_index = contigs.size()-1;
+    commit_fusion( fused, fused_id, index_i, index_j );
+    int new_index = (int)contigs.size()-1;
 
     // check for additional appearances of the current contigs in match_list
     for( int j=i+1; j<match_list.size(); j++ ){
@@ -822,11 +798,6 @@ void Process::contig_fusion(){
   //////////////
   // END FUSE //
   //////////////
-
-  // reset bp_added variables for each contig
-  for( int i=0; i<contigs.size(); i++ ){
-    contigs[i].reset_bp_added();
-  }
 }
 
 // Initializes data structures and turns over control to run_manager()
@@ -855,6 +826,10 @@ void Process::start_run(){
   // make initial attempt to fuse contigs  
   // removed for master branch until algorithm can be adjusted
   contig_fusion();
+  
+  if( test_run ){
+    print_contigs_to_file( outfile + ".fus", "mid" );
+  }
 
   run_manager();
 }
@@ -893,8 +868,12 @@ void Process::run_manager(){
 
     // removed for master branch until algorithm can be adjusted
     contig_fusion();
+    
+    if( test_run ){
+      print_contigs_to_file( outfile + ".fus" + to_string(j), "mid" );
+    }
   }
-} 
+}
 
 // closes logfile
 void Process::close_log(){

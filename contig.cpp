@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <tuple>
 #include <stdexcept>
+#include "afin_util.hpp"
 #include "read.hpp"
 #include "print_time.hpp"
 #include "process.hpp"
@@ -32,22 +33,13 @@ tuple<long,long,long,long> get_read_range( string read_seg ){
 }
 
 ////////// Contig FUNCTIONS ////////////
-Contig::Contig( string str, string id, double cov, int min_cov, int init_added_fr, int init_added_rr ) : cov(cov),  min_cov(min_cov), contig(str), contig_id(id), bp_added_fr(init_added_fr), bp_added_rr(init_added_rr){}
-
-Contig::Contig( string str, string id, double cov, int min_cov, int bp_added_init ) : cov(cov), min_cov(min_cov), contig(str), contig_id(id){
-  bp_added_fr = bp_added_init;
-  bp_added_rr = bp_added_init;
-}
-
 Contig::Contig( string str, string id, double cov, int min_cov ) : cov(cov), min_cov(min_cov), contig(str), contig_id(id){
-  bp_added_fr = 0;
-  bp_added_rr = 0;
+  doub_cov = false;
 }
 
 Contig::Contig( string str, string id ) : cov(cov), contig(str), contig_id(id){
   min_cov = min_cov_init;
-  bp_added_fr = 0;
-  bp_added_rr = 0;
+  doub_cov = false;
 }   
 
 // adds a read to the read list
@@ -92,33 +84,6 @@ Read Contig::getRead( int i ){
 // return cov
 double Contig::get_cov(){
   return cov;
-}
-
-// returns bp_added_fr
-int Contig::get_bp_added_fr(){
-  return bp_added_fr;
-}
-
-// returns bp_added_rr
-int Contig::get_bp_added_rr(){
-  return bp_added_rr;
-}
-
-// sets bp_added values to val
-void Contig::set_bp_added( int val ){
-  bp_added_rr = val;
-  bp_added_fr = val;
-}
-
-
-// resets bp_added variables to 0
-int Contig::reset_bp_added(){
-  if( bp_added_rr != -1 ){
-    bp_added_rr = bp_added_rr/2;
-  }
-  if( bp_added_fr != -1 ){
-    bp_added_fr = bp_added_fr/2;
-  }
 }
 
 // clear matchlist to make room for new matches
@@ -171,44 +136,6 @@ int Contig::get_ATCG_value( int ATCG_char ){
   }
 
   return -1;
-}
-
-// checks if string is a homopolymer
-bool Contig::homopolymer_check( string seq ){
-  int i = 0;
-  if( seq[0] == 'A' ){
-    for( i=1; i<seq.length(); i++ ){
-      if( seq[i] != 'A' ){
-        break;
-      }
-    }
-  }
-  else if( seq[0] == 'T' ){
-    for( i=1; i<seq.length(); i++ ){
-      if( seq[i] != 'T' ){
-        break;
-      }
-    }
-  }
-  else if( seq[0] == 'C' ){
-    for( i=1; i<seq.length(); i++ ){
-      if( seq[i] != 'C' ){
-        break;
-      }
-    }
-  }
-  else if( seq[0] == 'G' ){
-    for( i=1; i<seq.length(); i++ ){
-      if( seq[i] != 'G' ){
-        break;
-      }
-    }
-  }
-  if( i == seq.length() ){
-    return true;
-  }
-
-  return false;
 }
 
 // determines where the read passed matches the contig if at all for off the front matches
@@ -416,11 +343,9 @@ string Contig::extension_build_string( int start, int pos_mult, int len, bool ba
     // add next base
     if( back ){
       extension.append( ATCGstr.substr( max, 1 ) );
-      bp_added_rr++;
     }
     else{
       extension.insert( 0, ATCGstr.substr( max, 1 ) );
-      bp_added_fr++;
     }
   }
 
@@ -493,10 +418,7 @@ void Contig::extend( bool back ){
   string contig_sub_str("");
  
   // skip over any contigs that present at least double coverage
-  if( back && bp_added_rr == -1 ){
-    return;
-  }
-  else if( bp_added_fr == -1 ){
+  if( doub_cov ){
     return;
   }
 
@@ -532,17 +454,9 @@ void Contig::extend( bool back ){
 
   if( back ){
     contig.append( extension );
-    bp_added_rr += contig_sub.get_bp_added_rr();
-      
-    // print messages to logfile about current actions
-    //Process::print_to_logfile( contig_sub.get_bp_added_rr() + " basepairs were added to the back of " + contig_id ); 
   }
   else{
     contig.insert( 0, extension );
-    bp_added_fr += contig_sub.get_bp_added_fr();
-      
-    // print messages to logfile about current actions
-    //Process::print_to_logfile( contig_sub.get_bp_added_fr() + " basepairs were added to the front of " + contig_id ); 
   }
 }
 
@@ -558,132 +472,79 @@ long Contig::check_cov( long pos ){
   return cov;
 }
 
-// contig_fusion: Attempt to support fusion in case of possibly poorly constructed end
-bool Contig::check_fusion_support( string contig_f, int pos, bool back ){
+// set doub_cov var
+void Contig::set_doub_cov( bool doub_cov ){
+  this->doub_cov = doub_cov;
+}
+
+// contig_fusion: Attempt to support fusion in case of possibly poorly constructed end.. returns new score from section in question
+//    ::> contig object is the second while contig_ref is the first and the extension is being made off the front of the object
+int Contig::check_fusion_support( string contig_ref ){
   string support_string( "" );
-  // contains multiplier for position calculation
-  int pos_mult = -1;
+  int score = 0;
+  int pos = contig_ref.length() - 1;
   int start = -1;
 
   // create reference string for numeric based additions to the extension string
   string ATCGstr( "ATCG" );
   matchlist.clear();
 
-  // get matches
-  if( back ){
-    match_contig_rr();
-    start = contig.length();
-    pos = start;
-    pos_mult = 1;
-  }
-  else{
-    match_contig_fr();
-  }
+  match_contig_fr();
 
   // return if matches found is less than min_cov
   if( matchlist.size() < min_cov ){
-    return false;
+    return 1.0;
   }
 
-  cout << "matchlist1: " << matchlist.size() << endl;
-
   // create missed bp's vector to keep track of how many bp's each read contains that are below the max at that position
-  vector<int> missed_bp( matchlist.size(), 0 );
+  vector<int> mismatch( matchlist.size(), 0 );
   vector<int> ambiguous_bp( matchlist.size(), 0 );
-  int missed_bp_tot = 0;
-  int missed_bp_avg = 0;
+  int mismatch_tot = 0;
+  int mismatch_avg = 0;
   int cov = min_cov;
   int cmp_len = 0;
 
-  // count missed_bp's in each read match
-  for( int i=0; i<contig_f.length() - tip_length; i++ ){
-    int next_char_f = contig_f[pos+(i*pos_mult)];
+  // count mismatch's in each read match
+  for( int i=0; i<contig_ref.length(); i++ ){
+    int next_char_ref = contig_ref[pos-i];
     for( int j=0; j<matchlist.size(); j++ ){
-      int next_char = matchlist[j].getPos( start+(pos_mult*i));
+      int next_char = matchlist[j].getPos( start-i );
       if( next_char == 'N' ){
         ambiguous_bp[j]++;
       }
-      else if( next_char != next_char_f ){
-        missed_bp[j]++;
+      // check if next_char matches or exists in the current read
+      else if( next_char != next_char_ref && next_char != -1 ){
+        mismatch[j]++;
       }
     }
   }
 
   // remove reads with more than the max_missed
-  extension_error_removal( missed_bp, max_missed );
-  cout << "matchlist2: " << matchlist.size() << endl;
+  extension_error_removal( mismatch, max_missed );
 
   // remove reads with more than 3 N's
   extension_error_removal( ambiguous_bp, 3 );
-  cout << "matchlist3: " << matchlist.size() << endl;
-
   
   // if matchlist is smaller than min_cov, bail, return false
   if( matchlist.size() < min_cov ){
-    return false;
+    return 1.0;
   }
 
   // get string built from remaining matches.
-  support_string = extension_build_string( start, pos_mult, tip_length*2, back );
+  support_string = extension_build_string( start, -1, contig_ref.length(), false );
   cmp_len = support_string.length();
 
-  // use tip_length as min_length to compare support_string with matching contig
-  if( support_string.length() < tip_length ){
-    return false;
+  // use the smaller of contig_ref.length() and min_overlap/2 as min_length to compare support_string with matching contig
+  if( cmp_len < contig_ref.length() && cmp_len < (min_overlap/2 + min_overlap%2) ){
+    return 1.0;
   }
 
   // get smallest of string lengths
-  if( cmp_len > contig_f.length() ){
-    cmp_len = contig_f.length();
+  if( cmp_len > contig_ref.length() ){
+    cmp_len = contig_ref.length();
   }
 
-  // loop len times processing 1 basepair at a time
-  for( int i=0; i<tip_length; i++ ){
-    vector<int> ATCG_curr = { 0,0,0,0,0 };
-    int max = 0;
-    int contig_f_char = 0;
-    int avg = 0;
-    
-    for( int j=0; j<matchlist.size(); j++ ){
-      int next_char = matchlist[j].getPos( start+(pos_mult*i) );
-
-      // Treat N as a 5th option, if another option than N, use that, maximum 3 N's for support horizontally
-      // If there are N's at the end, trim them
-      // Allow any number of N's in one position, but if there is a nucleotide represented, use that
-      if ( next_char == 'A' ) {
-        ATCG_curr[0]++;
-      }
-      else if ( next_char == 'T' ) {
-        ATCG_curr[1]++;
-      }
-      else if ( next_char == 'C' ) {
-        ATCG_curr[2]++;
-      }
-      else if ( next_char == 'G' ) {
-        ATCG_curr[3]++;
-      }
-      else if ( next_char == 'N' ) {
-        ATCG_curr[4]++;
-      }
-    }
-
-    // set max equal to character value from contig_f
-    contig_f_char = get_ATCG_value( contig_f[start+(pos_mult*i)] );
-    max = contig_f_char;
-
-    // find character with greatest appearance
-    for( int j=0; j<4; j++ ){
-      // add N value to max value in comparison to account for Ns
-      if( ATCG_curr[j] > ATCG_curr[max] + ATCG_curr[4] ) {
-        max = j;
-      }
-    }
-
-    // fail if min_cov is not met or reads do not match contig at this point, add N value for coverage threshold
-    if( ATCG_curr[max] + ATCG_curr[4] < min_cov || max != contig_f_char ){
-      return false;
-    }
-  }
-
-  return true;
+  score = mismatch_score( support_string.substr( support_string.length() - cmp_len), contig_ref.substr( contig_ref.length() - cmp_len ) );
+  
+  return score;
 }

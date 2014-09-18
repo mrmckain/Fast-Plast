@@ -26,17 +26,12 @@ class Contig{
     string contig_id;
     int first_read; // indicates the postition in contig where the first matching read begins    
     int min_cov;
-    int bp_added_fr;
-    int bp_added_rr;
     double cov;
+    bool doub_cov;
 
   public:
-    Contig( string str, string id, double cov, int min_cov, int init_added_fr, int init_added_rr );
-    
-    Contig( string str, string id, double cov, int min_cov, int bp_added_init );
-    
     Contig( string str, string id, double cov, int min_cov );
-
+    
     Contig( string str, string id );
 
     // adds a read to the read list
@@ -64,18 +59,6 @@ class Contig{
     // return cov
     double get_cov();
 
-    // returns bp_added_fr
-    int get_bp_added_fr();
-
-    // returns bp_added_rr
-    int get_bp_added_rr();
-
-    // sets bp_added values to val
-    void set_bp_added( int val );
-
-    // resets bp_added variables to 0
-    int reset_bp_added();
-    
     // clear matchlist to make room for new matches
     void clear_matches();
 
@@ -84,9 +67,6 @@ class Contig{
 
     // returns value associated with index of ATCG[] or -1 if not a member of ATCG
     int get_ATCG_value( int ATCG_char );
-
-    // checks if string is a homopolymer
-    bool homopolymer_check( string seq );
 
     // determines where the read passed matches the contig if at all for off the front matches
     void match_contig_fr();
@@ -115,8 +95,12 @@ class Contig{
     // checks the coverage of matches at the given positions, returns the coverage
     long check_cov( long pos );
 
-    // contig_fusion: Attempt to support fusion in case of possibly poorly constructed end
-    bool check_fusion_support( string contig_f, int pos, bool back );
+    // set doub_cov var
+    void set_doub_cov( bool doub_cov );
+
+    // contig_fusion: Attempt to support fusion in case of possibly poorly constructed end.. returns new score from section in question
+    //    ::> contig object is the second while contig_ref is the first and the extension is being made off the front of the object
+    int check_fusion_support( string contig_ref );
 };
 //////////////////////
 // End Contig Class //
