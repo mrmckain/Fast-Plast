@@ -36,10 +36,6 @@ int max_sort_char;
 int min_cov_init;
 int min_overlap;
 int max_threads;
-int trim_length;
-int tip_length;
-int end_depth;
-int tip_depth;
 int initial_trim;
 int max_missed;
 bool test_run;
@@ -441,10 +437,6 @@ void Process::logfile_init(){
   log_fs << "max_sort_char: " << max_sort_char << endl;
   log_fs << "min_cov_init: " << min_cov_init << endl;
   log_fs << "min_overlap: " << min_overlap << endl;
-  log_fs << "trim_length: " << trim_length << endl;
-  log_fs << "tip_length: " << tip_length << endl;
-  log_fs << "end_depth: " << end_depth << endl;
-  log_fs << "tip_depth: " << tip_depth << endl;
   log_fs << "initial_trim: " << initial_trim << endl;
   log_fs << "max_missed: " << max_missed << endl;
   log_fs << "mismatch_threshold: " << mismatch_threshold << endl;
@@ -602,7 +594,7 @@ void Process::clean_matches( vector<Mismatch> &match_list ){
 // create fused contig string
 string Process::build_fusion_string( string contig_a, string contig_b, int overlap ){
   string fused( contig_a.substr( 0, contig_a.length() - (overlap/2) ) );
-  fused.append( contig_b.substr( overlap/2 ) );
+  fused.append( contig_b.substr( overlap/2 + overlap%2 ) );
 
   return fused;
 }

@@ -48,7 +48,6 @@ using namespace std;
 // TASK:: Exact matching in the contig_fusion_support() may be too conservative
 // TASK:: Review check_cov() and use a coverage that incorporates only the matching bp at that position
 // TASK:: Add algorithm to check reads against poorly matching ends
-// TASK:: maybe move end_depth and tip_depth back to process
 // TASK:: make global variables and options for the variables that need it
 // TASK:: Change names of any functions that no longer title their function
 // TASK:: Write up documentation explaining each option, its purpose, and why the default is set the way it is
@@ -86,11 +85,8 @@ int main( int argc, char** argv ){
   max_sort_char = 4;
   min_cov_init = 5;
   min_overlap = 20;
-  max_threads = 6;
-  trim_length = 30;
-  tip_length = 10;
-  end_depth = 100;
-  initial_trim = 100;
+  max_threads = 4;
+  initial_trim = 20;
   max_missed = 5;
   mismatch_threshold = 0.1;
   test_run = false;
@@ -135,14 +131,6 @@ int main( int argc, char** argv ){
       case 't':
         max_threads = atoi(optarg);
         break;
-      // trim_length option
-      case 'a':
-        trim_length = atoi(optarg);
-        break;
-      // tip_length option
-      case 'b':
-        tip_length = atoi(optarg);
-        break;
       // initial_trim option
       case 'd':
         initial_trim = atoi(optarg);
@@ -163,7 +151,13 @@ int main( int argc, char** argv ){
         break;
       // readfile option
       case 'r':
-        process.readsfiles = optarg;
+        optind--;
+        // loop through each file
+        while ( optind < argc && argv[optind][0] != '-' ) { 
+          process.readsfiles.append( "," );
+          process.readsfiles.append( argv[optind] );
+          optind++;
+        }   
         break;
       // contig file option
       case 'c':
@@ -205,7 +199,6 @@ int main( int argc, char** argv ){
     optind++;
   }
   
-  tip_depth = trim_length + tip_length;
   /////////////////
   // End Options //
   /////////////////
