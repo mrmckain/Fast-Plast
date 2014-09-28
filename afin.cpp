@@ -1,28 +1,4 @@
 // $Author: benine $
-// $Date: 2014/04/18 19:09:09 $
-// $Log: afin.cpp,v $
-// Revision 1.4  2014/04/18 19:09:09  benine
-// Cleaned up some and found jesus
-//
-// Revision 1.3  2014/04/15 01:15:40  benine
-// Process class added
-// Cleaned up processing
-// Next step is add functionality for testing various segments of the contig being processed at the time
-//
-// Revision 1.2  2014/04/09 23:31:14  benine
-// Process is built but throws compile errors due to nested classes attempting to access members of parent class
-// Reorganizing classes now
-//
-// Revision 1.1  2014/04/09 23:24:43  benine
-// Initial revision
-//
-// Revision 1.2  2014/04/02 02:06:11  benine
-// Cleaned up some of the testing bits and added some more comments
-//
-// Revision 1.1  2014/04/01 17:23:50  benine
-// Initial revision
-//
-// $Header: /home/benine/code/git/bb_afin/RCS/afin.cpp,v 1.4 2014/04/18 19:09:09 benine Exp benine $
 //
 // Coded and compiled using c++11 standard
 
@@ -42,32 +18,24 @@
 
 using namespace std;
 
-// TASK:: Allow spaces between reads so wildcards can be used for input
+// TASK:: create installer with ability to test for presence of zlib? and/or install zlib
+//          give installer capability to install to default directory or accept input directory to install executable to.. or just leave it in the base directory of the code
+// TASK:: add signal handling
+// TASK:: add support for gzipped files
+// TASK:: give option to suppress output to screen
+// TASK:: Review what goes into the logfile vs what gets printed to the screen
 // TASK:: Look into whether N's and misses should be counted together? Or how they should relate to each other
-// TASK:: Add consideration for N's to contig extension similar to contig_fusion_support()
 // TASK:: Exact matching in the contig_fusion_support() may be too conservative
 // TASK:: Review check_cov() and use a coverage that incorporates only the matching bp at that position
-// TASK:: Add algorithm to check reads against poorly matching ends
 // TASK:: make global variables and options for the variables that need it
 // TASK:: Change names of any functions that no longer title their function
 // TASK:: Write up documentation explaining each option, its purpose, and why the default is set the way it is
-// TASK:: switch loop variables so that the most outer for..loop uses i as its iterator and then j then k.....
 // TASK:: Check limits of readlist size and other limits at all points of the program
-// TASK:: Discuss calculation for cov_avg and number of times to add contig to contigs_2x.. Determine the best way to know how many times a contig is duplicated within the genome.. Or should this be genome specific? Not portable this way
 // TASK:: Clean up functions, break long functions into smaller ones and eliminate unused functions
-// TASK:: expand Process::print_to_outfile() to include contigs_fused vector
-// TASK:: develop Process::print_to_logfile( string )
 // TASK:: Remove using line from each file and add std:: where necessary
-// TASK:: break Contig::create_extension() into multiple files 
-// TASK:: test multiple input files
 //
 // TASK:: Throws out_of_range error when min_overlap < 4.... ? Not that it should ever be that low
 //
-// TASK:: align contigs? Remove mismatched bp's at the end of contigs?
-// TASK:: add contigs together.. now do it better
-// TASK:: make considerations for splits in possibility (eg IR boundaries, RPL23 gene copy)
-//
-// TASK:: output information about where contigs are combined and where contigs have had two or more options due to duplicate regions
 // TASK:: add long options
 // TASK:: Add processing for IUPAC DNA ambiguity codes
 // TASK:: Add processing for differences in reads( ie, create new contig objects for differing sets of matches, add method for splitting matchlist between two new contig objects ), determine which contig is correct
@@ -161,7 +129,13 @@ int main( int argc, char** argv ){
         break;
       // contig file option
       case 'c':
-        process.contigsfiles = optarg;
+        optind--;
+        // loop through each file
+        while ( optind < argc && argv[optind][0] != '-' ) { 
+          process.contigsfiles.append( "," );
+          process.contigsfiles.append( argv[optind] );
+          optind++;
+        }   
         break;
       // test_run option
       case 'z':
