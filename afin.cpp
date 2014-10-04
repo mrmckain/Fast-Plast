@@ -40,6 +40,7 @@ using namespace std;
 // TASK:: Add processing for IUPAC DNA ambiguity codes
 // TASK:: Add processing for differences in reads( ie, create new contig objects for differing sets of matches, add method for splitting matchlist between two new contig objects ), determine which contig is correct
 
+
 /////////////////////////////////////////////////////////////////////////////////\
 // BEGIN MAIN FUNCTION ///////////////////////////////////////////////////////////>
 /////////////////////////////////////////////////////////////////////////////////
