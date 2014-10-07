@@ -3,7 +3,7 @@
 #ifndef AFIN_UTIL_H
 #define AFIN_UTIL_H
 
-#include "queue.tcc"
+#include "queue.cpp"
 #include "contig.hpp"
 
 using namespace std;

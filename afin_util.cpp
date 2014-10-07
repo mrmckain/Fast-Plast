@@ -4,12 +4,12 @@
 #include "afin_util.hpp"
 #include "process.hpp"
 #include "contig.hpp"
-#include "queue.tcc"
+#include "queue.cpp"
 #include "print_time.hpp"
 
 // Consume function which will act as the driver for an individual thread
 void thread_worker(vector<Contig>& contigs, Queue<int>& q, unsigned int id) {
-  for (int i = 0;; ++i) {
+  for (;;) {
     auto item = q.pop();
     if( item == -1 ){
       break;

@@ -18,6 +18,8 @@
 
 using namespace std;
 
+// TASK:: change method of finding 2x coverage region to being more active.. use the read matching percentages.. when there's a 50/50 split, don't extenda
+// TASK:: make sure that 2x cov contig ends retain this characterization when fused to other contigs
 // TASK:: create installer with ability to test for presence of zlib? and/or install zlib
 //          give installer capability to install to default directory or accept input directory to install executable to.. or just leave it in the base directory of the code
 // TASK:: add signal handling
@@ -59,7 +61,9 @@ int main( int argc, char** argv ){
   max_missed = 5;
   mismatch_threshold = 0.1;
   test_run = false;
+
   int c;
+  bool quit_flag = false;
   Process process;
   
   // prevent output to stderr if erroneous option is found
@@ -123,7 +127,9 @@ int main( int argc, char** argv ){
         optind--;
         // loop through each file
         while ( optind < argc && argv[optind][0] != '-' ) { 
-          process.readsfiles.append( "," );
+          if( process.readsfiles != "" ){
+            process.readsfiles.append( "," );
+          }
           process.readsfiles.append( argv[optind] );
           optind++;
         }   
@@ -133,7 +139,9 @@ int main( int argc, char** argv ){
         optind--;
         // loop through each file
         while ( optind < argc && argv[optind][0] != '-' ) { 
-          process.contigsfiles.append( "," );
+          if( process.contigsfiles != "" ){
+            process.contigsfiles.append( "," );
+          }
           process.contigsfiles.append( argv[optind] );
           optind++;
         }   
@@ -169,14 +177,30 @@ int main( int argc, char** argv ){
     }
   }
   
-  while ( optind < argc ) {
-    cout << argv[optind] << endl;
-    optind++;
-  }
-  
   /////////////////
   // End Options //
   /////////////////
+
+  //////////////////
+  // Input Errors //
+  //////////////////
+  if( process.contigsfiles == "" ){
+    fprintf( stderr, "%s: Error: contigs_file(s) must be provided.\n", argv[0] );
+    quit_flag = true;
+  }
+
+  if( process.readsfiles == "" ){
+    fprintf( stderr, "%s: Error: reads_file(s) must be provided.\n", argv[0] );
+    quit_flag = true;
+  }
+
+  if( quit_flag ){
+    exit(1);
+  }
+
+  ////////////////
+  // End Errors //
+  ////////////////
 
   
   ///////////////////////
@@ -186,19 +210,7 @@ int main( int argc, char** argv ){
   // start run
   process.start_run();
 
-  int length[process.contigs.size()];
-  for( int i=0; i<process.contigs.size(); i++ ){
-    length[i] = process.get_contig(i).length();
-  }
-
-  // print out each contig and the number of bp added
-  for( int i=0; i<process.contigs.size(); i++ ){
-    cout << "Contig[" << i << "]: " << process.get_contig(i) << endl;
-    cout << "\tbp added: " << process.get_contig(i).length() - length[i] << endl;
-  }
   
-  cout << "exit time: ";
-  print_time();
 
   process.print_to_outfile();
   

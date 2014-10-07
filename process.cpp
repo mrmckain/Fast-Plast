@@ -21,7 +21,6 @@
 #include "contig.hpp"
 #include "process.hpp"
 #include "afin_util.hpp"
-#include "queue.tcc"
 #include "mismatch.hpp"
 
 using namespace std;
@@ -74,6 +73,8 @@ void merge_sort( Iter first, Iter last, Order order ){
 // Process constructor
 Process::Process(){
   outfile = "afin_out";
+  readsfiles = "";
+  contigsfiles = "";
 }
 
 // uses a mergesort to sort the read list based on the first max_sort_char characters of each read
@@ -409,6 +410,7 @@ void Process::print_to_outfile(){
 // return a string of the current time in the program
 string Process::get_time(){
   string curr_time = "";
+  char buffer[100];
 
   int t_now = difftime( time(0), timer );   // get time now
   
@@ -418,8 +420,10 @@ string Process::get_time(){
   int t_min = t_now / 60;
   t_now = t_now % 60;
 
-  curr_time = to_string( t_hour ) + ":" + to_string( t_min ) + ":" + to_string( t_now ); 
-  
+  // format time in xxx:xx:xx
+  sprintf( buffer, "%d:%.2d:%.2d", t_hour, t_min, t_now);
+  curr_time = buffer;
+
   return curr_time;
 }
 
@@ -829,7 +833,7 @@ void Process::start_run(){
 // Manages run 
 void Process::run_manager(){
   // create thread array with max_thread entries
-  thread t[max_threads];
+  vector<thread> t;
   Queue<int> qu;
 
   // loop max search loops
@@ -838,7 +842,7 @@ void Process::run_manager(){
     // initialize threads
     for( int i=0; i<max_threads; i++ ){
       cout << "Thread" << i << endl;
-      t[i] = thread( thread_worker, ref(contigs), ref(qu), i );
+      t.push_back(thread( thread_worker, ref(contigs), ref(qu), i ));
     }
 
     cout << "contigs.size(): " << contigs.size() << " max_threads: " << max_threads << endl;
@@ -857,6 +861,9 @@ void Process::run_manager(){
     for( int i=0; i<max_threads; i++ ){
       t[i].join();
     }
+
+    // remove threads from vector
+    t.erase( t.begin(), t.begin()+max_threads );
 
     // removed for master branch until algorithm can be adjusted
     contig_fusion();
