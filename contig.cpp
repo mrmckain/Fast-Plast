@@ -37,7 +37,8 @@ Contig::Contig( string str, string id, double cov, int min_cov ) : cov(cov), min
   doub_cov = false;
 }
 
-Contig::Contig( string str, string id ) : cov(cov), contig(str), contig_id(id){
+Contig::Contig( string str, string id ) : contig(str), contig_id(id){
+  cov = 0;
   min_cov = min_cov_init;
   doub_cov = false;
 }   

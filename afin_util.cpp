@@ -4,7 +4,7 @@
 #include "afin_util.hpp"
 #include "process.hpp"
 #include "contig.hpp"
-#include "queue.cpp"
+#include "queue.tcc"
 #include "print_time.hpp"
 
 // Consume function which will act as the driver for an individual thread
