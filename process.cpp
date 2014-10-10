@@ -175,7 +175,9 @@ void Process::add_reads(){
           if( line[0] == '@' ){
             if( getline( read, line )){
               line_count++;
-              readlist.push_back( line );
+              if( !homopolymer_check( line ) ){
+                readlist.push_back( line );
+              }
               if( getline( read, line )){
                 line_count++;
                 if( line[0] == '+'){

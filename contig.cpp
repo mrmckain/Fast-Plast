@@ -152,7 +152,7 @@ void Contig::match_contig_fr(){
       if( get<0>(range) != 0 ){
         for( int j=get<0>(range)-1; j<get<1>(range); j++ ){
           // check if the current read matches the contig from this point
-          if( readlist[j].compare( 0, contig_sub_rc.length(), contig_sub_rc ) == 0 && !homopolymer_check( contig_sub_rc ) ){
+          if( readlist[j].compare( 0, contig_sub_rc.length(), contig_sub_rc ) ){
             string read_rc = revcomp( readlist[j] );
             push_match( read_rc, i-contig.length(), true );
           }
@@ -164,11 +164,11 @@ void Contig::match_contig_fr(){
         // check reverse complements
         for( int j=get<2>(range)-1; j<get<3>(range); j++ ){
           // check if the current read matches the contig from this point
-          string read_ = readlist[rc_reflist[j]];
-          string rc = revcomp( read_ );
+          string rc = readlist[rc_reflist[j]];
+          rc = revcomp( rc );
 
-          if( rc.compare( 0, contig_sub_rc.length(), contig_sub_rc ) == 0 && !homopolymer_check( contig_sub_rc ) ){
-            push_match( read_, i-contig.length() );
+          if( rc.compare( 0, contig_sub_rc.length(), contig_sub_rc ) == 0 ){
+            push_match( rc, i-contig.length() );
           }
         }
       }
@@ -188,7 +188,7 @@ void Contig::match_contig_rr(){
       if( get<0>(range) != 0 ){
         for( int j=get<0>(range)-1; j<get<1>(range); j++ ){
           // check if the current read matches the contig from this point
-          if( readlist[j].compare( 0, contig_sub.length(), contig_sub ) == 0 && !homopolymer_check( contig_sub ) ){
+          if( readlist[j].compare( 0, contig_sub.length(), contig_sub ) ){
             push_match( readlist[j], i );
           }
         }
@@ -202,7 +202,7 @@ void Contig::match_contig_rr(){
           string rc = readlist[rc_reflist[j]];
           rc = revcomp( rc );
 
-          if( rc.compare( 0, contig_sub.length(), contig_sub ) == 0 && !homopolymer_check( contig_sub ) ){
+          if( rc.compare( 0, contig_sub.length(), contig_sub ) == 0 ){
             push_match( rc, i, true );
           }
         }
@@ -389,7 +389,7 @@ string Contig::create_extension( int len, bool back ){
   // loop through bp's for initial pass to tally up missed nucleotides
   extension_bp_count( ATCG, start, pos_mult, len );
   
-  /////////////////////////////////////////////
+  ///////////////////////////////////////////
   // STEP 2: Mark Errant Reads For Removal //
   // loop through bp's to determine which reads, if any, should be eliminated from the matchlist
   // if nucleotide of read is < max for that position, count it against the read, otherwise don't count it
@@ -403,7 +403,7 @@ string Contig::create_extension( int len, bool back ){
     return "";
   }
 
-  ///////////////////////////////////
+  /////////////////////////////////
   // STEP 3: Remove Errant Reads //
   // loop through missed_bp list to eliminate any matches that have a missed level greater than the avg 
   extension_error_removal( missed_bp, missed_bp_avg );
@@ -430,20 +430,6 @@ void Contig::extend( bool back ){
   else{
     contig_sub_str = contig.substr( 0, contig_sub_len );
   }
-
-  // ensure end of contig is not an endless homopolymer
-  while( homopolymer_check( contig_sub_str ) ){
-    // get extension through create_extension
-    if( back ){
-      contig = contig.substr( 0, contig.length() - ( contig_sub_len / 2 ) );
-      contig_sub_str = contig.substr( contig.length() - ( contig_sub_len ) );
-    }
-    else{
-      contig = contig.substr( contig_sub_len / 2 );
-      contig_sub_str = contig.substr( 0, contig_sub_len );
-    }
-  }
-
 
   Contig contig_sub( contig_sub_str, "temp" );
   extension = contig_sub.create_extension( extend_len, back );

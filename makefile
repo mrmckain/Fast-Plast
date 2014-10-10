@@ -6,6 +6,9 @@ OBJS := afin.o contig.o print_time.o process.o read.o revcomp.o afin_util.o mism
 $(TARGET): $(OBJS)
 	$(CC) $(CPPFLAGS) -o $@ $(OBJS)
 
+test: $(OBJS)
+	$(CC) $(CPPFLAGS) -o $@ $(OBJS)
+
 %.o : %.cpp
 	$(CC) $(CPPFLAGS) -c $< -o $@ 
 

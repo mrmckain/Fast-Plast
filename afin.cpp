@@ -36,8 +36,6 @@ using namespace std;
 // TASK:: Clean up functions, break long functions into smaller ones and eliminate unused functions
 // TASK:: Remove using line from each file and add std:: where necessary
 //
-// TASK:: Throws out_of_range error when min_overlap < 4.... ? Not that it should ever be that low
-//
 // TASK:: add long options
 // TASK:: Add processing for IUPAC DNA ambiguity codes
 // TASK:: Add processing for differences in reads( ie, create new contig objects for differing sets of matches, add method for splitting matchlist between two new contig objects ), determine which contig is correct
@@ -191,6 +189,11 @@ int main( int argc, char** argv ){
 
   if( process.readsfiles == "" ){
     fprintf( stderr, "%s: Error: reads_file(s) must be provided.\n", argv[0] );
+    quit_flag = true;
+  }
+
+  if( min_overlap < max_sort_char ){
+    fprintf( stderr, "%s: Error: min_overlap must be >= max_sort_char.\n", argv[0] );
     quit_flag = true;
   }
 
