@@ -48,25 +48,19 @@ class Contig{
     // return contig_id
     string get_contig_id();
 
-    int getListSize();
+    int get_list_size();
 
-    string getRead_s( int i );
+    string get_read_s( int i );
 
-    int getStart( int i );
+    int get_start( int i );
 
-    Read getRead( int i );
+    Read get_read( int i );
 
     // return cov
     double get_cov();
 
     // clear matchlist to make room for new matches
     void clear_matches();
-
-    // finds the initial point at which the matches meet the min_cov requirement
-    int find_start();
-
-    // returns value associated with index of ATCG[] or -1 if not a member of ATCG
-    int get_ATCG_value( int ATCG_char );
 
     // determines where the read passed matches the contig if at all for off the front matches
     void match_contig_fr();
@@ -75,10 +69,10 @@ class Contig{
     void match_contig_rr();
     
     // first step of create_extension: determine bp count and max represented bp at each position
-    void extension_bp_count( vector<vector<int>> &ATCG, int start, int pos_mult, int &len );
+    void extension_bp_count( vector<vector<int>> &ATCG, int start, int pos_mult, int &len, bool back );
 
     // second step of the create_extension process: count missed bp's per read, or in other words, the bp's represented below the max for that position
-    void extension_missed_count( vector<vector<int>> &ATCG, vector<int> &missed_bp, int &missed_bp_tot, int start, int pos_mult, int len );
+    void extension_missed_count( vector<vector<int>> &ATCG, vector<int> &missed_bp, int &missed_bp_tot, int start, int pos_mult, int len, bool back );
 
     // third step in create_extension(): removal of reads that have errors over the threshold
     void extension_error_removal( vector<int> &missed_bp, int missed_bp_avg );
@@ -93,7 +87,7 @@ class Contig{
     void extend( bool back );
 
     // checks the coverage of matches at the given positions, returns the coverage
-    long check_cov( long pos );
+    long check_cov( long pos, bool back );
 
     // set doub_cov var
     void set_doub_cov( bool doub_cov );

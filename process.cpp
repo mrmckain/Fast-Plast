@@ -743,18 +743,22 @@ void Process::contig_fusion(){
     string contig_j = contigs[index_j].get_contig();
     string fused_id("");
     string fused("");
+    string rev_i("");
+    string rev_j("");
 
     // find the reverse compliment of the contigs where necessary
     if( match_list[i].get_end_i() == 0 ){
       contig_i = revcomp( contig_i );
+      rev_i = "_r";
     }
     
     if( match_list[i].get_end_j() == 1 ){
       contig_j = revcomp( contig_j );
+      rev_j = "_r";
     }
 
     contig_fusion_log( match_list[i] );
-    fused_id = get_fused_id( contigs[index_i].get_contig_id(), contigs[index_j].get_contig_id() );
+    fused_id = get_fused_id( contigs[index_i].get_contig_id()+rev_i, contigs[index_j].get_contig_id()+rev_j );
     fused_id = "fused(" + fused_id + ")";
  
     // push each index onto the remove vector

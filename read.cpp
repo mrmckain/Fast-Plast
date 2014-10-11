@@ -28,17 +28,28 @@ Read::Read( string& read, int match ){
 }
 
 // returns character at pos where pos is the nth postion of the match
-char Read::getPos( int pos ){
-  if( pos-start >=0 && pos-start < read.length() ){
-    return read[ pos - start ];
+char Read::get_pos( int pos, bool back ){
+  if( back ){
+    int read_pos = pos - start;
+    if( read_pos >=0 && read_pos < read.length() ){
+      return read[ read_pos ];
+    }
   }
+  else{
+    int len = read.length();
+    int read_pos = len - start + pos;
+    if( read_pos >= 0 && read_pos < len ){
+      return read[ read_pos ];
+    }
+  }
+
   return -1; 
 }
 
-int Read::getStart(){
+int Read::get_start(){
   return start;
 }
 
-string Read::getRead(){
+string Read::get_read(){
   return read;
 }

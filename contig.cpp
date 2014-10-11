@@ -66,19 +66,19 @@ string Contig::get_contig_id(){
   return contig_id;
 }
 
-int Contig::getListSize(){
+int Contig::get_list_size(){
   return matchlist.size();
 }
 
-string Contig::getRead_s( int i ){
-  return matchlist[i].getRead();
+string Contig::get_read_s( int i ){
+  return matchlist[i].get_read();
 }
 
-int Contig::getStart( int i ){
-  return matchlist[i].getStart();
+int Contig::get_start( int i ){
+  return matchlist[i].get_start();
 }
 
-Read Contig::getRead( int i ){
+Read Contig::get_read( int i ){
   return matchlist[i];
 }
 
@@ -90,53 +90,6 @@ double Contig::get_cov(){
 // clear matchlist to make room for new matches
 void Contig::clear_matches(){
   matchlist.clear();
-}
-
-// finds the initial point at which the matches meet the min_cov requirement
-int Contig::find_start(){
-  long int cov;
-  int next_char;
-  first_read = contig.length();
-  
-  // Find the position of the first matching read on the contig
-  for( int i=0; i<matchlist.size(); i++ ){
-    if( -getRead(i).getStart() < first_read ){
-      first_read = -getRead(i).getStart();
-    }
-  }
-
-  // process each position checking coverage of the matching reads
-  for( int j=first_read; j<contig.length(); j++ ){
-    cov = 0;
-    
-    // get coverage at position j
-    cov = check_cov( j );
-    
-    // if coverage is at the minimum level, return the current position
-    if( cov >= min_cov ){
-      return( j );
-    }
-  }
-  
-  return(contig.length() + 1);
-}
-
-// returns value associated with index of ATCG[] or -1 if not a member of ATCG
-int Contig::get_ATCG_value( int ATCG_char ){
-  if ( ATCG_char == 'A' ) {
-    return 0;
-  }
-  else if ( ATCG_char == 'T' ) {
-    return 1;
-  }
-  else if ( ATCG_char == 'C' ) {
-    return 2;
-  }
-  else if ( ATCG_char == 'G' ) {
-    return 3;
-  }
-
-  return -1;
 }
 
 // determines where the read passed matches the contig if at all for off the front matches
@@ -152,9 +105,9 @@ void Contig::match_contig_fr(){
       if( get<0>(range) != 0 ){
         for( int j=get<0>(range)-1; j<get<1>(range); j++ ){
           // check if the current read matches the contig from this point
-          if( readlist[j].compare( 0, contig_sub_rc.length(), contig_sub_rc ) ){
+          if( readlist[j].compare( 0, contig_sub_rc.length(), contig_sub_rc ) == 0 ){
             string read_rc = revcomp( readlist[j] );
-            push_match( read_rc, i-contig.length(), true );
+            push_match( read_rc, i, true );
           }
         }
       }
@@ -168,7 +121,7 @@ void Contig::match_contig_fr(){
           rc = revcomp( rc );
 
           if( rc.compare( 0, contig_sub_rc.length(), contig_sub_rc ) == 0 ){
-            push_match( rc, i-contig.length() );
+            push_match( rc, i );
           }
         }
       }
@@ -188,7 +141,7 @@ void Contig::match_contig_rr(){
       if( get<0>(range) != 0 ){
         for( int j=get<0>(range)-1; j<get<1>(range); j++ ){
           // check if the current read matches the contig from this point
-          if( readlist[j].compare( 0, contig_sub.length(), contig_sub ) ){
+          if( readlist[j].compare( 0, contig_sub.length(), contig_sub ) == 0 ){
             push_match( readlist[j], i );
           }
         }
@@ -212,14 +165,30 @@ void Contig::match_contig_rr(){
 }
 
 // first step of create_extension: determine bp count and max represented bp at each position
-void Contig::extension_bp_count( vector<vector<int>> &ATCG, int start, int pos_mult, int &len ){
+void Contig::extension_bp_count( vector<vector<int>> &ATCG, int start, int pos_mult, int &len, bool back ){
+  cout << contig << endl;
+  cout << "extension_bp_count start: ";
+  cout << start;
+  cout << " pos_mult: " << pos_mult;
+  cout << " len: ";
+  cout << len;
+  cout << " matches: ";
+  cout << matchlist.size() << endl;
+
+  for( int i=0; i<matchlist.size(); i++ ){
+    for( int j=-5; j<20; j++ ){
+      cout << " " << matchlist[i].get_pos( start + (pos_mult*j), back );
+    }
+    cout << endl;
+  }
+
   for( int i=0; i<len; i++ ){
     // initialize temporary vector 
     vector<int> ATCG_curr = { 0,0,0,0,0 };
     
     // loop through matches to get count of each nucleotide present at the current position
     for( int j=0; j<matchlist.size(); j++ ){
-      int next_char = matchlist[j].getPos( start+(pos_mult*i) );
+      int next_char = matchlist[j].get_pos( start+(pos_mult*i), back );
 
       if ( next_char == 'A' ) {
         ATCG_curr[0]++;
@@ -254,10 +223,10 @@ void Contig::extension_bp_count( vector<vector<int>> &ATCG, int start, int pos_m
 }
 
 // second step of the create_extension process: count missed bp's per read, or in other words, the bp's represented below the max for that position
-void Contig::extension_missed_count( vector<vector<int>> &ATCG, vector<int> &missed_bp, int &missed_bp_tot, int start, int pos_mult, int len ){
+void Contig::extension_missed_count( vector<vector<int>> &ATCG, vector<int> &missed_bp, int &missed_bp_tot, int start, int pos_mult, int len, bool back ){
   for( int i=0; i<len; i++ ){
     for( int j=0; j<matchlist.size(); j++ ){
-      int next_char = matchlist[j].getPos( start+(pos_mult*i));
+      int next_char = matchlist[j].get_pos( start+(pos_mult*i), back );
       switch( next_char ){
         case 'A':
           if( ATCG[i][0] < ATCG[i][4] ){
@@ -306,6 +275,19 @@ string Contig::extension_build_string( int start, int pos_mult, int len, bool ba
   string ATCGstr( "ATCG" );
   string extension = "";
 
+  cout << "extension_build_string start: ";
+  cout << start << " pos_mult: "; 
+  cout << pos_mult << " len: "; 
+  cout << len << " matches: ";
+  cout << matchlist.size() << endl;
+
+  for( int i=0; i<matchlist.size(); i++ ){
+    for( int j=-5; j<21; j++ ){
+      cout << " " << matchlist[i].get_pos( start + (pos_mult*j), back );
+    }
+    cout << endl;
+  }
+
   // loop len times processing 1 basepair at a time
   for( int i=0; i<len; i++ ){
     vector<int> ATCG_curr = { 0,0,0,0 };
@@ -313,12 +295,12 @@ string Contig::extension_build_string( int start, int pos_mult, int len, bool ba
     int avg = 0;
     
     // check coverage at current position
-    if( check_cov( start+(pos_mult*i) ) < min_cov ){
+    if( check_cov( start+(pos_mult*i), back ) < min_cov ){
       break;
     }
     
     for( int j=0; j<matchlist.size(); j++ ){
-      int next_char = matchlist[j].getPos( start+(pos_mult*i) );
+      int next_char = matchlist[j].get_pos( start+(pos_mult*i), back );
 
       if ( next_char == 'A' ) {
         ATCG_curr[0]++;
@@ -387,13 +369,13 @@ string Contig::create_extension( int len, bool back ){
   /////////////////////////////////////
   // STEP 1: First Pass Over Matches //
   // loop through bp's for initial pass to tally up missed nucleotides
-  extension_bp_count( ATCG, start, pos_mult, len );
+  extension_bp_count( ATCG, start, pos_mult, len, back );
   
   ///////////////////////////////////////////
   // STEP 2: Mark Errant Reads For Removal //
   // loop through bp's to determine which reads, if any, should be eliminated from the matchlist
   // if nucleotide of read is < max for that position, count it against the read, otherwise don't count it
-  extension_missed_count( ATCG, missed_bp, missed_bp_tot, start, pos_mult, len );
+  extension_missed_count( ATCG, missed_bp, missed_bp_tot, start, pos_mult, len, back );
 
   if( matchlist.size() != 0 ){
     // calculate avg missed_bp's
@@ -448,11 +430,11 @@ void Contig::extend( bool back ){
 }
 
 // checks the coverage of matches at the given positions, returns the coverage
-long Contig::check_cov( long pos ){
+long Contig::check_cov( long pos, bool back ){
   long cov = 0;
 
   for( long i=0; i<matchlist.size(); i++ ){
-    if( matchlist[i].getPos( pos ) != -1 ){
+    if( matchlist[i].get_pos( pos, back ) != -1 ){
       cov++;
     }
   }
@@ -495,7 +477,7 @@ int Contig::check_fusion_support( string contig_ref ){
   for( int i=0; i<contig_ref.length(); i++ ){
     int next_char_ref = contig_ref[pos-i];
     for( int j=0; j<matchlist.size(); j++ ){
-      int next_char = matchlist[j].getPos( start-i );
+      int next_char = matchlist[j].get_pos( start-i, false );
       if( next_char == 'N' ){
         ambiguous_bp[j]++;
       }

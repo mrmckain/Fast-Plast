@@ -18,6 +18,9 @@
 
 using namespace std;
 
+// TASK:: check logic on check_fusion_support()
+// TASK:: test changing the create_read_range() to use the actual positions instead of +1
+// TASK:: remove find_start() function from contig as it seems to be unused.. clear out other unused functions
 // TASK:: change method of finding 2x coverage region to being more active.. use the read matching percentages.. when there's a 50/50 split, don't extenda
 // TASK:: make sure that 2x cov contig ends retain this characterization when fused to other contigs
 // TASK:: create installer with ability to test for presence of zlib? and/or install zlib

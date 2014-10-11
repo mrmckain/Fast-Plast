@@ -30,11 +30,11 @@ class Read{
     Read( string& read, int match );
     
     // returns character at pos where pos is the nth postion of the match
-    char getPos( int pos );
+    char get_pos( int pos, bool back );
 
-    int getStart();
+    int get_start();
 
-    string getRead();
+    string get_read();
 };
 
 ////////////////////
