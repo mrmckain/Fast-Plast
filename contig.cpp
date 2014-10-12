@@ -15,7 +15,6 @@
 #include <stdexcept>
 #include "afin_util.hpp"
 #include "read.hpp"
-#include "print_time.hpp"
 #include "process.hpp"
 #include "contig.hpp"
 #include "revcomp.hpp"
@@ -166,22 +165,6 @@ void Contig::match_contig_rr(){
 
 // first step of create_extension: determine bp count and max represented bp at each position
 void Contig::extension_bp_count( vector<vector<int>> &ATCG, int start, int pos_mult, int &len, bool back ){
-  cout << contig << endl;
-  cout << "extension_bp_count start: ";
-  cout << start;
-  cout << " pos_mult: " << pos_mult;
-  cout << " len: ";
-  cout << len;
-  cout << " matches: ";
-  cout << matchlist.size() << endl;
-
-  for( int i=0; i<matchlist.size(); i++ ){
-    for( int j=-5; j<20; j++ ){
-      cout << " " << matchlist[i].get_pos( start + (pos_mult*j), back );
-    }
-    cout << endl;
-  }
-
   for( int i=0; i<len; i++ ){
     // initialize temporary vector 
     vector<int> ATCG_curr = { 0,0,0,0,0 };
@@ -274,19 +257,6 @@ void Contig::extension_error_removal( vector<int> &missed_bp, int missed_bp_avg 
 string Contig::extension_build_string( int start, int pos_mult, int len, bool back ){
   string ATCGstr( "ATCG" );
   string extension = "";
-
-  cout << "extension_build_string start: ";
-  cout << start << " pos_mult: "; 
-  cout << pos_mult << " len: "; 
-  cout << len << " matches: ";
-  cout << matchlist.size() << endl;
-
-  for( int i=0; i<matchlist.size(); i++ ){
-    for( int j=-5; j<21; j++ ){
-      cout << " " << matchlist[i].get_pos( start + (pos_mult*j), back );
-    }
-    cout << endl;
-  }
 
   // loop len times processing 1 basepair at a time
   for( int i=0; i<len; i++ ){
@@ -416,7 +386,6 @@ void Contig::extend( bool back ){
   Contig contig_sub( contig_sub_str, "temp" );
   extension = contig_sub.create_extension( extend_len, back );
   
-  //cout << "extension:" << extension << endl;
   if( extension.length() == 0 ){
     return;
   }

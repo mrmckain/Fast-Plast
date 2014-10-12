@@ -16,7 +16,7 @@
 #include <algorithm>
 #include <utility>
 #include <thread>
-#include "print_time.hpp"
+#include "log.hpp"
 #include "revcomp.hpp"
 #include "contig.hpp"
 #include "process.hpp"
@@ -38,6 +38,9 @@ int max_threads;
 int initial_trim;
 int max_missed;
 bool test_run;
+int screen_output;
+int log_output;
+int verbose;
 double mismatch_threshold;
 
 ////////////////////////////////////
@@ -153,12 +156,13 @@ void Process::add_reads(){
   string filename;
   string buffer("");
   string line("");
+  char log_buff[1000];
   int line_count = 0;
+
+  Log::Inst()->log_it( "Begin add_reads()" ); 
     
   while( getline( ss, filename, ',' )){
-    cout << "readfile: " << filename << endl;
-    cout << "add_reads time: ";
-    print_time();
+    Log::Inst()->log_it( "readfile: " + filename );
 
     // open read file
     ifstream read( filename );
@@ -186,23 +190,38 @@ void Process::add_reads(){
                     continue;
                   }
                   else{
+                    sprintf( log_buff, "Error reading fastq file. Line missing. Line: %d\n", line_count );
+                    Log::Inst()->log_it( log_buff );
                     fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
+                    break;
                   }
                 }
                 else{
+                  sprintf( log_buff, "Error reading fastq file. '+' expected at this line. Line: %d\n", line_count );
+                  Log::Inst()->log_it( log_buff );
                   fprintf( stderr, "Error reading fastq file. '+' expected at this line. Line: %d\n", line_count );
+                  break;
                 }
               }
               else{
+                sprintf( log_buff, "Error reading fastq file. Line missing. Line: %d\n", line_count );
+                Log::Inst()->log_it( log_buff );
                 fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
+                break;
               }
             }
             else{
+              sprintf( log_buff, "Error reading fastq file. Line missing. Line: %d\n", line_count );
+              Log::Inst()->log_it( log_buff );
               fprintf( stderr, "Error reading fastq file. Line missing. Line: %d\n", line_count );
+              break;
             }
           }
           else{  
+            sprintf( log_buff, "Error reading fastq file. '@' expected at the beginning of this line. Line: %d\n", line_count );
+            Log::Inst()->log_it( log_buff );
             fprintf( stderr, "Error reading fastq file. '@' expected at the beginning of this line. Line: %d\n", line_count );
+            break;
           }
         }
       }
@@ -213,7 +232,6 @@ void Process::add_reads(){
         // read in reads to vector from fasta file
         while( getline( read, line ) ){
           if( line[0] == '>' && buffer.length() != 0 ){
-            //cout << buffer << endl;
             if( !homopolymer_check( buffer ) ){
               readlist.push_back( buffer );
             }
@@ -227,13 +245,14 @@ void Process::add_reads(){
         }
       }
       else {
-        fprintf( stderr, "Error: Unexpected file type. Needs to be fasta or fastq file for input." );
+        Log::Inst()->log_it( "Error: Unexpected file type. Needs to be fasta or fastq file for input." );
+        fprintf( stderr, "Error: Unexpected file type. Needs to be fasta or fastq file for input.\n" );
+        break;
       }
     }
 
     // close read file
     read.close();
-    print_time();
   }
 
   // insert last line into readlist
@@ -241,6 +260,12 @@ void Process::add_reads(){
     if( !homopolymer_check( buffer ) ){
       readlist.push_back( buffer );
     }
+  }
+
+  if( readlist.size() == 0 ){
+    Log::Inst()->log_it( "Error: No reads found in files supplied" );
+    fprintf( stderr, "Error: No reads found in files supplied\n" );
+    exit(1);
   }
 }
 
@@ -298,9 +323,7 @@ void Process::parse_ids(){
     size_t pos = contig_id.find( "_", 5, 1 );
 
     if( pos != string::npos ){
-      cout << "contig_id premod: " << contig_id << endl;
       contig_id = contig_id.substr( 0, pos );
-      cout << "contig_id postmod: " << contig_id << endl;
     }
   }
 }
@@ -313,11 +336,11 @@ void Process::add_contigs(){
   string buffer("");
   string line("");
   string contig_id("");
-    
+  
+  Log::Inst()->log_it( "Begin add_contigs()" );
+
   while( getline( ss, filename, ',' )){
-    cout << "contigfile: " << filename << endl;
-    cout << "add_contigs time: ";
-    print_time();
+    Log::Inst()->log_it( "contigfile: " + filename );
   
     // open contig file
     ifstream cont( filename );
@@ -406,52 +429,27 @@ void Process::print_to_outfile(){
   }
 
   fusedout_fp.close();
-  close_log();
+  if( log_output || screen_output ){
+    Log::Inst()->close_log();
+  }
 } 
-
-// return a string of the current time in the program
-string Process::get_time(){
-  string curr_time = "";
-  char buffer[100];
-
-  int t_now = difftime( time(0), timer );   // get time now
-  
-  int t_hour = t_now / 3600;
-  t_now = t_now % 3600;
-
-  int t_min = t_now / 60;
-  t_now = t_now % 60;
-
-  // format time in xxx:xx:xx
-  sprintf( buffer, "%d:%.2d:%.2d", t_hour, t_min, t_now);
-  curr_time = buffer;
-
-  return curr_time;
-}
-
 
 // initalize logfile
 void Process::logfile_init(){
-  logfile = outfile + ".log";
-  log_fs.open( logfile, fstream::out | fstream::trunc );
+  Log::Inst()->open_log( outfile + ".log" );
 
   // output starting option values
-  log_fs << "OPTION VALUES" << endl;
-  log_fs << "contig_sub_len: " << contig_sub_len << endl;
-  log_fs << "extend_len: " << extend_len << endl;
-  log_fs << "max_search_loops: " << max_search_loops << endl;
-  log_fs << "max_sort_char: " << max_sort_char << endl;
-  log_fs << "min_cov_init: " << min_cov_init << endl;
-  log_fs << "min_overlap: " << min_overlap << endl;
-  log_fs << "initial_trim: " << initial_trim << endl;
-  log_fs << "max_missed: " << max_missed << endl;
-  log_fs << "mismatch_threshold: " << mismatch_threshold << endl;
-  log_fs << "max_threads: " << max_threads << endl << endl;
-}
-
-// prints notes to file as the program progresses
-void Process::print_to_logfile( string note ){
-  log_fs << get_time() << "\t" << note << endl;
+  Log::Inst()->log_it( "OPTION VALUES" );
+  Log::Inst()->log_it( "contig_sub_len: " + to_string(contig_sub_len) );
+  Log::Inst()->log_it( "extend_len: " + to_string(extend_len) );
+  Log::Inst()->log_it( "max_search_loops: " + to_string(max_search_loops) );
+  Log::Inst()->log_it( "max_sort_char: " + to_string(max_sort_char) );
+  Log::Inst()->log_it( "min_cov_init: " + to_string(min_cov_init) );
+  Log::Inst()->log_it( "min_overlap: " + to_string(min_overlap) );
+  Log::Inst()->log_it( "initial_trim: " + to_string(initial_trim) );
+  Log::Inst()->log_it( "max_missed: " + to_string(max_missed) );
+  Log::Inst()->log_it( "mismatch_threshold: " + to_string(mismatch_threshold) );
+  Log::Inst()->log_it( "max_threads: " + to_string(max_threads) );
 }
 
 // creates id of fused contigs
@@ -470,24 +468,24 @@ string Process::get_fused_id( string contig1_id, string contig2_id ){
 // complete contig_fusion process
 void Process::contig_fusion_log( Mismatch fusion ){ 
   // print messages to logfile about current actions
-  print_to_logfile( "Contig fused: " );
-  print_to_logfile( "  Overlap length: " + to_string(fusion.get_length()) );
-  print_to_logfile( "  Mismatch_score: " + to_string(fusion.get_score()) );
-  print_to_logfile( "  Contig_i: " + contigs[fusion.get_index_i()].get_contig_id() );
-  print_to_logfile( "  Contig_j: " + contigs[fusion.get_index_j()].get_contig_id() );
-  print_to_logfile( "" );
+  Log::Inst()->log_it( "Contig fused: " );
+  Log::Inst()->log_it( "  Overlap length: " + to_string(fusion.get_length()) );
+  Log::Inst()->log_it( "  Mismatch_score: " + to_string(fusion.get_score()) );
+  Log::Inst()->log_it( "  Contig_i: " + contigs[fusion.get_index_i()].get_contig_id() );
+  Log::Inst()->log_it( "  Contig_j: " + contigs[fusion.get_index_j()].get_contig_id() );
+  Log::Inst()->log_it( "" );
 }
 
 // complete contig_fusion process
 void Process::commit_fusion( string fused, string fused_id, int index_i, int index_j ){ 
   contigs_fused.push_back( contigs[index_i] );
-  print_to_logfile( "Contig moved to fused file: " + contigs[index_i].get_contig_id() );
+  Log::Inst()->log_it( "Contig moved to fused file: " + contigs[index_i].get_contig_id() );
 
   contigs_fused.push_back( contigs[index_j] );
-  print_to_logfile( "Contig moved to fused file: " + contigs[index_j].get_contig_id() );
+  Log::Inst()->log_it( "Contig moved to fused file: " + contigs[index_j].get_contig_id() );
 
-  print_to_logfile( "Committing: " + fused_id );
-  print_to_logfile( "\t" + fused );
+  Log::Inst()->log_it( "Committing: " + fused_id );
+  Log::Inst()->log_it( "\t" + fused );
   contigs.push_back( Contig( fused, fused_id, 1, min_cov_init ));
 }
 
@@ -727,8 +725,8 @@ void Process::contig_fusion(){
   ////////////////////////
 
   for( int i=0; i<match_list.size(); i++ ){
-    print_to_logfile( "score: " + to_string( match_list[i].get_score() ) );
-    print_to_logfile( "i: " + to_string( match_list[i].get_index_i() ) +  " j: " + to_string( match_list[i].get_index_j() ) );
+    Log::Inst()->log_it( "score: " + to_string( match_list[i].get_score() ) );
+    Log::Inst()->log_it( "i: " + to_string( match_list[i].get_index_i() ) +  " j: " + to_string( match_list[i].get_index_j() ) );
   }
  
   //////////////////
@@ -804,34 +802,35 @@ void Process::contig_fusion(){
 
 // Initializes data structures and turns over control to run_manager()
 void Process::start_run(){
-  // initialize timer
-  time( &timer );
+  // initialize global Log object
+  Log::Inst();
 
-  logfile_init();
+  // initialize logfile if logging enabled
+  if( log_output || screen_output ){
+    logfile_init();
+  }
 
   // initialize reads and contigs
   add_reads();
   add_contigs();
 
-  cout << "sort_reads start: ";
-  print_time();
+  Log::Inst()->log_it( "Begin sort_reads()" );
   sort_reads();
-  cout << "sort_rc start: ";
-  print_time();
+  
+  Log::Inst()->log_it( "Begin sort_rc()" );
   sort_rc();
-  cout << "create_reads_range start: ";
-  print_time();
+  
+  Log::Inst()->log_it( "Begin create_reads_range()" );
   create_read_range();
-  cout << "End initialization phase: ";
-  print_time();
+  
+  Log::Inst()->log_it( "End initialization phase" );
   
   // make initial attempt to fuse contigs  
   // removed for master branch until algorithm can be adjusted
   contig_fusion();
   
-  if( test_run ){
+  if( test_run )
     print_contigs_to_file( outfile + ".fus", "mid" );
-  }
 
   run_manager();
 }
@@ -847,11 +846,12 @@ void Process::run_manager(){
       
     // initialize threads
     for( int i=0; i<max_threads; i++ ){
-      cout << "Thread" << i << endl;
       t.push_back(thread( thread_worker, ref(contigs), ref(qu), i ));
     }
 
-    cout << "contigs.size(): " << contigs.size() << " max_threads: " << max_threads << endl;
+    if( test_run ){
+      Log::Inst()->log_it( "contigs.size(): " + to_string(contigs.size()) + " max_threads: " + to_string(max_threads) );
+    }
 
     // push each thread onto queue
     for( int i=0; i<contigs.size(); i++ ){
@@ -878,13 +878,6 @@ void Process::run_manager(){
       print_contigs_to_file( outfile + ".fus" + to_string(j), "mid" );
     }
   }
-}
-
-// closes logfile
-void Process::close_log(){
-  log_fs << get_time() << "\tProcess terminated" << endl;
-
-  log_fs.close();
 }
 
 //////////////////////////////

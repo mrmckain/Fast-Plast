@@ -8,7 +8,6 @@
 
 #include <unordered_map>
 #include "contig.hpp"
-#include "fstream"
 #include "mismatch.hpp"
 
 using namespace std;
@@ -28,6 +27,9 @@ extern int max_threads;
 extern int initial_trim;
 extern int max_missed;
 extern bool test_run;
+extern int screen_output;
+extern int log_output;
+extern int verbose;
 extern double mismatch_threshold;
 
 /////////////////////////////////////////////\
@@ -38,11 +40,6 @@ extern double mismatch_threshold;
 // Process object, contains all classes, methods, data, and data references necessary for processing the contigs
 // There will be only one Process object needed per iteration of this program
 class Process{
-  private:
-    string logfile;
-    time_t timer;
-    fstream log_fs;
-
   public:
     vector<Contig> contigs;
     vector<Contig> contigs_fused;
@@ -99,7 +96,7 @@ class Process{
     void logfile_init();
 
     // prints notes to file as the program progresses
-    void print_to_logfile( string note );
+    static void print_to_logfile( string note );
 
     // creates id of fused contigs
     string get_fused_id( string contig1_id, string contig2_id );

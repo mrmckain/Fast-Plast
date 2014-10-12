@@ -10,17 +10,17 @@
 #include <vector>
 #include <unistd.h>
 #include <functional>
+#include <getopt.h>
 #include "contig.hpp"
-#include "print_time.hpp"
 #include "process.hpp"
 #include "read.hpp"
 #include "afin_util.hpp"
+#include "log.hpp"
 
 using namespace std;
 
 // TASK:: check logic on check_fusion_support()
 // TASK:: test changing the create_read_range() to use the actual positions instead of +1
-// TASK:: remove find_start() function from contig as it seems to be unused.. clear out other unused functions
 // TASK:: change method of finding 2x coverage region to being more active.. use the read matching percentages.. when there's a 50/50 split, don't extenda
 // TASK:: make sure that 2x cov contig ends retain this characterization when fused to other contigs
 // TASK:: create installer with ability to test for presence of zlib? and/or install zlib
@@ -39,7 +39,6 @@ using namespace std;
 // TASK:: Clean up functions, break long functions into smaller ones and eliminate unused functions
 // TASK:: Remove using line from each file and add std:: where necessary
 //
-// TASK:: add long options
 // TASK:: Add processing for IUPAC DNA ambiguity codes
 // TASK:: Add processing for differences in reads( ie, create new contig objects for differing sets of matches, add method for splitting matchlist between two new contig objects ), determine which contig is correct
 
@@ -53,15 +52,18 @@ int main( int argc, char** argv ){
   //////////////////////////////////
   max_search_loops = 10;
   contig_sub_len = 100;
-  extend_len = 80;
+  extend_len = 40;
   max_sort_char = 4;
-  min_cov_init = 5;
+  min_cov_init = 3;
   min_overlap = 20;
   max_threads = 4;
   initial_trim = 20;
   max_missed = 5;
   mismatch_threshold = 0.1;
   test_run = false;
+  screen_output = 1;
+  log_output = 1;
+  verbose = 1;
 
   int c;
   bool quit_flag = false;
@@ -69,9 +71,34 @@ int main( int argc, char** argv ){
   
   // prevent output to stderr if erroneous option is found
   opterr = 0;
+  
+  int option_index = 0;
 
+  static struct option long_options[] =
+  {
+    {"silent",  no_argument,  &screen_output, 0},
+    {"no_log",  no_argument,  &log_output,  0},
+    {"verbose",  no_argument,  &verbose,  0},
+    {"help",  no_argument,  0,  'h'},
+    {"contigfile",    required_argument,  0,  'c'},
+    {"readfile",      required_argument,  0,  'r'},
+    {"outfile",       required_argument,  0,  'o'},
+    {"sort_char",     required_argument,  0,  'm'},
+    {"sub_len",       required_argument,  0,  's'},
+    {"search_loops",  required_argument,  0,  'l'},
+    {"min_cov",       required_argument,  0,  'i'},
+    {"min_overlap",   required_argument,  0,  'p'},
+    {"max_threads",   required_argument,  0,  't'},
+    {"initial_trim",  required_argument,  0,  'd'},
+    {"max_missed",    required_argument,  0,  'e'},
+    {"mismatch",      required_argument,  0,  'g'},
+    {"extend_len",    required_argument,  0,  'x'},
+    {"test_run",      no_argument,  0,  'z'},
+    {0, 0, 0, 0}
+  };
+  
   // get all options that have been provided on the command line
-  while (( c = getopt (argc, argv, "hr:c:o:s:l:x:m:i:p:t:a:b:d:e:f:g:z" )) != -1 ) {
+  while (( c = getopt_long(argc, argv, "hr:c:o:s:l:x:m:i:p:t:d:e:g:z", long_options, &option_index )) != -1 ) {
     switch( c ) {
       case 'h':
         print_usage( argv[0] );
@@ -119,9 +146,8 @@ int main( int argc, char** argv ){
         break;
       // outputfile option
       case 'o':
-        cout << "output file: " << optarg << endl;
+        Log::Inst()->log_it( string("output file: ") + optarg );
         process.outfile = optarg;
-        print_time();
         break;
       // readfile option
       case 'r':
@@ -215,8 +241,6 @@ int main( int argc, char** argv ){
 
   // start run
   process.start_run();
-
-  
 
   process.print_to_outfile();
   
