@@ -55,30 +55,9 @@ string Contig::get_contig(){
   return contig;
 }
 
-// set contig_id
-void Contig::set_contig_id( string new_contig_id ){
-  contig_id = new_contig_id;
-}
-
 // return contig_id
 string Contig::get_contig_id(){
   return contig_id;
-}
-
-int Contig::get_list_size(){
-  return matchlist.size();
-}
-
-string Contig::get_read_s( int i ){
-  return matchlist[i].get_read();
-}
-
-int Contig::get_start( int i ){
-  return matchlist[i].get_start();
-}
-
-Read Contig::get_read( int i ){
-  return matchlist[i];
 }
 
 // return cov

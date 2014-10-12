@@ -63,7 +63,7 @@ int main( int argc, char** argv ){
   test_run = false;
   screen_output = 1;
   log_output = 1;
-  verbose = 1;
+  verbose = 0;
 
   int c;
   bool quit_flag = false;

@@ -42,19 +42,8 @@ class Contig{
     // return contig
     string get_contig();
 
-    // set contig_id
-    void set_contig_id( string new_contig_id );
-    
     // return contig_id
     string get_contig_id();
-
-    int get_list_size();
-
-    string get_read_s( int i );
-
-    int get_start( int i );
-
-    Read get_read( int i );
 
     // return cov
     double get_cov();

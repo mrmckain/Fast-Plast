@@ -642,21 +642,9 @@ void Process::process_removals( vector<int> remove_list ){
   }
 }
 
-
-// fuse contigs wherever possible
-void Process::contig_fusion(){
-  // mismatch scores variables 
-  // orientation is an integer 0-3 and corresponds as follows:
-  //    0:  i to j
-  //    1:  i to j_rev
-  //    2:  j to i
-  //    3:  j_rev to i
-  vector< Mismatch > match_list;
-  int id = 0;
-  
-  /////////////////////////
-  // GET MISMATCH SCORES //
-  /////////////////////////
+// compile list of best mismatch scores between contigs that meet the mismatch threshold
+vector<Mismatch> Process::get_mismatch_scores(){
+  vector<Mismatch> match_list;
 
   // loop through each contig to get the end of the contig
   for( int i=0; i<contigs.size(); i++ ){
@@ -709,30 +697,13 @@ void Process::contig_fusion(){
     }
   }
 
-  ////////////////
-  // END SCORES //
-  ////////////////
-  
-  ///////////////////////////////
-  // SORT AND CLEAN MATCH LIST //
-  ///////////////////////////////
+  return match_list;
+}
 
-  sort_matches( match_list );
-  clean_matches( match_list );
-
-  ////////////////////////
-  // END SORT AND CLEAN //
-  ////////////////////////
-
-  for( int i=0; i<match_list.size(); i++ ){
-    Log::Inst()->log_it( "score: " + to_string( match_list[i].get_score() ) );
-    Log::Inst()->log_it( "i: " + to_string( match_list[i].get_index_i() ) +  " j: " + to_string( match_list[i].get_index_j() ) );
-  }
- 
-  //////////////////
-  // FUSE CONTIGS //
-  //////////////////
+// process the compiled list of fusions
+vector<int> Process::process_fusions( vector<Mismatch> match_list ){
   vector<int> contig_remove_list;
+
   for( int i=0; i<match_list.size(); i++ ){
     // fuse contigs
     int index_i = match_list[i].get_index_i();
@@ -792,12 +763,33 @@ void Process::contig_fusion(){
     }
   }
 
+  return contig_remove_list;
+}
+
+// fuse contigs wherever possible
+void Process::contig_fusion(){
+  vector<Mismatch> match_list;
+  vector<int> contig_remove_list;
+  
+  // MISMATCH SCORES //
+  match_list = get_mismatch_scores();
+  
+  // SORT AND CLEAN MATCH LIST //
+  sort_matches( match_list );
+  clean_matches( match_list );
+
+  if( verbose ){
+    for( int i=0; i<match_list.size(); i++ ){
+      Log::Inst()->log_it( "score: " + to_string( match_list[i].get_score() ) );
+      Log::Inst()->log_it( "i: " + to_string( match_list[i].get_index_i() ) +  " j: " + to_string( match_list[i].get_index_j() ) );
+    }
+  }
+ 
+  // FUSE CONTIGS //
+  contig_remove_list = process_fusions( match_list );
+
   // remove fused contigs from the vector
   process_removals( contig_remove_list );
-
-  //////////////
-  // END FUSE //
-  //////////////
 }
 
 // Initializes data structures and turns over control to run_manager()
@@ -826,7 +818,6 @@ void Process::start_run(){
   Log::Inst()->log_it( "End initialization phase" );
   
   // make initial attempt to fuse contigs  
-  // removed for master branch until algorithm can be adjusted
   contig_fusion();
   
   if( test_run )

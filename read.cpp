@@ -45,11 +45,3 @@ char Read::get_pos( int pos, bool back ){
 
   return -1; 
 }
-
-int Read::get_start(){
-  return start;
-}
-
-string Read::get_read(){
-  return read;
-}

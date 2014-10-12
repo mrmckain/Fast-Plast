@@ -31,10 +31,6 @@ class Read{
     
     // returns character at pos where pos is the nth postion of the match
     char get_pos( int pos, bool back );
-
-    int get_start();
-
-    string get_read();
 };
 
 ////////////////////

@@ -128,6 +128,12 @@ class Process{
     // remove fused contigs from contigs list
     void process_removals( vector<int> remove_list );
 
+    // compile list of best mismatch scores between contigs that meet the mismatch threshold
+    vector<Mismatch> get_mismatch_scores();
+
+    // process the compiled list of fusions
+    vector<int> process_fusions( vector<Mismatch> match_list );
+
     // fuse contigs wherever possible
     void contig_fusion();
 
