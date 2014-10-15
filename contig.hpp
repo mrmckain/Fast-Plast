@@ -25,13 +25,10 @@ class Contig{
     string contig;
     string contig_id;
     int first_read; // indicates the postition in contig where the first matching read begins    
-    int min_cov;
     double cov;
     bool doub_cov;
 
   public:
-    Contig( string str, string id, double cov, int min_cov );
-    
     Contig( string str, string id );
 
     // adds a read to the read list
@@ -47,6 +44,9 @@ class Contig{
 
     // return cov
     double get_cov();
+
+    // set cov
+    void set_cov( int cov );
 
     // clear matchlist to make room for new matches
     void clear_matches();

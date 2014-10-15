@@ -21,7 +21,7 @@ extern int max_search_loops;
 extern int contig_sub_len;
 extern int extend_len;
 extern int max_sort_char;
-extern int min_cov_init;
+extern int min_cov;
 extern int min_overlap;
 extern int max_threads;
 extern int initial_trim;

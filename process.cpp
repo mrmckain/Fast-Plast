@@ -32,7 +32,7 @@ int max_search_loops;
 int contig_sub_len;
 int extend_len;
 int max_sort_char;
-int min_cov_init;
+int min_cov;
 int min_overlap;
 int max_threads;
 int initial_trim;
@@ -289,6 +289,7 @@ double Process::parse_cov( string contig_id ){
 // check coverage of each contig, calculate the average coverage, then remove into a separate data structure any contigs that have more than 2xAvg coverage
 void Process::contig_cov(){
   double cov_total = 0;
+  double cov = 0;
   int total_contigs = contigs.size();
  
   // protect against division by 0 and the end of the world
@@ -298,7 +299,8 @@ void Process::contig_cov(){
 
   for( int i=0; i<total_contigs; i++ ){
     // get contig id, parse out cov_##, add to the total of all cov values
-    double cov = contigs[i].get_cov();
+    cov = parse_cov( contigs[i].get_contig_id() );
+    contigs[i].set_cov( cov );
     cov_total += cov;
   }
 
@@ -307,7 +309,7 @@ void Process::contig_cov(){
   
   for( int i=0; i<total_contigs; i++ ){
     // get contig_id, parse out cov_## and compare this value to the avg
-    double cov = contigs[i].get_cov();
+    cov = contigs[i].get_cov();
 
     if( cov > cov_avg * 2.0 ){
       // set the value of doub_cov to false to indicate ignoring when extending contigs 
@@ -350,12 +352,12 @@ void Process::add_contigs(){
       if( line[0] == '>' && buffer.length() != 0 ){
         if( buffer.length() > 2*initial_trim + contig_sub_len ){
           buffer = buffer.substr( initial_trim, buffer.length() - 2*initial_trim );
-          contigs.push_back( Contig( buffer, contig_id, parse_cov( contig_id ), min_cov_init ));
+          contigs.push_back( Contig( buffer, contig_id ));
         }
         else if( buffer.length() > contig_sub_len ){
           int trim = (buffer.length() - contig_sub_len) / 2;
           buffer = buffer.substr( trim, buffer.length() - 2*trim );
-          contigs.push_back( Contig( buffer, contig_id, parse_cov( contig_id ), min_cov_init ));
+          contigs.push_back( Contig( buffer, contig_id ));
         }
 
         buffer = "";
@@ -376,7 +378,7 @@ void Process::add_contigs(){
 
   // insert last line into contigs list
   if( buffer.length() != 0 ){
-    contigs.push_back( Contig( buffer, contig_id, parse_cov( contig_id ), min_cov_init ) );
+    contigs.push_back( Contig( buffer, contig_id ) );
   }
 
   contig_cov();
@@ -444,7 +446,7 @@ void Process::logfile_init(){
   Log::Inst()->log_it( "extend_len: " + to_string(extend_len) );
   Log::Inst()->log_it( "max_search_loops: " + to_string(max_search_loops) );
   Log::Inst()->log_it( "max_sort_char: " + to_string(max_sort_char) );
-  Log::Inst()->log_it( "min_cov_init: " + to_string(min_cov_init) );
+  Log::Inst()->log_it( "min_cov: " + to_string(min_cov) );
   Log::Inst()->log_it( "min_overlap: " + to_string(min_overlap) );
   Log::Inst()->log_it( "initial_trim: " + to_string(initial_trim) );
   Log::Inst()->log_it( "max_missed: " + to_string(max_missed) );
@@ -486,7 +488,7 @@ void Process::commit_fusion( string fused, string fused_id, int index_i, int ind
 
   Log::Inst()->log_it( "Committing: " + fused_id );
   Log::Inst()->log_it( "\t" + fused );
-  contigs.push_back( Contig( fused, fused_id, 1, min_cov_init ));
+  contigs.push_back( Contig( fused, fused_id ));
 }
 
 // check overlap section for mismatches
@@ -794,9 +796,6 @@ void Process::contig_fusion(){
 
 // Initializes data structures and turns over control to run_manager()
 void Process::start_run(){
-  // initialize global Log object
-  Log::Inst();
-
   // initialize logfile if logging enabled
   if( log_output || screen_output ){
     logfile_init();

@@ -5,8 +5,6 @@
 
 #include "mismatch.hpp"
 
-using namespace std;
-
 // Mismatch Class Code
 Mismatch::Mismatch(){
   score = 1.0;

@@ -32,13 +32,8 @@ tuple<long,long,long,long> get_read_range( string read_seg ){
 }
 
 ////////// Contig FUNCTIONS ////////////
-Contig::Contig( string str, string id, double cov, int min_cov ) : cov(cov), min_cov(min_cov), contig(str), contig_id(id){
-  doub_cov = false;
-}
-
 Contig::Contig( string str, string id ) : contig(str), contig_id(id){
   cov = 0;
-  min_cov = min_cov_init;
   doub_cov = false;
 }   
 
@@ -63,6 +58,11 @@ string Contig::get_contig_id(){
 // return cov
 double Contig::get_cov(){
   return cov;
+}
+
+// set cov
+void Contig::set_cov( int cov ){
+  this->cov = cov;
 }
 
 // clear matchlist to make room for new matches
@@ -418,7 +418,6 @@ int Contig::check_fusion_support( string contig_ref ){
   vector<int> ambiguous_bp( matchlist.size(), 0 );
   int mismatch_tot = 0;
   int mismatch_avg = 0;
-  int cov = min_cov;
   int cmp_len = 0;
 
   // count mismatch's in each read match

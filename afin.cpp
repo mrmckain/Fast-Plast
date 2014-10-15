@@ -19,24 +19,18 @@
 
 using namespace std;
 
-// TASK:: check logic on check_fusion_support()
-// TASK:: test changing the create_read_range() to use the actual positions instead of +1
+// TASK:: remove unnecessary include statements
+// TASK:: Print info about extension section?
+// TASK:: Print fused_fasta file? or give option?
 // TASK:: change method of finding 2x coverage region to being more active.. use the read matching percentages.. when there's a 50/50 split, don't extenda
 // TASK:: make sure that 2x cov contig ends retain this characterization when fused to other contigs
 // TASK:: create installer with ability to test for presence of zlib? and/or install zlib
 //          give installer capability to install to default directory or accept input directory to install executable to.. or just leave it in the base directory of the code
 // TASK:: add signal handling
 // TASK:: add support for gzipped files
-// TASK:: give option to suppress output to screen
 // TASK:: Review what goes into the logfile vs what gets printed to the screen
-// TASK:: Look into whether N's and misses should be counted together? Or how they should relate to each other
-// TASK:: Exact matching in the contig_fusion_support() may be too conservative
-// TASK:: Review check_cov() and use a coverage that incorporates only the matching bp at that position
-// TASK:: make global variables and options for the variables that need it
 // TASK:: Change names of any functions that no longer title their function
 // TASK:: Write up documentation explaining each option, its purpose, and why the default is set the way it is
-// TASK:: Check limits of readlist size and other limits at all points of the program
-// TASK:: Clean up functions, break long functions into smaller ones and eliminate unused functions
 // TASK:: Remove using line from each file and add std:: where necessary
 //
 // TASK:: Add processing for IUPAC DNA ambiguity codes
@@ -54,7 +48,7 @@ int main( int argc, char** argv ){
   contig_sub_len = 100;
   extend_len = 40;
   max_sort_char = 4;
-  min_cov_init = 3;
+  min_cov = 3;
   min_overlap = 20;
   max_threads = 4;
   initial_trim = 20;
@@ -68,6 +62,9 @@ int main( int argc, char** argv ){
   int c;
   bool quit_flag = false;
   Process process;
+  
+  // initialize global Log object
+  Log::Inst();
   
   // prevent output to stderr if erroneous option is found
   opterr = 0;
@@ -120,9 +117,9 @@ int main( int argc, char** argv ){
       case 'l':
         max_search_loops = atoi(optarg);
         break;
-      // min_cov_init option
+      // min_cov option
       case 'i':
-        min_cov_init = atoi(optarg);
+        min_cov = atoi(optarg);
         break;
       // min_overlap option
       case 'p':
