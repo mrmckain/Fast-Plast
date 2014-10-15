@@ -4,6 +4,8 @@
 #ifndef GZIP_HPP
 #define GZIP_HPP
 
+#include <zlib.h>
+
 using namespace std;
 
 // abstract class to provide seemless use of getline() to access either plain text or gzip files

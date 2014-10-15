@@ -22,6 +22,7 @@
 #include "process.hpp"
 #include "afin_util.hpp"
 #include "mismatch.hpp"
+#include "gzip.hpp"
 
 using namespace std;
 
@@ -149,6 +150,8 @@ void Process::create_read_range(){
   }
 }
 
+//void Process::process_readfile( string filename )
+
 // put reads from readfile into readlist
 void Process::add_reads(){
   stringstream ss;
@@ -158,34 +161,37 @@ void Process::add_reads(){
   string line("");
   char log_buff[1000];
   int line_count = 0;
+  bool gzipped = false;
+  FileIO* read = NULL; 
 
-  Log::Inst()->log_it( "Begin add_reads()" ); 
+  Log::Inst()->log_it( "Begin add_reads()" );
     
   while( getline( ss, filename, ',' )){
     Log::Inst()->log_it( "readfile: " + filename );
 
-    // open read file
-    ifstream read( filename );
-   
-    // check what type of file it is
-    if( getline( read, line ) ){
-      if( line[0] == '@' ){
-        // return to beginning of file
-        read.seekg( 0, ios::beg );
+    if( filename.rfind( ".gz" ) == filename.length() - 3 ){
+      read = new Gzip( filename );
+    }
+    else{
+      read = new IO_Wrapper( filename );
+    }
 
+    // check what type of file it is
+    if( (line = read->getline()) != "" ){
+      if( line[0] == '@' ){
         // read in fastq reads
-        while( getline( read, line )){
+        do{
           line_count++;
           if( line[0] == '@' ){
-            if( getline( read, line )){
+            if( (line = read->getline()) != "" ){
               line_count++;
               if( !homopolymer_check( line ) ){
                 readlist.push_back( line );
               }
-              if( getline( read, line )){
+              if( ( line = read->getline()) != "" ){
                 line_count++;
                 if( line[0] == '+'){
-                  if( getline( read, line )){
+                  if( ( line = read->getline()) != "" ){
                     line_count++;
                     continue;
                   }
@@ -223,14 +229,11 @@ void Process::add_reads(){
             fprintf( stderr, "Error reading fastq file. '@' expected at the beginning of this line. Line: %d\n", line_count );
             break;
           }
-        }
+        } while( ( line = read->getline()) != "" );
       }
       else if( line[0] == '>' ){
-        // return to beginning of file
-        read.seekg( 0, ios::beg );
-        
         // read in reads to vector from fasta file
-        while( getline( read, line ) ){
+        do{
           if( line[0] == '>' && buffer.length() != 0 ){
             if( !homopolymer_check( buffer ) ){
               readlist.push_back( buffer );
@@ -242,7 +245,7 @@ void Process::add_reads(){
           else{
             buffer += line;
           }
-        }
+        } while( ( line = read->getline()) != "" );
       }
       else {
         Log::Inst()->log_it( "Error: Unexpected file type. Needs to be fasta or fastq file for input." );
@@ -250,9 +253,6 @@ void Process::add_reads(){
         break;
       }
     }
-
-    // close read file
-    read.close();
   }
 
   // insert last line into readlist
