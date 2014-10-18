@@ -1,6 +1,9 @@
 // gzip handling
 
+#include <iostream>
+#include <sstream>
 #include <string>
+#include <cstring>
 #include <zlib.h>
 #include "gzip.hpp"
 #include "log.hpp"
@@ -26,8 +29,9 @@ Gzip::Gzip( string filename ): BUFF_SIZE(16384), buffer(""), filename(filename){
   zs.zfree = Z_NULL;
   zs.opaque = Z_NULL;
   zs.avail_in = 0;
+  zs.avail_out = BUFF_SIZE;
   zs.next_in = Z_NULL;
-  status = inflateInit2(&zs, 16+MAX_WBITS);
+  status = inflateInit2(&zs, 32+MAX_WBITS);
 
   if (status != Z_OK)
     zerr();
@@ -70,9 +74,16 @@ void Gzip::fill_buffer(){
   unsigned char in[BUFF_SIZE];
   unsigned char out[BUFF_SIZE];
   int next_pos = 0;
+  int new_data = 0;
+
+  cout << "avail_out: " << zs.avail_out << endl;
+  cout << "avail_in: " << zs.avail_in << endl;
 
   // read in data from gzipd file
-  zs.avail_in = fread(in, 1, BUFF_SIZE, fp);
+  new_data = fread(in, 1, BUFF_SIZE-zs.avail_in, fp);
+  zs.avail_in += new_data;
+
+  cout << "ferror status: " << status << endl;
 
   // handle read errors
   if (ferror(fp)) {
@@ -84,16 +95,28 @@ void Gzip::fill_buffer(){
   // handle data error
   if (zs.avail_in == 0){
     status = Z_DATA_ERROR;
+    cout << "DATA_ERROR" << endl;
     return;
   }
 
+  if( new_data == zs.avail_in ){
+    memcpy( zs.next_in + zs.avail_in - new_data, &in, new_data );
+  }
+  else{
+    zs.avail_in += new_data;
+
+
+  cout << "predecompress status: " << status << endl;
+
   // prep z_stream members
-  zs.next_in = in;
   zs.avail_out = BUFF_SIZE;
   zs.next_out = out;
 
   // decompress data
   status = inflate(&zs, Z_NO_FLUSH);
+  cout << "decompress status: " << status << endl;
+  cout << "avail_out: " << zs.avail_out << endl;
+  cout << "avail_in: " << zs.avail_in << endl;
 
   // check for errors
   switch (status) {
@@ -102,11 +125,16 @@ void Gzip::fill_buffer(){
     case Z_DATA_ERROR:
     case Z_MEM_ERROR:
       (void)inflateEnd(&zs);
+      cout << "ERROR" << endl;
       return;
   }
+  
+  stringstream s;
+
+  s << out;
 
   // append data to buffer
-  buffer.append( (char*)out );
+  buffer.append( s.str() );
 }
 
 // return the next line in the gzip file
@@ -116,7 +144,9 @@ string Gzip::getline(){
 
   // check if buffer has a full line in it, if not, fill_buffer
   while((next_pos = buffer.find( '\n' )) == string::npos && status == Z_OK ){
+    cout << "fill_buffer()" << endl;
     fill_buffer();
+    cout << "status: " << status << endl;
   }
 
   // if last line in file, store results for return
