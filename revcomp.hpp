@@ -8,9 +8,7 @@
 
 #include <string>
 
-using namespace std;
-
 // return the reverse compliment of str
-string revcomp( std::string& str );
+std::string revcomp( std::string str );
 
 #endif

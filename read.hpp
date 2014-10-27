@@ -6,7 +6,7 @@
 #ifndef READ_HPP
 #define READ_HPP
 
-using namespace std;
+#include <string>
 
 //////////////////////////////////////\
 // Read Class:  ///////////////////////>
@@ -20,14 +20,14 @@ class Read{
                     //    read:  tttatt
                     //    start: 4
     int misses;    // counts the number of characters that don't match other reads
-    string read;    // contains the read or rev compliment, whichever is found
+    std::string read;    // contains the read or rev compliment, whichever is found
     bool revcomp;   // indicates if the read is a reverse compliment of the matched string
 
   public:
     // constructor.. default revcomp will be false
-    Read( string& read, int match, bool revcomp );
+    Read( std::string read, int match, bool revcomp );
 
-    Read( string& read, int match );
+    Read( std::string read, int match );
     
     // returns character at pos where pos is the nth postion of the match
     char get_pos( int pos, bool back );

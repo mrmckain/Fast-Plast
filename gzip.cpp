@@ -1,7 +1,6 @@
 // gzip handling
 
 #include <iostream>
-#include <sstream>
 #include <string>
 #include <cstring>
 #include <zlib.h>
@@ -74,16 +73,10 @@ void Gzip::fill_buffer(){
   unsigned char in[BUFF_SIZE];
   unsigned char out[BUFF_SIZE];
   int next_pos = 0;
-  int new_data = 0;
-
-  cout << "avail_out: " << zs.avail_out << endl;
-  cout << "avail_in: " << zs.avail_in << endl;
+  unsigned int char_in = 0;
 
   // read in data from gzipd file
-  new_data = fread(in, 1, BUFF_SIZE-zs.avail_in, fp);
-  zs.avail_in += new_data;
-
-  cout << "ferror status: " << status << endl;
+  zs.avail_in = fread(in, 1, BUFF_SIZE, fp);
 
   // handle read errors
   if (ferror(fp)) {
@@ -95,46 +88,40 @@ void Gzip::fill_buffer(){
   // handle data error
   if (zs.avail_in == 0){
     status = Z_DATA_ERROR;
-    cout << "DATA_ERROR" << endl;
     return;
   }
 
-  if( new_data == zs.avail_in ){
-    memcpy( zs.next_in + zs.avail_in - new_data, &in, new_data );
-  }
-  else{
-    zs.avail_in += new_data;
+  // set next_in pointer to data from fread
+  zs.next_in = in;
+  do{
+    zs.avail_out = BUFF_SIZE;
+    zs.next_out = out;
 
+    // decompress data
+    status = inflate(&zs, Z_NO_FLUSH);
 
-  cout << "predecompress status: " << status << endl;
+    // check for errors
+    switch (status) {
+      case Z_BUF_ERROR:
+        status = Z_OK;
+        return;
+      case Z_NEED_DICT:
+        status = Z_DATA_ERROR;     /* and fall through */
+      case Z_DATA_ERROR:
+      case Z_MEM_ERROR:
+        (void)inflateEnd(&zs);
+        zerr();
+        return;
+    }
 
-  // prep z_stream members
-  zs.avail_out = BUFF_SIZE;
-  zs.next_out = out;
+    int have = BUFF_SIZE - zs.avail_out;
+    char out_str[have+1];
+    strncpy( out_str, (char*)out, have );
+    out_str[have] = '\0';
 
-  // decompress data
-  status = inflate(&zs, Z_NO_FLUSH);
-  cout << "decompress status: " << status << endl;
-  cout << "avail_out: " << zs.avail_out << endl;
-  cout << "avail_in: " << zs.avail_in << endl;
-
-  // check for errors
-  switch (status) {
-    case Z_NEED_DICT:
-      status = Z_DATA_ERROR;     /* and fall through */
-    case Z_DATA_ERROR:
-    case Z_MEM_ERROR:
-      (void)inflateEnd(&zs);
-      cout << "ERROR" << endl;
-      return;
-  }
-  
-  stringstream s;
-
-  s << out;
-
-  // append data to buffer
-  buffer.append( s.str() );
+    // append data to buffer
+    buffer.append( out_str );
+  }while( zs.avail_out == 0 );
 }
 
 // return the next line in the gzip file
@@ -144,9 +131,7 @@ string Gzip::getline(){
 
   // check if buffer has a full line in it, if not, fill_buffer
   while((next_pos = buffer.find( '\n' )) == string::npos && status == Z_OK ){
-    cout << "fill_buffer()" << endl;
     fill_buffer();
-    cout << "status: " << status << endl;
   }
 
   // if last line in file, store results for return

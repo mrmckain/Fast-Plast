@@ -10,7 +10,7 @@
 using namespace std;
 
 // return the reverse compliment of str
-string revcomp( std::string& str ){
+string revcomp( string str ){
   string rc(str);
   int len = str.length();
   int i;

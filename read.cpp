@@ -3,16 +3,15 @@
 // $Log$
 // This contains the read class for afin
 
-#include <cstdlib>
-#include <string>
-#include <unistd.h>
 #include "read.hpp"
+#include <cstdlib>
+#include <unistd.h>
 
 using namespace std;
 
 //////// READ FUNCTIONS //////////////
 // constructor.. default revcomp will be false
-Read::Read( string& read, int match, bool revcomp ){
+Read::Read( string read, int match, bool revcomp ){
   this->read = read;
   start = match;
   misses = 0;
@@ -20,7 +19,7 @@ Read::Read( string& read, int match, bool revcomp ){
 
 }
 
-Read::Read( string& read, int match ){
+Read::Read( string read, int match ){
   this->read = read;
   start = match;
   misses = 0;

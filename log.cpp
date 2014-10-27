@@ -1,9 +1,9 @@
 // Contains Log class
 
-#include <iostream>
-#include <unistd.h>
-#include <string>
 #include "log.hpp"
+#include <iostream>
+#include <ctime>
+#include <vector>
 
 using namespace std;
 
