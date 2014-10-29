@@ -7,7 +7,8 @@
 #include <vector>
 
 class Extension{
-  private:
+  public:
+    Match matches;
     Readlist *reads;
     std::vector<std::vector<int>> ATCG;
     std::vector<int> missed_bp;
@@ -19,13 +20,9 @@ class Extension{
     int len;
     int missed_bp_tot;
     int missed_bp_avg;
-
-  public:
-    Match *matches;
     
     Extension( Readlist *reads, int len );
     Extension( Readlist *reads, int len, std::string contig );
-    ~Extension();
 
     // set the value of the missed_bp std::vector
     void set_missed_bp( std::vector<int> missed_bp );

@@ -5,8 +5,7 @@
 
 using namespace std;
 
-Extension::Extension( Readlist *reads, int len ) : reads(reads), len(len) {
-  matches = new Match( reads );
+Extension::Extension( Readlist *reads, int len ) : reads(reads), len(len), matches(Match(reads)){
   start = -1;
   missed_bp_tot = 0;
   missed_bp_avg = 0;
@@ -16,8 +15,7 @@ Extension::Extension( Readlist *reads, int len ) : reads(reads), len(len) {
   pos_mult = -1;
 }
 
-Extension::Extension( Readlist *reads, int len, string contig ) : reads(reads), len(len){
-  matches = new Match( reads, contig );
+Extension::Extension( Readlist *reads, int len, string contig ) : reads(reads), len(len), matches(Match(reads,contig)){
   start = -1;
   missed_bp_tot = 0;
   missed_bp_avg = 0;
@@ -25,11 +23,6 @@ Extension::Extension( Readlist *reads, int len, string contig ) : reads(reads), 
   contig = "";
   exten_seq = "";
   pos_mult = -1;
-}
-
-
-Extension::~Extension(){
-  delete matches;
 }
 
 // set the value of the missed_bp vector
@@ -50,8 +43,8 @@ void Extension::bp_count(){
     int next_char = 0;
 
     // loop through matches to get count of each nucleotide present at the current position
-    for( int j=0; j<matches->get_matchlist_size(); j++ ){
-      next_char = matches->get_pos( j, start+(pos_mult*i) );
+    for( int j=0; j<matches.get_matchlist_size(); j++ ){
+      next_char = matches.get_pos( j, start+(pos_mult*i) );
 
       if ( next_char == 'A' ) {
         ATCG_curr[0]++;
@@ -89,8 +82,8 @@ void Extension::bp_count(){
 void Extension::missed_count(){
   for( int i=0; i<len; i++ ){
     int next_char = 0;
-    for( int j=0; j<matches->get_matchlist_size(); j++ ){
-      next_char = matches->get_pos( j, start+(pos_mult*i) );
+    for( int j=0; j<matches.get_matchlist_size(); j++ ){
+      next_char = matches.get_pos( j, start+(pos_mult*i) );
       switch( next_char ){
         case 'A':
           if( ATCG[i][0] < ATCG[i][4] ){
@@ -127,7 +120,7 @@ void Extension::missed_count(){
 void Extension::error_removal(){
   for( int i=0; i<missed_bp.size(); i++ ){
     if( missed_bp[i] > missed_bp_avg ){
-      matches->remove_match( i );
+      matches.remove_match( i );
       missed_bp.erase( missed_bp.begin() + i );
       i--;
     }
@@ -145,14 +138,14 @@ void Extension::build_string(){
     int avg = 0;
     
     // check coverage at current position
-    if( matches->check_cov( start+(pos_mult*i) ) < min_cov ){
+    if( matches.check_cov( start+(pos_mult*i) ) < min_cov ){
       break;
     }
     
     int next_char = 0;
 
-    for( int j=0; j<matches->get_matchlist_size(); j++ ){
-      next_char = matches->get_pos( j, start+(pos_mult*i) );
+    for( int j=0; j<matches.get_matchlist_size(); j++ ){
+      next_char = matches.get_pos( j, start+(pos_mult*i) );
 
       if ( next_char == 'A' ) {
         ATCG_curr[0]++;
@@ -195,8 +188,8 @@ string Extension::get_extension( string contig, bool back ){
   this->contig = contig;
 
   // reset parameters of Match object
-  matches->set_seq( contig, back );
-  matches->start_match();
+  matches.set_seq( contig, back );
+  matches.start_match();
   
   // get matches
   if( back ){
@@ -209,16 +202,16 @@ string Extension::get_extension( string contig, bool back ){
   }
 
   // return if no matches are found
-  if( matches->get_matchlist_size() == 0 ){
+  if( matches.get_matchlist_size() == 0 ){
     // reset lists
     ATCG.clear();
     missed_bp.clear();
-    matches->clearlist();
+    matches.clearlist();
     return "";
   }
 
   // create missed bp's vector to keep track of how many bp's each read contains that are below the max at that position
-  missed_bp.resize( matches->get_matchlist_size(), 0 );
+  missed_bp.resize( matches.get_matchlist_size(), 0 );
  
   /////////////////////////////////////
   // STEP 1: First Pass Over Matches //
@@ -231,15 +224,15 @@ string Extension::get_extension( string contig, bool back ){
   // if nucleotide of read is < max for that position, count it against the read, otherwise don't count it
   missed_count();
 
-  if( matches->get_matchlist_size() != 0 ){
+  if( matches.get_matchlist_size() != 0 ){
     // calculate avg missed_bp's
-    missed_bp_avg = missed_bp_tot / matches->get_matchlist_size() + 1;
+    missed_bp_avg = missed_bp_tot / matches.get_matchlist_size() + 1;
   }
   else{
     // reset lists
     ATCG.clear();
     missed_bp.clear();
-    matches->clearlist();
+    matches.clearlist();
     return "";
   }
 
@@ -255,7 +248,7 @@ string Extension::get_extension( string contig, bool back ){
   // reset lists
   ATCG.clear();
   missed_bp.clear();
-  matches->clearlist();
+  matches.clearlist();
   return exten_seq;
 }
 

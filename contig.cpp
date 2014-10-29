@@ -9,6 +9,8 @@
 using namespace std;
 
 ////////// Contig FUNCTIONS ////////////
+Contig::Contig(){};
+
 Contig::Contig( Readlist *reads, string str, string id ) : reads(reads), contig(str), contig_id(id){
   cov = 0;
   doub_cov = false;
@@ -17,6 +19,41 @@ Contig::Contig( Readlist *reads, string str, string id ) : reads(reads), contig(
 
 Contig::~Contig(){
   delete extension;
+}
+    
+// copy, move, =
+Contig::Contig( const Contig& rhs ) : reads(rhs.reads), contig(rhs.contig), contig_id(rhs.contig_id), cov(rhs.cov), doub_cov(rhs.doub_cov){
+  extension = new Extension( reads, extend_len );
+  extension->matches = rhs.extension->matches;
+  extension->ATCG = rhs.extension->ATCG;
+  extension->missed_bp = rhs.extension->missed_bp;
+  extension->missed_bp_tot = rhs.extension->missed_bp_tot;
+  extension->missed_bp_avg = rhs.extension->missed_bp_avg;
+  extension->start = rhs.extension->start;
+  extension->back = rhs.extension->back;
+  extension->contig = rhs.extension->contig;
+  extension->exten_seq = rhs.extension->exten_seq;
+  extension->pos_mult = rhs.extension->pos_mult;
+} 
+
+Contig::Contig( Contig&& rhs ) : Contig(){
+  swap( *this, rhs );
+}
+
+Contig& Contig::operator=( Contig rhs ){
+  swap( *this, rhs );
+  return *this;
+}
+
+void swap( Contig& data1, Contig& data2 ){
+  using std::swap;
+
+  swap( data1.extension, data2.extension );
+  swap( data1.reads, data2.reads );
+  swap( data1.contig, data2.contig );
+  swap( data1.contig_id, data2.contig_id );
+  swap( data1.cov, data2.cov );
+  swap( data1.doub_cov, data2.doub_cov );
 }
 
 // return contig_id

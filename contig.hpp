@@ -27,9 +27,15 @@ class Contig{
     bool doub_cov;
 
   public:
+    Contig();
     Contig( Readlist *reads, std::string str, std::string id );
-
     ~Contig();
+
+    // copy, move, =
+    Contig( const Contig& rhs );
+    Contig( Contig&& rhs );
+    Contig& operator=( Contig rhs );
+    friend void swap( Contig& data1, Contig& data2 );
 
     // return contig
     std::string get_sequence();
