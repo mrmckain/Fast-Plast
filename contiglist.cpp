@@ -6,9 +6,9 @@
 
 using namespace std;
 
-Contiglist::Contiglist( Readlist *reads, string contigsfile, string outfile ) : reads(reads){
+Contiglist::Contiglist( Readlist *reads, string contigsfiles, string outfile ) : reads(reads), outfile(outfile){
   Log::Inst()->log_it( "Begin add_contigs()" );
-  add_contigs();
+  add_contigs( contigsfiles );
 }
 
 // return contig at index ind
@@ -98,7 +98,7 @@ void Contiglist::parse_ids(){
 }
 
 // put contigs from contfile into contlist
-void Contiglist::add_contigs(){
+void Contiglist::add_contigs( string contigsfiles ){
   stringstream ss;
   ss.str( contigsfiles );
   string filename;
@@ -107,8 +107,8 @@ void Contiglist::add_contigs(){
   string contig_id("");
   
   while( getline( ss, filename, ',' )){
-    Log::Inst()->log_it( "contigfile: " + filename );
-  
+    Log::Inst()->log_it( "contigsfile: " + filename );
+ 
     // open contig file
     ifstream cont( filename );
 

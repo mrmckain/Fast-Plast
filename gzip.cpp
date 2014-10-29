@@ -1,10 +1,9 @@
 // gzip handling
 
-#include <iostream>
+#include "gzip.hpp"
 #include <string>
 #include <cstring>
 #include <zlib.h>
-#include "gzip.hpp"
 #include "log.hpp"
 
 using namespace std;

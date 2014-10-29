@@ -25,11 +25,11 @@ using namespace std;
 
 // Usage function
 void print_usage( string prog ){
-  cout << "Usage: " << prog << " -c contigfile(s) -r readfile(s) [-o outfile] [-m max_sort_char] [-s contig_sub_len]" << endl;
+  cout << "Usage: " << prog << " -c contigsfile(s) -r readfile(s) [-o outfile] [-m max_sort_char] [-s contig_sub_len]" << endl;
   cout << "          [-l max_search_loops] [-i min_cov] [-p min_overlap] [-t max_threads]" << endl;
   cout << "       " << prog << " -h" << endl;
   cout << endl;
-  cout << "  -c contigfile          Comma separated list of files containing contigs" << endl;
+  cout << "  -c contigsfiles        Comma separated list of files containing contigs" << endl;
   cout << "  -r readfile            Comma separated list of files containing reads" << endl;
   cout << "  -o outfile             Output will be printed to the outfile specified with a .fasta extension" << endl;
   cout << "  -m sort_char           [default:   4] Sorts the reads by the first max_sort_char characters" << endl;
@@ -86,7 +86,7 @@ int main( int argc, char** argv ){
     {"verbose",  no_argument,  &verbose,  1},
     {"print_fused", no_argument,  &print_fused, 1},
     {"help",  no_argument,  0,  'h'},
-    {"contigfile",    required_argument,  0,  'c'},
+    {"contigsfiles",  required_argument,  0,  'c'},
     {"readfile",      required_argument,  0,  'r'},
     {"outfile",       required_argument,  0,  'o'},
     {"sort_char",     required_argument,  0,  'm'},

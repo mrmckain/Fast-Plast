@@ -12,7 +12,6 @@ class Contiglist{
     Readlist *reads;
     std::vector<Contig> contigs;
     std::vector<Contig> contigs_fused;
-    std::string contigsfiles;
     std::string outfile;
     
   public:
@@ -40,7 +39,7 @@ class Contiglist{
     void contig_cov();
 
     // put contigs from contfile into contlist
-    void add_contigs();
+    void add_contigs( std::string contigsfiles );
 
     // print contigs
     void output_contigs( int list_num, std::string file, std::string id_suffix );

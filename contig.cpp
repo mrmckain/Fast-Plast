@@ -9,7 +9,14 @@
 using namespace std;
 
 ////////// Contig FUNCTIONS ////////////
-Contig::Contig(){};
+Contig::Contig(){
+  reads = 0;
+  extension = 0;
+  contig = "";
+  contig_id = "";
+  cov = 0;
+  doub_cov = false;
+};
 
 Contig::Contig( Readlist *reads, string str, string id ) : reads(reads), contig(str), contig_id(id){
   cov = 0;

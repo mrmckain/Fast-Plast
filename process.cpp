@@ -34,7 +34,7 @@ Process::Process(){
   outfile = "afin_out";
   readsfiles = "";
   contigsfiles = "";
-  reads = NULL;
+  reads = 0;
 }
 
 Process::~Process(){
@@ -94,7 +94,7 @@ void Process::run_manager(){
 
   // loop max search loops
   for( int j=0; j<max_search_loops; j++ ){
-      
+    
     // initialize threads
     for( int i=0; i<max_threads; i++ ){
       t.push_back(thread( &Process::thread_worker, this, ref(qu), i ));
