@@ -139,8 +139,8 @@ void Process::thread_worker( Queue<int>& q, unsigned int id) {
       break;
     }
     else{
-      contigs->get_contig(item).extend( false );
-      contigs->get_contig(item).extend( true );
+      contigs->get_contig_ref(item)->extend( false );
+      contigs->get_contig_ref(item)->extend( true );
     }
   }
 }

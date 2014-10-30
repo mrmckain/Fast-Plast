@@ -20,6 +20,9 @@ class Contiglist{
     // return contig at index ind
     Contig get_contig( int ind );
 
+    // return contig at index ind
+    Contig *get_contig_ref( int ind );
+
     // return conitg list size
     int get_list_size();
 

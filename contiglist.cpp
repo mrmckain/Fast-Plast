@@ -16,6 +16,11 @@ Contig Contiglist::get_contig( int ind ){
   return contigs[ind];
 }
 
+// return contig at index ind
+Contig *Contiglist::get_contig_ref( int ind ){
+  return (Contig*)&contigs[ind];
+}
+
 // return conitg list size
 int Contiglist::get_list_size(){
   return (int)contigs.size();

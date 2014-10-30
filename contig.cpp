@@ -101,7 +101,6 @@ void Contig::extend( bool back ){
   }
 
   exten_seq = extension->get_extension( contig_sub, back );
-  
   if( exten_seq.length() == 0 ){
     return;
   }

@@ -182,6 +182,7 @@ void Extension::build_string(){
 /// used for off the front matching
 string Extension::get_extension( string contig, bool back ){
   // contains multiplier for position calculation
+  exten_seq = "";
   missed_bp_tot = 0;
   missed_bp_avg = 0;
   this->back = back;
