@@ -14,13 +14,9 @@ Contig::Contig(){
   extension = 0;
   contig = "";
   contig_id = "";
-  cov = 0;
-  doub_cov = false;
 };
 
 Contig::Contig( Readlist *reads, string str, string id ) : reads(reads), contig(str), contig_id(id){
-  cov = 0;
-  doub_cov = false;
   extension = new Extension( reads, extend_len );
 }
 
@@ -29,7 +25,7 @@ Contig::~Contig(){
 }
     
 // copy, move, =
-Contig::Contig( const Contig& rhs ) : reads(rhs.reads), contig(rhs.contig), contig_id(rhs.contig_id), cov(rhs.cov), doub_cov(rhs.doub_cov){
+Contig::Contig( const Contig& rhs ) : reads(rhs.reads), contig(rhs.contig), contig_id(rhs.contig_id){
   extension = new Extension( reads, extend_len );
   extension->matches = rhs.extension->matches;
   extension->ATCG = rhs.extension->ATCG;
@@ -59,8 +55,6 @@ void swap( Contig& data1, Contig& data2 ){
   swap( data1.reads, data2.reads );
   swap( data1.contig, data2.contig );
   swap( data1.contig_id, data2.contig_id );
-  swap( data1.cov, data2.cov );
-  swap( data1.doub_cov, data2.doub_cov );
 }
 
 // return contig_id
@@ -72,26 +66,11 @@ string Contig::get_contig_id(){
   return contig_id;
 }
 
-// return cov
-double Contig::get_cov(){
-  return cov;
-}
-
-// set cov
-void Contig::set_cov( int cov ){
-  this->cov = cov;
-}
-
 // extend performs loops iterations of get_extension with length extend_len of each extension, at each iteration the extension is added to contig, and uses contig_sub_len characters from the front or back of the contig, which end is determined by the boolean value of back
 void Contig::extend( bool back ){
   string exten_seq("");
   string contig_sub("");
  
-  // skip over any contigs that present at least double coverage
-  if( doub_cov ){
-    return;
-  }
-
   // get extension sequence through get_extension
   if( back ){
     contig_sub = contig.substr( contig.length() - ( contig_sub_len ) );
@@ -111,9 +90,4 @@ void Contig::extend( bool back ){
   else{
     contig.insert( 0, exten_seq );
   }
-}
-
-// set doub_cov var
-void Contig::set_doub_cov( bool doub_cov ){
-  this->doub_cov = doub_cov;
 }

@@ -37,7 +37,7 @@ class Extension{
     void missed_count();
 
     // third step in get_extension(): removal of reads that have errors over the threshold
-    void error_removal();
+    bool error_removal();
 
     // fourth step in get_extension: build extension string
     void build_string();

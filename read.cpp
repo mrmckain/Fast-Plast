@@ -11,11 +11,11 @@ using namespace std;
 
 //////// READ FUNCTIONS //////////////
 // constructor.. default revcomp will be false
-Read::Read( string read, int match, bool revcomp ){
+Read::Read( string read, int match, bool rev ){
   this->read = read;
   start = match;
   misses = 0;
-  this->revcomp = revcomp;
+  this->rev = rev;
 
 }
 
@@ -23,7 +23,7 @@ Read::Read( string read, int match ){
   this->read = read;
   start = match;
   misses = 0;
-  revcomp = false;
+  rev = false;
 }
 
 // returns character at pos where pos is the nth postion of the match

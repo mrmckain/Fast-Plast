@@ -35,6 +35,8 @@ Process::Process(){
   readsfiles = "";
   contigsfiles = "";
   reads = 0;
+  contigs = 0;
+  fuse = 0;
 }
 
 Process::~Process(){
@@ -68,6 +70,9 @@ void Process::start_run(){
     logfile_init();
   }
 
+  // log output file
+  Log::Inst()->log_it( string("output file: ") + outfile );
+  
   // initialize objects
   reads = new Readlist( readsfiles ); 
   contigs = new Contiglist( reads, contigsfiles, outfile );
@@ -94,7 +99,8 @@ void Process::run_manager(){
 
   // loop max search loops
   for( int j=0; j<max_search_loops; j++ ){
-    
+    Log::Inst()->log_it( "Begin Extensions" );
+      
     // initialize threads
     for( int i=0; i<max_threads; i++ ){
       t.push_back(thread( &Process::thread_worker, this, ref(qu), i ));

@@ -41,7 +41,7 @@ void print_usage( string prog ){
   cout << "  -d initial_trim        [default:  20] Length to trim off the beginning and end of each contig at the start of the program" << endl;
   cout << "  -e max_missed          [default:   5] Maximum allowable mismatched bp's for each read" << endl;
   cout << "  -g mismatch_threshold  [default:  .1] maximum percentage of mismatches allowed when fusing two contigs" << endl;
-  cout << "  -x extend_len          [default:  40] Will add a max of 80 bp's each search loop" << endl << endl;
+  cout << "  -x extend_len          [default:  40] Will add a max of extend_len bp's each search loop" << endl << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////////\
@@ -106,6 +106,15 @@ int main( int argc, char** argv ){
   // get all options that have been provided on the command line
   while (( c = getopt_long(argc, argv, "hr:c:o:s:l:x:m:i:p:t:d:e:g:z", long_options, &option_index )) != -1 ) {
     switch( c ) {
+      case 0:
+        /* If this option set a flag, do nothing else now. */
+        if (long_options[option_index].flag != 0)
+          break;
+        printf ("option %s", long_options[option_index].name);
+        if (optarg)
+          printf (" with arg %s", optarg);
+        printf ("\n");
+        break;
       case 'h':
         print_usage( argv[0] );
         exit(0);
@@ -152,7 +161,6 @@ int main( int argc, char** argv ){
         break;
       // outputfile option
       case 'o':
-        Log::Inst()->log_it( string("output file: ") + optarg );
         process.outfile = optarg;
         break;
       // readfile option

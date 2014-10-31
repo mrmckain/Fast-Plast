@@ -23,8 +23,6 @@ class Contig{
     Extension *extension;
     std::string contig;
     std::string contig_id;
-    double cov;
-    bool doub_cov;
 
   public:
     Contig();
@@ -43,17 +41,8 @@ class Contig{
     // return contig_id
     std::string get_contig_id();
 
-    // return cov
-    double get_cov();
-
-    // set cov
-    void set_cov( int cov );
-
     // extend() performs loops iterations of create_extension with length extend_len of each extension, at each iteration the extension is added to contig, and uses contig_sub_len characters from the front or back of the contig, which end is determined by the boolean value back
     void extend( bool back );
-
-    // set doub_cov var
-    void set_doub_cov( bool doub_cov );
 };
 //////////////////////
 // End Contig Class //

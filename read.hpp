@@ -21,11 +21,11 @@ class Read{
                     //    start: 4
     int misses;    // counts the number of characters that don't match other reads
     std::string read;    // contains the read or rev compliment, whichever is found
-    bool revcomp;   // indicates if the read is a reverse compliment of the matched string
+    bool rev;   // indicates if the read is a reverse compliment of the matched string
 
   public:
-    // constructor.. default revcomp will be false
-    Read( std::string read, int match, bool revcomp );
+    // constructor.. default rev will be false
+    Read( std::string read, int match, bool rev );
 
     Read( std::string read, int match );
     
