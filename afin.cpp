@@ -9,39 +9,34 @@
 
 using namespace std;
 
-// TASK:: include class for handling fastq or fasta.. return each read/contig with next call or something like it
-// TASK:: consider storing things such as the more permanent and larger objects on the heap
-// TASK:: remove unnecessary include statements
-// TASK:: Print info about extension section?
-// TASK:: Print fused_fasta file on option
-// TASK:: change method of finding 2x coverage region to being more active.. use the read matching percentages.. when there's a 50/50 split, don't extenda
-// TASK:: make sure that 2x cov contig ends retain this characterization when fused to other contigs
-// TASK:: create installer with ability to test for presence of zlib? and/or install zlib
-//          give installer capability to install to default directory or accept input directory to install executable to.. or just leave it in the base directory of the code
 // TASK:: add signal handling
-// TASK:: Review what goes into the logfile vs what gets printed to the screen
-// TASK:: Change names of any functions that no longer title their function
 // TASK:: Write up documentation explaining each option, its purpose, and why the default is set the way it is
 
 // Usage function
 void print_usage( string prog ){
-  cout << "Usage: " << prog << " -c contigsfile(s) -r readfile(s) [-o outfile] [-m max_sort_char] [-s contig_sub_len]" << endl;
-  cout << "          [-l max_search_loops] [-i min_cov] [-p min_overlap] [-t max_threads]" << endl;
-  cout << "       " << prog << " -h" << endl;
+  cout << "Usage: " << prog << " -c contigsfile(s) -r readsfile(s) [-o outfile] [-m sort_char] [-s sub_len]" << endl;
+  cout << "          [-l search_loops] [-i min_cov] [-p min_overlap] [-t max_threads]" << endl;
+  cout << "          [-d initial_trim] [-e max_missed] [-g mismatch] [-x extend_len]" << endl;
+  cout << "          [--silent] [--no_log] [--verbose] [--print_fused]" << endl << endl;
+  cout << "       " << prog << " -h [--help]" << endl << endl;
   cout << endl;
-  cout << "  -c contigsfiles        Comma separated list of files containing contigs" << endl;
-  cout << "  -r readfile            Comma separated list of files containing reads" << endl;
-  cout << "  -o outfile             Output will be printed to the outfile specified with a .fasta extension" << endl;
-  cout << "  -m sort_char           [default:   4] Sorts the reads by the first max_sort_char characters" << endl;
-  cout << "  -s sub_len             [default: 100] Will focus on the current last contig_sub_len characters of the contig in each search" << endl;
-  cout << "  -l search_loops        [default:  10] Will search against each contig a maximum of max_search_loops times before comparing them" << endl;
-  cout << "  -i min_cov             [default:   3] Will stop adding bp's once the coverage falls below min_cov" << endl;
-  cout << "  -p min_overlap         [default:  20] Only those reads overlapping the contig by at least min_overlap bp's will be returned in each search" << endl;
-  cout << "  -t max_threads         [default:   4] Will only run max_threads threads at a time" << endl;
-  cout << "  -d initial_trim        [default:  20] Length to trim off the beginning and end of each contig at the start of the program" << endl;
-  cout << "  -e max_missed          [default:   5] Maximum allowable mismatched bp's for each read" << endl;
-  cout << "  -g mismatch_threshold  [default:  .1] maximum percentage of mismatches allowed when fusing two contigs" << endl;
-  cout << "  -x extend_len          [default:  40] Will add a max of extend_len bp's each search loop" << endl << endl;
+  cout << "  -c, contigsfiles       Space (or comma) separated list of files containing contigs" << endl;
+  cout << "  -r, readsfiles         Space (or comma) separated list of files containing reads" << endl;
+  cout << "  -o, outfile            Output will be printed to the outfile specified with a .fasta extension" << endl;
+  cout << "  -m, sort_char          [default:   4] Sorts the reads by the first max_sort_char characters" << endl;
+  cout << "  -s, sub_len            [default: 100] Will focus on the current last contig_sub_len characters of the contig in each search" << endl;
+  cout << "  -l, search_loops       [default:  10] Will search against each contig a maximum of max_search_loops times before comparing them" << endl;
+  cout << "  -i, min_cov            [default:   3] Will stop adding bp's once the coverage falls below min_cov" << endl;
+  cout << "  -p, min_overlap        [default:  20] Only those reads overlapping the contig by at least min_overlap bp's will be returned in each search" << endl;
+  cout << "  -t, max_threads        [default:   4] Will only run max_threads threads at a time" << endl;
+  cout << "  -d, initial_trim       [default:   0] Length to trim off the beginning and end of each contig at the start of the program" << endl;
+  cout << "  -e, max_missed         [default:   5] Maximum allowable mismatched bp's for each read" << endl;
+  cout << "  -g, mismatch           [default:  .1] maximum percentage of mismatches allowed when fusing two contigs" << endl;
+  cout << "  -x, extend_len         [default:  40] Will add a max of extend_len bp's each search loop" << endl;
+  cout << "  --silent               Suppress screen output" << endl;
+  cout << "  --no_log               Suppress log file creation" << endl;
+  cout << "  --verbose              Output additional information to logfile and/or screen (except if output to that location is suppressed)" << endl;
+  cout << "  --print_fused          Print to file (_fused.fasta) fused contigs just before fusion, for inspecting the fusion locations" << endl << endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////////\
@@ -58,7 +53,7 @@ int main( int argc, char** argv ){
   min_cov = 3;
   min_overlap = 20;
   max_threads = 4;
-  initial_trim = 20;
+  initial_trim = 0;
   max_missed = 5;
   mismatch_threshold = 0.1;
   test_run = false;
@@ -81,13 +76,12 @@ int main( int argc, char** argv ){
 
   static struct option long_options[] =
   {
-    {"silent",  no_argument,  &screen_output, 0},
-    {"no_log",  no_argument,  &log_output,  0},
-    {"verbose",  no_argument,  &verbose,  1},
-    {"print_fused", no_argument,  &print_fused, 1},
-    {"help",  no_argument,  0,  'h'},
+    {"silent",        no_argument,  &screen_output, 0},
+    {"no_log",        no_argument,  &log_output,  0},
+    {"verbose",       no_argument,  &verbose,  1},
+    {"print_fused",   no_argument,  &print_fused, 1},
     {"contigsfiles",  required_argument,  0,  'c'},
-    {"readfile",      required_argument,  0,  'r'},
+    {"readsfiles",    required_argument,  0,  'r'},
     {"outfile",       required_argument,  0,  'o'},
     {"sort_char",     required_argument,  0,  'm'},
     {"sub_len",       required_argument,  0,  's'},
@@ -99,7 +93,8 @@ int main( int argc, char** argv ){
     {"max_missed",    required_argument,  0,  'e'},
     {"mismatch",      required_argument,  0,  'g'},
     {"extend_len",    required_argument,  0,  'x'},
-    {"test_run",      no_argument,  0,  'z'},
+    {"help",          no_argument,        0,  'h'},
+    {"test_run",      no_argument,        0,  'z'},
     {0, 0, 0, 0}
   };
   
@@ -226,12 +221,12 @@ int main( int argc, char** argv ){
   // Input Errors //
   //////////////////
   if( process.contigsfiles == "" ){
-    fprintf( stderr, "%s: Error: contigs_file(s) must be provided.\n", argv[0] );
+    fprintf( stderr, "%s: Error: contigsfile(s) must be provided.\n", argv[0] );
     quit_flag = true;
   }
 
   if( process.readsfiles == "" ){
-    fprintf( stderr, "%s: Error: reads_file(s) must be provided.\n", argv[0] );
+    fprintf( stderr, "%s: Error: readsfile(s) must be provided.\n", argv[0] );
     quit_flag = true;
   }
 
@@ -251,6 +246,7 @@ int main( int argc, char** argv ){
   // start run
   process.start_run();
 
+  Log::Inst()->close_log();
   return 0;
 }
 
