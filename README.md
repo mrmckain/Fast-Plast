@@ -21,13 +21,13 @@ afin is a program designed to supplement assembly of plastomes through seed base
       -m, sort_char          [default:   4] Sorts the reads by the first max_sort_char characters
       -s, sub_len            [default: 100] Will focus on the current last contig_sub_len characters of the contig in each search                                                 
       -l, search_loops       [default:  10] Will search against each contig a maximum of max_search_loops times before comparing them
-      -i, min_cov            [default:   3] Will stop adding bps once the coverage falls below min_cov
-      -p, min_overlap        [default:  20] Only those reads overlapping the contig by at least min_overlap bps will be returned in each search                                  
+      -i, min_cov            [default:   3] Will stop adding bases once the coverage falls below min_cov
+      -p, min_overlap        [default:  20] Only those reads overlapping the contig by at least min_overlap bases will be returned in each search                                  
       -t, max_threads        [default:   4] Will only run max_threads threads at a time
       -d, initial_trim       [default:   0] Length to trim off the beginning and end of each contig at the start of the program
-      -e, max_missed         [default:   5] Maximum allowable mismatched bps for each read
+      -e, max_missed         [default:   5] Maximum allowable mismatched bases for each read
       -g, mismatch           [default:  .1] maximum percentage of mismatches allowed when fusing two contigs
-      -x, extend_len         [default:  40] Will add a max of extend_len bps each search loop
+      -x, extend_len         [default:  40] Will add a max of extend_len bases each search loop
       --silent               Suppress screen output
       --no_log               Suppress log file creation
       --verbose              Output additional information to logfile and/or screen (except if output to that location is suppressed)

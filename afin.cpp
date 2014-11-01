@@ -22,7 +22,7 @@ void print_usage( string prog ){
   cout << endl;
   cout << "  -c, contigsfiles       Space (or comma) separated list of files containing contigs" << endl;
   cout << "  -r, readsfiles         Space (or comma) separated list of files containing reads" << endl;
-  cout << "  -o, outfile            Output will be printed to the outfile specified with a .fasta extension" << endl;
+  cout << "  -o, outfile            Output will be printed to the outfile specified, with a .fa extension for the contigs and .log extension for the logfile" << endl;
   cout << "  -m, sort_char          [default:   4] Sorts the reads by the first max_sort_char characters" << endl;
   cout << "  -s, sub_len            [default: 100] Will focus on the current last contig_sub_len characters of the contig in each search" << endl;
   cout << "  -l, search_loops       [default:  10] Will search against each contig a maximum of max_search_loops times before comparing them" << endl;
