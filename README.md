@@ -1,9 +1,9 @@
 # README #
 
-After long nights and careful consideration I've come to the conclusion that this project needs some documentation. 
+After long nights and careful consideration I've come to the conclusion that this project needs some documentation, so here it is.
 
 ## Purpose ##
-afin is a program designed to supplement assembly of plastomes through seed based microassembly.
+`afin` is a program designed to supplement assembly of plastomes through de novo, seed based microassembly.
 
 ### Usage ###
 
@@ -67,9 +67,13 @@ To ensure execution from any directory:
 afin has been tested on various linux distros and multiple Apple systems, using `gcc` and `clang` to compile.
 
 ### Overview of Approach ###
-The popular approach to de novo assembly is to use de Bruijn graphs to create a networks of kmers and then build contigs from strongest paths through these networks. This has been a successful approach, however it isn't one that can assemble a genome in its entirety. By taking 
-` seed based micro-assembly` -> The act of focusing on the ends of previously built contigs 
-`afin` is composed primarily of two processes: a fusion process and an extension process. These two processes alternate running for the number of loops specified at runtime. This is to make the best attempt at resolving the contigs into one sequence. 
+The popular approach to de novo assembly is to use de Bruijn graphs to create a networks of kmers and then build contigs from strongest paths through these networks. This has been a successful approach, however it isn't one that can assemble a genome in its entirety. By focusing on the ends of the contigs, the data can be used to draw connections between the contigs. By matching reads to the end of a contig and extending based on the results of that matching process, two things are accomplished that distinguish this method from typical de Bruijn graph assemblers. The entire information from each read is maintained, and information that may have been too uncertain when looking at the genome as a whole, can be used to support the fusion of two contigs. `afin` accomplishes this by breaking the process into two parts, Fusion and Extension, and alternating between the two.
+
+#### Fusion ####
+The Fusion process is approached by finding the best match score for fusing any two contigs. This score is calculated from overlap length and number of bases that do not match, or mismatches. If this best score falls below the mismatch_threshold, the two contigs are fused together. Any differences are resolved by dropping the end of each contig and only using inner half of the overlap from each contig.
+
+#### Extension ####
+The Extension process takes a piece of each end from each contig, then finds all reads that have an exact match to the end of this piece. The list of reads is cleaned by finding the reads most consistent with each other. The consensus bases are then added to the contig until a maximum extension length, or until the number of reads supporting the extension fall below the minimum coverage level at that base.
 
 
 ### Questions? Comments? Concerns?  ###
