@@ -30,11 +30,12 @@ void print_usage( string prog ){
   cout << "  -p, min_overlap        [default:  20] Only those reads overlapping the contig by at least min_overlap bp's will be returned in each search" << endl;
   cout << "  -t, max_threads        [default:   4] Will only run max_threads threads at a time" << endl;
   cout << "  -d, initial_trim       [default:   0] Length to trim off the beginning and end of each contig at the start of the program" << endl;
-  cout << "  -e, max_missed         [default:   5] Maximum allowable mismatched bp's for each read" << endl;
+  cout << "  -e, max_missed         [default:   5] Maximum allowable mismatched bp's for each read when checking troubled contig fusions" << endl;
   cout << "  -g, mismatch           [default:  .1] maximum percentage of mismatches allowed when fusing two contigs" << endl;
   cout << "  -x, extend_len         [default:  40] Will add a max of extend_len bp's each search loop" << endl;
   cout << "  --silent               Suppress screen output" << endl;
   cout << "  --no_log               Suppress log file creation" << endl;
+  cout << "  --no_fusion            Only extend, no attempt will be made to fuse contigs" << endl;
   cout << "  --verbose              Output additional information to logfile and/or screen (except if output to that location is suppressed)" << endl;
   cout << "  --print_fused          Print to file (_fused.fasta) fused contigs just before fusion, for inspecting the fusion locations" << endl << endl;
 }
@@ -61,6 +62,7 @@ int main( int argc, char** argv ){
   screen_output = 1;
   log_output = 1;
   verbose = 0;
+  no_fusion = 0;
 
   int c;
   bool quit_flag = false;
@@ -78,6 +80,7 @@ int main( int argc, char** argv ){
   {
     {"silent",        no_argument,  &screen_output, 0},
     {"no_log",        no_argument,  &log_output,  0},
+    {"no_fusion",     no_argument,  &no_fusion,  1},
     {"verbose",       no_argument,  &verbose,  1},
     {"print_fused",   no_argument,  &print_fused, 1},
     {"contigsfiles",  required_argument,  0,  'c'},

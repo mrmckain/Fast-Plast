@@ -140,8 +140,9 @@ void Fusion::process_removals(){
 }
 
 // compile list of best mismatch scores between contigs that meet the mismatch threshold
-vector<Mismatch> Fusion::get_mismatch_scores(){
+vector<Mismatch> Fusion::get_mismatch_scores( bool first_run ){
   vector<Mismatch> match_list;
+  int overlap_len = extend_len * 4;
 
   // loop through each contig to get the end of the contig
   for( int i=0; i<contigs->get_list_size(); i++ ){
@@ -149,17 +150,23 @@ vector<Mismatch> Fusion::get_mismatch_scores(){
       string contig_i( contigs->get_contig(i).get_sequence() );
       string contig_j( contigs->get_contig(j).get_sequence() );
       string contig_j_rev( revcomp( contig_j ) );
-      int overlap = extend_len * 2;
+      int overlap = overlap_len;
       Mismatch mim;
+
+      if( first_run ){
+        overlap = (contig_i.length() < contig_j.length()) ? contig_i.length() : contig_j.length();
+      }
+      else{
+        if( overlap > contig_i.length() ){
+          overlap = contig_i.length();
+        }
+        if( overlap > contig_j.length() ){
+          overlap = contig_j.length();
+        }
+      }
 
       //// Processing of rear end of the contig
       // orientation: i to j
-      if( overlap > contig_i.length() ){
-        overlap = contig_i.length();
-      }
-      if( overlap > contig_j.length() ){
-        overlap = contig_j.length();
-      }
       mim = overlap_check( contig_i, contig_j, overlap, 1, 0 );
 
       if( mim.get_score() <= mismatch_threshold ){
@@ -393,11 +400,11 @@ double Fusion::check_fusion_support( string contig, string contig_ref ){
 }
 
 // fuse contigs wherever possible
-void Fusion::run_fusion(){
+void Fusion::run_fusion( bool first_run ){
   Log::Inst()->log_it( "Fuse contigs" );
   
   // MISMATCH SCORES //
-  match_list = get_mismatch_scores();
+  match_list = get_mismatch_scores( first_run );
   
   // SORT AND CLEAN MATCH LIST //
   sort_matches();

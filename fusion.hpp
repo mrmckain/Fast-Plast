@@ -43,7 +43,7 @@ class Fusion{
     void process_removals();
 
     // compile list of best mismatch scores between contigs that meet the mismatch threshold
-    std::vector<Mismatch> get_mismatch_scores();
+    std::vector<Mismatch> get_mismatch_scores( bool first_run );
 
     // sort the match_list for easier 
     void sort_matches();
@@ -55,7 +55,7 @@ class Fusion{
     void process_fusions();
 
     // fuse contigs wherever possible
-    void run_fusion();
+    void run_fusion( bool first_run );
 
     // contig_fusion: Attempt to support fusion in case of possibly poorly constructed end.. returns new score from section in question
     //    ::> contig object is the second while contig_ref is the first and the extension is being made off the front of the object

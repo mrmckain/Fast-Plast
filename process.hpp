@@ -34,6 +34,7 @@ extern int print_fused;
 extern int screen_output;
 extern int log_output;
 extern int verbose;
+extern int no_fusion;
 extern double mismatch_threshold;
 
 //////////////////////////////

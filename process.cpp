@@ -22,6 +22,7 @@ int print_fused;
 int screen_output;
 int log_output;
 int verbose;
+int no_fusion;
 double mismatch_threshold;
 
 
@@ -70,6 +71,10 @@ void Process::start_run(){
     logfile_init();
   }
 
+  // prevent printing of 
+  if( no_fusion )
+    print_fused = 0;
+
   // log output file
   Log::Inst()->log_it( string("output file: ") + outfile );
   
@@ -81,7 +86,8 @@ void Process::start_run(){
   Log::Inst()->log_it( "End initialization phase" );
   
   // make initial attempt to fuse contigs  
-  fuse->run_fusion();
+  if( ! no_fusion )
+    fuse->run_fusion( true );
   
   if( test_run )
     contigs->output_contigs( 0, outfile + ".fus", "mid" );
@@ -129,7 +135,8 @@ void Process::run_manager(){
     t.erase( t.begin(), t.begin()+max_threads );
 
     // removed for master branch until algorithm can be adjusted
-    fuse->run_fusion();
+    if( ! no_fusion )
+      fuse->run_fusion( false );
     
     if( test_run ){
       contigs->output_contigs( 0, outfile + ".fus" + to_string(j), "mid" );

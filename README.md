@@ -25,7 +25,7 @@ After long nights and careful consideration I've come to the conclusion that thi
       -p, min_overlap        [default:  20] Only those reads overlapping the contig by at least min_overlap bases will be returned in each search                                  
       -t, max_threads        [default:   4] Will only run max_threads threads at a time
       -d, initial_trim       [default:   0] Length to trim off the beginning and end of each contig at the start of the program
-      -e, max_missed         [default:   5] Maximum allowable mismatched bases for each read
+      -e, max_missed         [default:   5] Maximum allowable mismatched bases for each read when checking troubled contig fusions
       -g, mismatch           [default:  .1] maximum percentage of mismatches allowed when fusing two contigs
       -x, extend_len         [default:  40] Will add a max of extend_len bases each search loop
       --silent               Suppress screen output
