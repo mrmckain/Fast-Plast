@@ -126,7 +126,7 @@ bool Extension::error_removal(){
       i--;
     }
   }
-  if( start_size > 5 && matches.get_matchlist_size() < start_size * 0.5 ){
+  if( start_size > 5 && matches.get_matchlist_size() < start_size * stop_ext ){
     return false;
   }
   

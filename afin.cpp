@@ -16,8 +16,8 @@ using namespace std;
 void print_usage( string prog ){
   cout << "Usage: " << prog << " -c contigsfile(s) -r readsfile(s) [-o outfile] [-m sort_char] [-s sub_len]" << endl;
   cout << "          [-l search_loops] [-i min_cov] [-p min_overlap] [-t max_threads]" << endl;
-  cout << "          [-d initial_trim] [-e max_missed] [-g mismatch] [-x extend_len]" << endl;
-  cout << "          [--silent] [--no_log] [--verbose] [--print_fused]" << endl << endl;
+  cout << "          [-d initial_trim] [-e max_missed] [-f stop_ext] [-g mismatch] [-x extend_len]" << endl;
+  cout << "          [--silent] [--no_log] [--no_fusion] [--verbose] [--print_fused]" << endl << endl;
   cout << "       " << prog << " -h [--help]" << endl << endl;
   cout << endl;
   cout << "  -c, contigsfiles       Space (or comma) separated list of files containing contigs" << endl;
@@ -31,6 +31,7 @@ void print_usage( string prog ){
   cout << "  -t, max_threads        [default:   4] Will only run max_threads threads at a time" << endl;
   cout << "  -d, initial_trim       [default:   0] Length to trim off the beginning and end of each contig at the start of the program" << endl;
   cout << "  -e, max_missed         [default:   5] Maximum allowable mismatched bp's for each read when checking troubled contig fusions" << endl;
+  cout << "  -f, stop_ext           [default:  .5] During extension, if the percentage of reads remaining after cleaning is below stop_ext, do not extend here" << endl;
   cout << "  -g, mismatch           [default:  .1] maximum percentage of mismatches allowed when fusing two contigs" << endl;
   cout << "  -x, extend_len         [default:  40] Will add a max of extend_len bp's each search loop" << endl;
   cout << "  --silent               Suppress screen output" << endl;
@@ -56,6 +57,7 @@ int main( int argc, char** argv ){
   max_threads = 4;
   initial_trim = 0;
   max_missed = 5;
+  stop_ext = .5;
   mismatch_threshold = 0.1;
   test_run = false;
   print_fused = 0;
@@ -96,6 +98,7 @@ int main( int argc, char** argv ){
     {"max_missed",    required_argument,  0,  'e'},
     {"mismatch",      required_argument,  0,  'g'},
     {"extend_len",    required_argument,  0,  'x'},
+    {"stop_ext",      required_argument,  0,  'f'},
     {"help",          no_argument,        0,  'h'},
     {"test_run",      no_argument,        0,  'z'},
     {0, 0, 0, 0}
