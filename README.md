@@ -10,8 +10,8 @@ After long nights and careful consideration I've come to the conclusion that thi
 
     Usage: ./afin -c contigsfile(s) -r readsfile(s) [-o outfile] [-m sort_char] [-s sub_len]
             [-l search_loops] [-i min_cov] [-p min_overlap] [-t max_threads]
-            [-d initial_trim] [-e max_missed] [-g mismatch] [-x extend_len]
-            [--silent] [--no_log] [--verbose] [--print_fused]
+            [-d initial_trim] [-e max_missed] [-f stop_ext] [-g mismatch] [-x extend_len]
+            [--silent] [--no_log] [--no_fusion] [--verbose] [--print_fused]
 
          ./afin -h [--help]
 
@@ -26,10 +26,12 @@ After long nights and careful consideration I've come to the conclusion that thi
       -t, max_threads        [default:   4] Will only run max_threads threads at a time
       -d, initial_trim       [default:   0] Length to trim off the beginning and end of each contig at the start of the program
       -e, max_missed         [default:   5] Maximum allowable mismatched bases for each read when checking troubled contig fusions
+      -f, stop_ext           [default:  .5] During extension, if the percentage of reads remaining after cleaning is below stop_ext, do not extend here
       -g, mismatch           [default:  .1] maximum percentage of mismatches allowed when fusing two contigs
       -x, extend_len         [default:  40] Will add a max of extend_len bases each search loop
       --silent               Suppress screen output
       --no_log               Suppress log file creation
+      --no_fusion            Only extend, no attempt will be made to fuse contigs
       --verbose              Output additional information to logfile and/or screen (except if output to that location is suppressed)
       --print_fused          Print to file (_fused.fasta) fused contigs just before fusion, for inspecting the fusion locations
 
@@ -44,6 +46,7 @@ After long nights and careful consideration I've come to the conclusion that thi
 * max_threads  --  Maximum number of threads capable of running during the extension process. The fusion process is not threaded
 * initial_trim  --  Number of bases to trim off the beginning and end of contigs before processing
 * max_missed  --  Rarely used. Used to set a max level for mismatched bases while attempting to check if the end of one contig is errant during the fusion process
+* stop_ext  --  This number represents the fraction of reads required to remain after cleaning to continue with the extension. The purpose here is to avoid extending into regions of the genome where there are two clear paths that could be followed
 * mismatch  --  Maximum percentage of mismatched bases to be allowed for the fusion of two contigs to occur
 * extend_len  --  Maximum number of bases to extend a contig by during the extension process
 

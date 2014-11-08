@@ -70,16 +70,25 @@ string Contig::get_contig_id(){
 void Contig::extend( bool back ){
   string exten_seq("");
   string contig_sub("");
+  string contig_end("");
  
   // get extension sequence through get_extension
   if( back ){
     contig_sub = contig.substr( contig.length() - ( contig_sub_len ) );
+    contig_end = " rear ";
   }
   else{
     contig_sub = contig.substr( 0, contig_sub_len );
+    contig_end = " front ";
   }
 
   exten_seq = extension->get_extension( contig_sub, back );
+  
+  if( verbose ){
+    lock_guard<mutex> lk_g(log_mut);
+    Log::Inst()->log_it( contig_id + contig_end + "extension: " + exten_seq );
+  }
+
   if( exten_seq.length() == 0 ){
     return;
   }

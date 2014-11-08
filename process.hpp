@@ -37,6 +37,7 @@ extern int log_output;
 extern int verbose;
 extern int no_fusion;
 extern double mismatch_threshold;
+extern mutex log_mut;
 
 //////////////////////////////
 // Queue Template Functions //

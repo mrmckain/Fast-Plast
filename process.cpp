@@ -25,7 +25,7 @@ int log_output;
 int verbose;
 int no_fusion;
 double mismatch_threshold;
-
+mutex log_mut;
 
 ////////////////////////////////////
 //////// PROCESS DEFINITIONS ///////
