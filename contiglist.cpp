@@ -121,8 +121,9 @@ void Contiglist::output_contigs( int list_num, string file, string id_suffix ){
 
   // print out each line to the
   for( int i=0; i<clist.size(); i++ ){
-    outfile_fp << ">" << "contig" << i << "_" << id_suffix << endl;
-    outfile_fp << clist[i].get_sequence() << endl;
+    string seq = clist[i].get_sequence();
+    outfile_fp << ">" << "contig" << i << "_len_" << seq.length() << "_" << id_suffix << endl;
+    outfile_fp << seq << endl;
   }
 
   outfile_fp.close();
