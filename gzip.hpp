@@ -5,6 +5,7 @@
 #define GZIP_HPP
 
 #include <zlib.h>
+#include <string>
 
 using namespace std;
 

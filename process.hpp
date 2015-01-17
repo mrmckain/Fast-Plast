@@ -29,12 +29,15 @@ extern int min_overlap;
 extern int max_threads;
 extern int initial_trim;
 extern int max_missed;
+extern int stop_ext;
 extern bool test_run;
 extern int print_fused;
 extern int screen_output;
 extern int log_output;
 extern int verbose;
+extern int no_fusion;
 extern double mismatch_threshold;
+extern mutex log_mut;
 
 //////////////////////////////
 // Queue Template Functions //

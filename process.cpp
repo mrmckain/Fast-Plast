@@ -17,13 +17,15 @@ int min_overlap;
 int max_threads;
 int initial_trim;
 int max_missed;
+int stop_ext;
 bool test_run;
 int print_fused;
 int screen_output;
 int log_output;
 int verbose;
+int no_fusion;
 double mismatch_threshold;
-
+mutex log_mut;
 
 ////////////////////////////////////
 //////// PROCESS DEFINITIONS ///////
@@ -34,7 +36,9 @@ Process::Process(){
   outfile = "afin_out";
   readsfiles = "";
   contigsfiles = "";
-  reads = NULL;
+  reads = 0;
+  contigs = 0;
+  fuse = 0;
 }
 
 Process::~Process(){
@@ -68,6 +72,13 @@ void Process::start_run(){
     logfile_init();
   }
 
+  // prevent printing of 
+  if( no_fusion )
+    print_fused = 0;
+
+  // log output file
+  Log::Inst()->log_it( string("output file: ") + outfile );
+  
   // initialize objects
   reads = new Readlist( readsfiles ); 
   contigs = new Contiglist( reads, contigsfiles, outfile );
@@ -76,7 +87,8 @@ void Process::start_run(){
   Log::Inst()->log_it( "End initialization phase" );
   
   // make initial attempt to fuse contigs  
-  fuse->run_fusion();
+  if( ! no_fusion )
+    fuse->run_fusion( true );
   
   if( test_run )
     contigs->output_contigs( 0, outfile + ".fus", "mid" );
@@ -94,6 +106,7 @@ void Process::run_manager(){
 
   // loop max search loops
   for( int j=0; j<max_search_loops; j++ ){
+    Log::Inst()->log_it( "Begin Extensions" );
       
     // initialize threads
     for( int i=0; i<max_threads; i++ ){
@@ -123,7 +136,8 @@ void Process::run_manager(){
     t.erase( t.begin(), t.begin()+max_threads );
 
     // removed for master branch until algorithm can be adjusted
-    fuse->run_fusion();
+    if( ! no_fusion )
+      fuse->run_fusion( false );
     
     if( test_run ){
       contigs->output_contigs( 0, outfile + ".fus" + to_string(j), "mid" );
@@ -139,8 +153,8 @@ void Process::thread_worker( Queue<int>& q, unsigned int id) {
       break;
     }
     else{
-      contigs->get_contig(item).extend( false );
-      contigs->get_contig(item).extend( true );
+      contigs->get_contig_ref(item)->extend( false );
+      contigs->get_contig_ref(item)->extend( true );
     }
   }
 }

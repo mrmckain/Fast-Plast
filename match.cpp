@@ -36,8 +36,8 @@ void Match::push_match( string read, int pos ){
   matchlist.push_back(Read( read, pos ));
 }
 
-void Match::push_match( string read, int pos, bool revcomp ){
-  matchlist.push_back(Read( read, pos, revcomp ));
+void Match::push_match( string read, int pos, bool rev ){
+  matchlist.push_back(Read( read, pos, rev ));
 }
 
 // perform match

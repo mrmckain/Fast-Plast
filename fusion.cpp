@@ -136,11 +136,13 @@ void Fusion::process_removals(){
   for( int i=(int)contig_remove_list.size()-1; i>=0; i-- ){
     contigs->remove_contig( contig_remove_list[i] );
   }
+  contig_remove_list.clear();
 }
 
 // compile list of best mismatch scores between contigs that meet the mismatch threshold
-vector<Mismatch> Fusion::get_mismatch_scores(){
+vector<Mismatch> Fusion::get_mismatch_scores( bool first_run ){
   vector<Mismatch> match_list;
+  int overlap_len = extend_len * 4;
 
   // loop through each contig to get the end of the contig
   for( int i=0; i<contigs->get_list_size(); i++ ){
@@ -148,17 +150,23 @@ vector<Mismatch> Fusion::get_mismatch_scores(){
       string contig_i( contigs->get_contig(i).get_sequence() );
       string contig_j( contigs->get_contig(j).get_sequence() );
       string contig_j_rev( revcomp( contig_j ) );
-      int overlap = extend_len * 2;
+      int overlap = overlap_len;
       Mismatch mim;
+
+      if( first_run ){
+        overlap = (contig_i.length() < contig_j.length()) ? contig_i.length() : contig_j.length();
+      }
+      else{
+        if( overlap > contig_i.length() ){
+          overlap = contig_i.length();
+        }
+        if( overlap > contig_j.length() ){
+          overlap = contig_j.length();
+        }
+      }
 
       //// Processing of rear end of the contig
       // orientation: i to j
-      if( overlap > contig_i.length() ){
-        overlap = contig_i.length();
-      }
-      if( overlap > contig_j.length() ){
-        overlap = contig_j.length();
-      }
       mim = overlap_check( contig_i, contig_j, overlap, 1, 0 );
 
       if( mim.get_score() <= mismatch_threshold ){
@@ -317,24 +325,23 @@ void Fusion::process_fusions(){
 //    ::> contig object is the second while contig_ref is the first and the extension is being made off the front of the object
 double Fusion::check_fusion_support( string contig, string contig_ref ){
   Extension *exten = new Extension( reads, contig_ref.length(), contig ); 
-  Match *matches = exten->matches;
   
   string support_string( "" );
   double score = 0;
   const int pos = contig_ref.length() - 1;
   const int start = -1;
   
-  matches->start_match();
+  exten->matches.start_match();
 
   // return if matches found is less than min_cov
-  if( matches->get_matchlist_size() < min_cov ){
+  if( exten->matches.get_matchlist_size() < min_cov ){
     delete exten;
     return 1.0;
   }
 
   // create missed bp's vector to keep track of how many bp's each read contains that are below the max at that position
-  vector<int> mismatch( matches->get_matchlist_size(), 0 );
-  vector<int> ambiguous_bp( matches->get_matchlist_size(), 0 );
+  vector<int> mismatch( exten->matches.get_matchlist_size(), 0 );
+  vector<int> ambiguous_bp( exten->matches.get_matchlist_size(), 0 );
   int mismatch_tot = 0;
   int mismatch_avg = 0;
   int cmp_len = 0;
@@ -342,8 +349,8 @@ double Fusion::check_fusion_support( string contig, string contig_ref ){
   // count mismatch's in each read match
   for( int i=0; i<contig_ref.length(); i++ ){
     int next_char_ref = contig_ref[pos-i];
-    for( int j=0; j<matches->get_matchlist_size(); j++ ){
-      int next_char = matches->get_pos( j, start-i );
+    for( int j=0; j<exten->matches.get_matchlist_size(); j++ ){
+      int next_char = exten->matches.get_pos( j, start-i );
       if( next_char == 'N' ){
         ambiguous_bp[j]++;
       }
@@ -365,7 +372,7 @@ double Fusion::check_fusion_support( string contig, string contig_ref ){
   exten->error_removal();
   
   // if matchlist is smaller than min_cov, bail, return 1.0 (the least supportive return value)
-  if( matches->get_matchlist_size() < min_cov ){
+  if( exten->matches.get_matchlist_size() < min_cov ){
     delete exten;
     return 1.0;
   }
@@ -393,11 +400,11 @@ double Fusion::check_fusion_support( string contig, string contig_ref ){
 }
 
 // fuse contigs wherever possible
-void Fusion::run_fusion(){
+void Fusion::run_fusion( bool first_run ){
   Log::Inst()->log_it( "Fuse contigs" );
   
   // MISMATCH SCORES //
-  match_list = get_mismatch_scores();
+  match_list = get_mismatch_scores( first_run );
   
   // SORT AND CLEAN MATCH LIST //
   sort_matches();

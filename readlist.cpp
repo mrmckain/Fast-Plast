@@ -5,6 +5,7 @@
 #include "revcomp.hpp"
 #include "gzip.hpp"
 #include <sstream>
+#include <algorithm>
 
 using namespace std;
 

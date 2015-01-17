@@ -7,7 +7,8 @@
 #include <vector>
 
 class Extension{
-  private:
+  public:
+    Match matches;
     Readlist *reads;
     std::vector<std::vector<int>> ATCG;
     std::vector<int> missed_bp;
@@ -25,7 +26,6 @@ class Extension{
     
     Extension( Readlist *reads, int len );
     Extension( Readlist *reads, int len, std::string contig );
-    ~Extension();
 
     // set the value of the missed_bp std::vector
     void set_missed_bp( std::vector<int> missed_bp );
@@ -40,7 +40,7 @@ class Extension{
     void missed_count();
 
     // third step in get_extension(): removal of reads that have errors over the threshold
-    void error_removal();
+    bool error_removal();
 
     // fourth step in get_extension: build extension string
     void build_string();

@@ -5,7 +5,7 @@
 
 using namespace std;
 
-Extension::Extension( Readlist *reads, int len ) : reads(reads), len(len), matches(reads){
+Extension::Extension( Readlist *reads, int len ) : reads(reads), len(len), matches(Match(reads)){
   start = -1;
   missed_bp_tot = 0;
   missed_bp_avg = 0;
@@ -15,7 +15,7 @@ Extension::Extension( Readlist *reads, int len ) : reads(reads), len(len), match
   pos_mult = -1;
 }
 
-Extension::Extension( Readlist *reads, int len, string contig ) : reads(reads), len(len), matches(reads,contig){
+Extension::Extension( Readlist *reads, int len, string contig ) : reads(reads), len(len), matches(Match(reads,contig)){
   start = -1;
   missed_bp_tot = 0;
   missed_bp_avg = 0;
@@ -117,7 +117,8 @@ void Extension::missed_count(){
 }
 
 // third step in get_extension(): removal of reads that have errors over the threshold
-void Extension::error_removal(){
+bool Extension::error_removal(){
+  int start_size = (int)matches.get_matchlist_size();
   for( int i=0; i<missed_bp.size(); i++ ){
     if( missed_bp[i] > missed_bp_avg ){
       matches.remove_match( i );
@@ -125,6 +126,11 @@ void Extension::error_removal(){
       i--;
     }
   }
+  if( start_size > 5 && matches.get_matchlist_size() < start_size * stop_ext ){
+    return false;
+  }
+  
+  return true;
 }
 
 // fourth step in get_extension: build extension sequence
@@ -182,6 +188,7 @@ void Extension::build_string(){
 /// used for off the front matching
 string Extension::get_extension( string contig, bool back ){
   // contains multiplier for position calculation
+  exten_seq = "";
   missed_bp_tot = 0;
   missed_bp_avg = 0;
   this->back = back;
@@ -239,8 +246,14 @@ string Extension::get_extension( string contig, bool back ){
   /////////////////////////////////
   // STEP 3: Remove Errant Reads //
   // loop through missed_bp list to eliminate any matches that have a missed level greater than the avg 
-  error_removal();
-  
+  if ( !error_removal() ){
+    // reset lists
+    ATCG.clear();
+    missed_bp.clear();
+    matches.clearlist();
+    return "";
+  }
+
   //////////////////////////////
   // STEP 4: Build Extension //
   build_string();

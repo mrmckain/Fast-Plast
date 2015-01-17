@@ -18,7 +18,7 @@ class Match{
     // adds a read to the read list
     void push_match( std::string read, int pos );
 
-    void push_match( std::string read, int pos, bool revcomp );
+    void push_match( std::string read, int pos, bool rev );
 
     // determines where the read passed matches the contig if at all for off the front matches
     void match_contig_fr();
