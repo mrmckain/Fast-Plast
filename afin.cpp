@@ -22,7 +22,7 @@ void print_usage( string prog ){
   cout << "  -o, outfile            Output will be printed to the outfile specified, with a .fa extension for the contigs and .log extension for the logfile" << endl;
   cout << "  -m, sort_char          [default:   4] Sorts the reads by the first max_sort_char characters" << endl;
   cout << "  -s, sub_len            [default: 100] Will focus on the current last contig_sub_len characters of the contig in each search" << endl;
-  cout << "  -l, search_loops       [default:  10] Will search against each contig a maximum of max_search_loops times before comparing them" << endl;
+  cout << "  -l, search_loops       [default:  10] Will search against each contig a maximum of max_search_loops times to attempt extension" << endl;
   cout << "  -i, min_cov            [default:   3] Will stop adding bp's once the coverage falls below min_cov" << endl;
   cout << "  -p, min_overlap        [default:  20] Only those reads overlapping the contig by at least min_overlap bp's will be returned in each search" << endl;
   cout << "  -t, max_threads        [default:   4] Will only run max_threads threads at a time" << endl;
@@ -102,7 +102,7 @@ int main( int argc, char** argv ){
   };
   
   // get all options that have been provided on the command line
-  while (( c = getopt_long(argc, argv, "hr:c:o:s:l:x:m:i:p:t:d:e:g:z", long_options, &option_index )) != -1 ) {
+  while (( c = getopt_long(argc, argv, "hr:c:o:s:l:x:m:i:p:t:d:e:f:g:z", long_options, &option_index )) != -1 ) {
     switch( c ) {
       case 0:
         /* If this option set a flag, do nothing else now. */
@@ -152,6 +152,10 @@ int main( int argc, char** argv ){
       // max_missed option
       case 'e':
         max_missed = atoi(optarg);
+        break;
+      // stop_ext option
+      case 'f':
+        stop_ext = atof(optarg);
         break;
       // mismatch_threshold option
       case 'g':

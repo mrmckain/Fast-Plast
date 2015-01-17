@@ -154,7 +154,9 @@ void Readlist::add_reads( string readsfiles ){
             if( (line = read->getline()) != "" ){
               line_count++;
               if( !homopolymer_check( line ) ){
-                rlist.push_back( line );
+                if( line.length() > max_sort_char ){
+                  rlist.push_back( line );
+                }
               }
               if( ( line = read->getline()) != "" ){
                 line_count++;
@@ -204,7 +206,9 @@ void Readlist::add_reads( string readsfiles ){
         do{
           if( line[0] == '>' && buffer.length() != 0 ){
             if( !homopolymer_check( buffer ) ){
-              rlist.push_back( buffer );
+              if( buffer.length() > max_sort_char ){
+                rlist.push_back( buffer );
+              }
             }
             buffer = "";
           }
@@ -226,7 +230,9 @@ void Readlist::add_reads( string readsfiles ){
   // insert last line into rlist
   if( buffer.length() != 0 ){
     if( !homopolymer_check( buffer ) ){
-      rlist.push_back( buffer );
+      if( buffer.length() > max_sort_char ){
+        rlist.push_back( buffer );
+      }
     }
   }
 

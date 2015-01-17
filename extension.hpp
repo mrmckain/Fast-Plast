@@ -20,9 +20,6 @@ class Extension{
     int len;
     int missed_bp_tot;
     int missed_bp_avg;
-
-  public:
-    Match matches;
     
     Extension( Readlist *reads, int len );
     Extension( Readlist *reads, int len, std::string contig );
