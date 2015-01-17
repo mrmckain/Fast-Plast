@@ -153,6 +153,7 @@ void Contiglist::add_contigs(){
 void Contiglist::output_contigs( int list_num, string file, string id_suffix ){
   vector<Contig> clist = contigs;  
 
+  cout << "output_contigs" << endl;
   if( list_num )
     clist = contigs_fused;
   
@@ -177,6 +178,7 @@ void Contiglist::create_final_fasta(){
     id_suffix = id_suffix.substr( id_suffix_pos + 1 );
   }
 
+  cout << "create_final_fasta" << endl;
   // print completed contigs to file
   output_contigs( 0, outfile, id_suffix );
 
