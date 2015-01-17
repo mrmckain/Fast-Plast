@@ -9,9 +9,6 @@
 
 using namespace std;
 
-// TASK:: add signal handling
-// TASK:: Write up documentation explaining each option, its purpose, and why the default is set the way it is
-
 // Usage function
 void print_usage( string prog ){
   cout << "Usage: " << prog << " -c contigsfile(s) -r readsfile(s) [-o outfile] [-m sort_char] [-s sub_len]" << endl;

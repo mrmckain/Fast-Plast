@@ -17,7 +17,7 @@ int min_overlap;
 int max_threads;
 int initial_trim;
 int max_missed;
-int stop_ext;
+double stop_ext;
 bool test_run;
 int print_fused;
 int screen_output;

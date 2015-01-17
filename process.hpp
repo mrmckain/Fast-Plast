@@ -29,7 +29,7 @@ extern int min_overlap;
 extern int max_threads;
 extern int initial_trim;
 extern int max_missed;
-extern int stop_ext;
+extern double stop_ext;
 extern bool test_run;
 extern int print_fused;
 extern int screen_output;
