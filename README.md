@@ -71,9 +71,7 @@ Fast-Plast was built for genome survey sequence (aka genome skimming or low-pass
 	The file "filtered_spades_contigs.fsa" contains contigs from the SPAdes assemblies that have low coverage, relative to the average coverage of all contigs, removed.  This is to remove mitochondrial contamination.
 
 <b>Afin Contigs</b>:
-	Output from afin is in the file "Taxon-ID_afin.fa".  Often, this will be a single contig, but if more than one is present, either the coverage of the plastome is not high enough or there may be regions of the plastome with more than a single, dominant sequence.
-
-	A log file that shows the steps afin took in the extention and assembly process if found in "Taxon-ID_afin.log".
+	Output from afin is in the file "Taxon-ID_afin.fa".  Often, this will be a single contig, but if more than one is present, either the coverage of the plastome is not high enough or there may be regions of the plastome with more than a single, dominant sequence. A log file that shows the steps afin took in the extention and assembly process if found in "Taxon-ID_afin.log".
 
 <b>Regions Files</b>:
 	Files ending in *regions_split2.fsa and *regions_split3.fsa will be created that Fast-Plast's best guesses for the LSC, IR, and SSC regions of the plastome.  These use the same sequence from the afin assembly, but use a different pattern for collapsing and removed putative single copy regions.
