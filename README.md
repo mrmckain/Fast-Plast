@@ -16,6 +16,19 @@ Fast-Plast uses a de novo assembly approach by combining the de bruijn graph-bas
 
 <h4>Requirements</h4>
 
-TreeIO from BioPerl is required to use PUG.
+Fast-Plast requires <a href="http://www.usadellab.org/cms/?page=trimmomatic">Trimmomatic</a>, <a href="http://bowtie-bio.sourceforge.net/bowtie2/index.shtml">Bowtie2</a>, and <a href="http://bioinf.spbau.ru/spades">SPAdes</a>.
+
+If you use the coverage analysis to verify the assembly, then <a href="http://www.genome.umd.edu/jellyfish.html#Release">Jellyfish 2</a> will be needed. We highly recommend the coverage analysis to check the Fast-Plast assembly. 
+
+Fast-Plast is coded to use 4 threads during the Trimmomatic, bowtie2, SPAdes, and afin steps. This can simply be changed by the user if this number is not available.
+
+
 
 <h4>Input</h4>
+
+<h4>References</h4>
+
+Bankevich, A., S. Nurk, D. Antipov, A. A. Gurevich, M. Dvorkin, A. S. Kulikov, V. M. Lesin, S. I. Niklenko, S. Pham, A. D. Prjibelski, A. V. Pyshkin, A. V. Sirotkin, N. Vyahhi, G. Tesler, M.A. Alexkseyev, and P. A. Pevzner. 2012. SPAdes: a new genome assembly algorithm and its applications to single-cell sequencing. <i>J. Comp. Biol.</i>, 19(5):455-477.
+Bolger, A. M., M. Lohse, and B. Usadel. 2014. Trimmomatic: A flexible trimmer for Illumina Sequence Data. <i>Bioinformatics</i>, btu170.
+Langmead, B. and S. Salzberg. 2012. Fast gapped-read alignment with Bowtie 2. <i>Nature Methods</i>, 9:357-359.
+Marçais, G. and C. Kingsford. 2011. A fast, lock-free approach for efficient parallel counting of occurrences of k-mers. <i>Bioinformatics</i>, 27:764-770.
