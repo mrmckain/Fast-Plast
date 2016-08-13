@@ -1,0 +1,6 @@
+args<-commandArgs(TRUE)
+values<-read.table(file=args[1])
+filename<-paste(args[2],"_coverage.pdf",sep="")
+pdf(file=filename)
+plot(values[,2], values[,3], pch=19 ,xlab="Plastid Position", ylab="Coverage of 25mer Window", col = ifelse(values[,3]==0, 'red','black'))
+dev.off()
