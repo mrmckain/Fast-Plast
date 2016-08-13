@@ -1,6 +1,6 @@
 #!/bin/bash
 
-java -classpath Trimmomatic-0.36/trimmomatic-0.36.jar org.usadellab.trimmomatic.TrimmomaticPE -threads 4 -phred33 $1 $2 $3.trimmed_P1.fq $3.trimmed_U1.fq $3.trimmed_P2.fq $3.trimmed_U2.fq ILLUMINACLIP:Trimmomatic-0.36/adapters/NEB-PE.fa:1:30:10 SLIDINGWINDOW:10:20 MINLEN:40
+java -classpath Trimmomatic-0.36/trimmomatic-0.36.jar org.usadellab.trimmomatic.TrimmomaticPE -threads 4 -phred33 $1 $2 $3.trimmed_P1.fq $3.trimmed_U1.fq $3.trimmed_P2.fq $3.trimmed_U2.fq ILLUMINACLIP:Fast-Plast-master/bin/NEB-PE.fa:1:30:10 SLIDINGWINDOW:10:20 MINLEN:40
 
 bowtie2 --very-sensitive-local --al map_hits.fq --al-conc map_pair_hits.fq -p 4 -x Fast-Plast_master/Verdant -1 $3.trimmed_P1.fq -2 $3.trimmed_P2.fq -U $3.trimmed_U1.fq,$3.trimmed_U2.fq -S $3.sam
 
