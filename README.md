@@ -43,7 +43,7 @@ The control file is run_fast-plast.sh and needs paths to the programs Trimmomati
 
 The Trimmomatic command includes adapter trimming and needs a file.  We use the file included in the bin directory for adapters from the NEBNext DNA Ultra II library prep kit for Illumina. If this will not work for you data, it should be changed.
 
-The bowtie2 command uses the bowtie index "Verdant" packaged with Fast-Plast.  This is a collection 320 whole chloroplast genomes from GenBank and the Verdant chloroplast database. These are all angiosperm chloroplast genomes. If you taxa are not angiosperms, we suggest using a data set that is phylogenetically closer to your samples.
+The bowtie2 command uses the bowtie index "Verdant" packaged with Fast-Plast.  This is a collection 320 whole chloroplast genomes from GenBank and the Verdant chloroplast database. These are all angiosperm chloroplast genomes. If your taxa are not angiosperms, we suggest using a data set that is phylogenetically closer to your samples.
 
 <h5>Plastome Finisher</h5>
 The plastome_finisher.sh scripts in the bin directory needs to be adjusted to add paths to blastn and the Fast-Plast repository.
