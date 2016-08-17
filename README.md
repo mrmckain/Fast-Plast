@@ -1,6 +1,6 @@
 Fast-Plast: Rapid de novo assembly and finishing for whole chloroplast genomes
 =============
-<b>Authors</b>: Michael R. McKain, <a href="https://bitbucket.org/afinit/afin">Mark Wilson</a><br>
+<b>Authors</b>: Michael R. McKain, <a href="https://github.com/afinit/afin">Mark Wilson</a><br>
 </br>
 Version 0.3 beta, August 12, 2016<br>
 </br>
@@ -34,7 +34,7 @@ We are developing a different control file that will allow users to change param
 
 <h5>afin</h5>
 <ul>
-	<li><code> cd afinit-afin-c25d552842f5 </code></li>
+	<li><code> cd afin </code></li>
 	<li><code> make </code></li>
 </ul>
 
