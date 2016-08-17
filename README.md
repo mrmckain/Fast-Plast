@@ -81,5 +81,5 @@ The Extension process takes a piece of each end from each contig, then finds all
 
 ### Questions? Comments? Concerns?  ###
 
-* For any of these concerning afin, contact at benine.3121 at gmail
+* For any of these concerning afin, contact at mark *dot* wilson *dot* 3121 *at* gmail
 * Else, please contact authorities in the appropriate specialty
