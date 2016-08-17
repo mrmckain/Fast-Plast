@@ -1,4 +1,4 @@
-// $Author: benine $
+// $Author: afinit $
 // $Date$
 // $Log$
 // Contains the Process class for afin
@@ -39,6 +39,19 @@ Process::Process(){
   reads = 0;
   contigs = 0;
   fuse = 0;
+  iterables_len = 0;
+  
+  // initialize unordered_map for iterable options
+  iterable_opts["max_search_loops"] = "10";
+  iterable_opts["contig_sub_len"] = "100";
+  iterable_opts["extend_len"] = "40";
+  iterable_opts["max_sort_char"] = "4";
+  iterable_opts["min_cov"] = "3";
+  iterable_opts["min_overlap"] = "20";
+  iterable_opts["initial_trim"] = "0";
+  iterable_opts["max_missed"] = "5";
+  iterable_opts["stop_ext"] = "0.5";
+  iterable_opts["mismatch_threshold"] = "0.1";
 }
 
 Process::~Process(){
@@ -63,6 +76,132 @@ void Process::logfile_init(){
   Log::Inst()->log_it( "max_missed: " + to_string(max_missed) );
   Log::Inst()->log_it( "mismatch_threshold: " + to_string(mismatch_threshold) );
   Log::Inst()->log_it( "max_threads: " + to_string(max_threads) );
+  Log::Inst()->log_it( "stop_ext: " + to_string(stop_ext) );
+}
+
+// Parse option int
+void Process::parse_option( string opt_key, int* glob_var, vector<int>* iter_vect ){
+  string opt = iterable_opts[opt_key];
+  
+  try{
+		// check for commas in string
+		if( ! opt.find(',') ){
+			*glob_var = stoi( opt );
+		}
+		else{
+			// split along commas if found
+			stringstream ss(opt);
+			string item;
+			while( getline( ss, item, ',' )){
+				iter_vect->push_back(stoi(item));
+			}
+		}
+	}
+	catch( exception const & e ){
+		Log::Inst()->log_it( "Error: " + string(e.what(), strlen(e.what())) + " : Invalid values: " + opt + " For option: " + opt_key );
+		exit(0);
+	}
+}
+
+// Parse option double
+void Process::parse_option( string opt_key, double* glob_var, vector<double>* iter_vect ){
+  string opt = iterable_opts[opt_key];
+
+	try{ 
+		// check for commas in string
+		if( ! opt.find(',') ){
+			*glob_var = stof( opt );
+		}
+		else{
+			// split along commas if found
+			stringstream ss(opt);
+			string item;
+			while( getline( ss, item, ',' )){
+				iter_vect->push_back(stof(item));
+			}
+		}
+	}
+	catch( exception const & e ){
+		Log::Inst()->log_it( "Error: " + string(e.what(), strlen(e.what())) + " : Invalid values: " + opt + " For option: " + opt_key );
+		exit(0);
+	}
+}
+
+// Populate iterable options vector
+void Process::populate_iterables(){
+  // process iterable options
+  parse_option( "max_search_loops", &max_search_loops, &max_search_loops_iter );
+  parse_option( "contig_sub_len", &contig_sub_len, &contig_sub_len_iter );
+  parse_option( "extend_len", &extend_len, &extend_len_iter );
+  parse_option( "max_sort_char", &max_sort_char, &max_sort_char_iter );
+  parse_option( "min_cov", &min_cov, &min_cov_iter );
+  parse_option( "min_overlap", &min_overlap, &min_overlap_iter );
+  parse_option( "initial_trim", &initial_trim, &initial_trim_iter );
+  parse_option( "max_missed", &max_missed, &max_missed_iter );
+  parse_option( "stop_ext", &stop_ext, &stop_ext_iter );
+  parse_option( "mismatch_threshold", &mismatch_threshold, &mismatch_threshold_iter );
+
+	// get all iterables lengths
+	vector<int> it_lens;
+  it_lens.push_back(max_search_loops_iter.size());
+  it_lens.push_back(contig_sub_len_iter.size());
+	it_lens.push_back(extend_len_iter.size());
+	it_lens.push_back(max_sort_char_iter.size());
+	it_lens.push_back(min_cov_iter.size());
+	it_lens.push_back(min_overlap_iter.size());
+	it_lens.push_back(initial_trim_iter.size());
+	it_lens.push_back(max_missed_iter.size());
+	it_lens.push_back(stop_ext_iter.size());
+	it_lens.push_back(mismatch_threshold_iter.size());
+
+  // set iterables_len
+  iterables_len = *max_element(begin(it_lens),end(it_lens));
+  
+  // check to make sure all options with more than one iteration are equal in iterations
+  for( int i=0; i<it_lens.size(); i++  ){
+  	if( it_lens[i] != iterables_len || it_lens[i] != 0 ){
+  		Log::Inst()->log_it( "Error: Iterated options must have some number of iterations");
+  		exit(0);
+  	}
+  }
+  
+  if( iterables_len == 0 ){
+  	iterables_len = 1;
+  } 
+}
+
+// set iterables global values at each iteration
+void Process::set_iterables( int i ){
+	if( !max_search_loops_iter.empty() ){
+  	max_search_loops = max_search_loops_iter[i];
+  }
+  if( !contig_sub_len_iter.empty() ){
+		contig_sub_len = contig_sub_len_iter[i];
+  }
+  if( !extend_len_iter.empty() ){
+		extend_len = extend_len_iter[i];
+  }
+  if( !max_sort_char_iter.empty() ){
+		max_sort_char = max_sort_char_iter[i];
+  }
+  if( !min_cov_iter.empty() ){
+		min_cov = min_cov_iter[i];
+  }
+  if( !min_overlap_iter.empty() ){
+		min_overlap = min_overlap_iter[i];
+  }
+  if( !initial_trim_iter.empty() ){
+		initial_trim = initial_trim_iter[i];
+  }
+  if( !max_missed_iter.empty() ){
+		max_missed = max_missed_iter[i];
+  }
+  if( !stop_ext_iter.empty() ){
+		stop_ext = stop_ext_iter[i];
+  }
+  if( !mismatch_threshold_iter.empty() ){
+		mismatch_threshold = mismatch_threshold_iter[i];
+  }
 }
 
 // Initializes data structures and turns over control to run_manager()
@@ -72,30 +211,39 @@ void Process::start_run(){
     logfile_init();
   }
 
-  // prevent printing of 
-  if( no_fusion )
-    print_fused = 0;
-
-  // log output file
-  Log::Inst()->log_it( string("output file: ") + outfile );
-  
-  // initialize objects
+	// process iterable options
+	populate_iterables();
+	
+  // import reads once  
   reads = new Readlist( readsfiles ); 
-  contigs = new Contiglist( reads, contigsfiles, outfile );
-  fuse = new Fusion( contigs, reads );
+	
+  // loop through iterated options if present
+	for( int i=0; i < iterables_len; i++ ){	
+		// prevent printing of fused contigs
+		if( no_fusion )
+			print_fused = 0;
 
-  Log::Inst()->log_it( "End initialization phase" );
-  
-  // make initial attempt to fuse contigs  
-  if( ! no_fusion )
-    fuse->run_fusion( true );
-  
-  if( test_run )
-    contigs->output_contigs( 0, outfile + ".fus", "mid" );
+		// log output file
+		Log::Inst()->log_it( string("output file: ") + outfile );
+	
+		// initialize objects
+		contigs = new Contiglist( reads, contigsfiles, outfile );
+		fuse = new Fusion( contigs, reads );
 
-  run_manager();
+		Log::Inst()->log_it( "End initialization phase" );
+	
+		// make initial attempt to fuse contigs  
+		if( ! no_fusion )
+			fuse->run_fusion( true );
+	
+		if( test_run )
+			contigs->output_contigs( 0, outfile + ".fus", "mid" );
 
-  contigs->create_final_fasta();
+		run_manager();
+
+    // write contigs to fasta
+    contigs->create_final_fasta(i);
+	}
 }
 
 // Manages run 

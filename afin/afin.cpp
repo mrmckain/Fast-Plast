@@ -45,17 +45,7 @@ int main( int argc, char** argv ){
   //////////////////////////////////
   // Process Command Line Options //
   //////////////////////////////////
-  max_search_loops = 10;
-  contig_sub_len = 100;
-  extend_len = 40;
-  max_sort_char = 4;
-  min_cov = 3;
-  min_overlap = 20;
   max_threads = 4;
-  initial_trim = 0;
-  max_missed = 5;
-  stop_ext = .5;
-  mismatch_threshold = 0.1;
   test_run = false;
   print_fused = 0;
   screen_output = 1;
@@ -119,47 +109,47 @@ int main( int argc, char** argv ){
         break;
       // max_sort_char option
       case 'm':
-        max_sort_char = atoi(optarg);
+        process.iterable_opts["max_sort_char"] = optarg;
         break;
       // contig_sub_len option
       case 's':
-        contig_sub_len = atoi(optarg);
+        process.iterable_opts["contig_sub_len"] = optarg;
         break;
       // extend_len option
       case 'x':
-        extend_len = atoi(optarg);
+        process.iterable_opts["extend_len"] = optarg;
         break;
-      // max_sort_char option
+      // max_search_loops option
       case 'l':
-        max_search_loops = atoi(optarg);
+        process.iterable_opts["max_search_loops"] = optarg;
         break;
       // min_cov option
       case 'i':
-        min_cov = atoi(optarg);
+        process.iterable_opts["min_cov"] = optarg;
         break;
       // min_overlap option
       case 'p':
-        min_overlap = atoi(optarg);
+        process.iterable_opts["min_overlap"] = optarg;
         break;
       // max_threads option
       case 't':
-        max_threads = atoi(optarg);
+        max_threads = stoi(optarg);
         break;
       // initial_trim option
       case 'd':
-        initial_trim = atoi(optarg);
+        process.iterable_opts["initial_trim"] = optarg;
         break;
       // max_missed option
       case 'e':
-        max_missed = atoi(optarg);
+        process.iterable_opts["max_missed"] = optarg;
         break;
       // stop_ext option
       case 'f':
-        stop_ext = atof(optarg);
+        process.iterable_opts["stop_ext"] = optarg;
         break;
       // mismatch_threshold option
       case 'g':
-        mismatch_threshold = atof(optarg);
+        process.iterable_opts["mismatch_threshold"] = optarg;
         break;
       // outputfile option
       case 'o':

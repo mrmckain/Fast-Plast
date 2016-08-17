@@ -245,39 +245,9 @@ void Readlist::add_reads( string readsfiles ){
 
 // checks if string is a homopolymer
 bool Readlist::homopolymer_check( string seq ){
-  int i = 0;
-  if( seq[0] == 'A' ){
-    for( i=1; i<seq.length(); i++ ){
-      if( seq[i] != 'A' ){
-        break;
-      }
-    }
+  if( seq.compare( string(seq.length(), seq[0]) ) == 0 ){
+  	return true;
   }
-  else if( seq[0] == 'T' ){
-    for( i=1; i<seq.length(); i++ ){
-      if( seq[i] != 'T' ){
-        break;
-      }
-    }
-  }
-  else if( seq[0] == 'C' ){
-    for( i=1; i<seq.length(); i++ ){
-      if( seq[i] != 'C' ){
-        break;
-      }
-    }
-  }
-  else if( seq[0] == 'G' ){
-    for( i=1; i<seq.length(); i++ ){
-      if( seq[i] != 'G' ){
-        break;
-      }
-    }
-  }
-  if( i == seq.length() ){
-    return true;
-  }
-
   return false;
 }
 

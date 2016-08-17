@@ -16,6 +16,7 @@
 #include <queue>
 #include <mutex>
 #include <condition_variable>
+#include <sstream>
 
 using namespace std;
 
@@ -110,11 +111,29 @@ class Process{
     Readlist *reads;
     Contiglist *contigs;
     Fusion *fuse;
+
+    // vectors for each of the iterable options
+    vector<int> max_sort_char_iter;
+    vector<int> contig_sub_len_iter;
+    vector<int> extend_len_iter;
+    vector<int> max_search_loops_iter;
+    vector<int> min_cov_iter;
+    vector<int> min_overlap_iter;
+    vector<int> initial_trim_iter;
+    vector<int> max_missed_iter;
+    vector<double> stop_ext_iter;
+    vector<double> mismatch_threshold_iter;
+    
+    int iterables_len;
   
   public:
     string outfile;
     string readsfiles;
     string contigsfiles;
+    
+    // iterable_opts is built of 10 elements containing the 10 different options that can be used as iterating options in afin
+    unordered_map<string,string> iterable_opts;
+    //vector<vector<double>*> iterables; // create vector of pointers to filled iterable vectors only
     
     Process();
     ~Process();
@@ -122,6 +141,18 @@ class Process{
     // initalize logfile
     void logfile_init();
 
+	// Parse option int
+	void parse_option( string opt_key, int* glob_var, vector<int>* iter_vect );
+
+	// Parse option double
+	void parse_option( string opt_key, double* glob_var, vector<double>* iter_vect );
+
+	// Populate iterable options vector
+	void populate_iterables();
+	
+	// set iterables global values at each iteration
+	void set_iterables( int i );
+    
     // Initializes data structures and turns over control to run_manager()
     void start_run();
     
