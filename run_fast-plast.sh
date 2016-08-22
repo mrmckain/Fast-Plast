@@ -10,4 +10,4 @@ perl Fast-Plast_master/bin/filter_coverage_assembly.pl spades_iter1/contigs.fast
 
 Fast-Plast_master/afinit-afin-c25d552842f5/afin -c filtered_spades_contigs.fsa -r $3.trimmed* -l 50 -f .1 -d 100 -x 100 -p 20 -i 2 -o $3_afin
 
-Fast-Plast-master/bin/plastome_finisher.sh $3 Fast-Plast-master/bin/positional_genes.fsa
+Fast-Plast-master/bin/plastome_finisher.sh $3 Fast-Plast-master/bin/position_genes.fsa
