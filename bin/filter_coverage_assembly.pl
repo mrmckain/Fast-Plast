@@ -11,7 +11,7 @@ my $min_cov=100000000;
 while(<$file>){
 	chomp;
 	if(/>/){
-		$_ =~ /cov_(.*?)[_|$]/;
+		$_ =~ /cov_(.*?)(_|$)/;
 		$cov = $1;
 		if($max_cov <= $cov){
 			$max_cov = $cov;
