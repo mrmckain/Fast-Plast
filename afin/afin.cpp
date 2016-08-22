@@ -1,4 +1,4 @@
-// benine
+// afinit
 //
 // Coded and compiled using c++11 standard
 
@@ -7,35 +7,33 @@
 #include <getopt.h>
 #include <iostream>
 
-using namespace std;
-
 // Usage function
-void print_usage( string prog ){
-  cout << "Usage: " << prog << " -c contigsfile(s) -r readsfile(s) [-o outfile] [-m sort_char] [-s sub_len]" << endl;
-  cout << "          [-l search_loops] [-i min_cov] [-p min_overlap] [-t max_threads]" << endl;
-  cout << "          [-d initial_trim] [-e max_missed] [-f stop_ext] [-g mismatch] [-x extend_len]" << endl;
-  cout << "          [--silent] [--no_log] [--no_fusion] [--verbose] [--print_fused]" << endl << endl;
-  cout << "       " << prog << " -h [--help]" << endl << endl;
-  cout << endl;
-  cout << "  -c, contigsfiles       Space (or comma) separated list of files containing contigs" << endl;
-  cout << "  -r, readsfiles         Space (or comma) separated list of files containing reads" << endl;
-  cout << "  -o, outfile            Output will be printed to the outfile specified, with a .fa extension for the contigs and .log extension for the logfile" << endl;
-  cout << "  -m, sort_char          [default:   4] Sorts the reads by the first max_sort_char characters" << endl;
-  cout << "  -s, sub_len            [default: 100] Will focus on the current last contig_sub_len characters of the contig in each search" << endl;
-  cout << "  -l, search_loops       [default:  10] Will search against each contig a maximum of max_search_loops times to attempt extension" << endl;
-  cout << "  -i, min_cov            [default:   3] Will stop adding bp's once the coverage falls below min_cov" << endl;
-  cout << "  -p, min_overlap        [default:  20] Only those reads overlapping the contig by at least min_overlap bp's will be returned in each search" << endl;
-  cout << "  -t, max_threads        [default:   4] Will only run max_threads threads at a time" << endl;
-  cout << "  -d, initial_trim       [default:   0] Length to trim off the beginning and end of each contig at the start of the program" << endl;
-  cout << "  -e, max_missed         [default:   5] Maximum allowable mismatched bp's for each read when checking troubled contig fusions" << endl;
-  cout << "  -f, stop_ext           [default:  .5] During extension, if the percentage of reads remaining after cleaning is below stop_ext, do not extend here" << endl;
-  cout << "  -g, mismatch           [default:  .1] maximum percentage of mismatches allowed when fusing two contigs" << endl;
-  cout << "  -x, extend_len         [default:  40] Will add a max of extend_len bp's each search loop" << endl;
-  cout << "  --silent               Suppress screen output" << endl;
-  cout << "  --no_log               Suppress log file creation" << endl;
-  cout << "  --no_fusion            Only extend, no attempt will be made to fuse contigs" << endl;
-  cout << "  --verbose              Output additional information to logfile and/or screen (except if output to that location is suppressed)" << endl;
-  cout << "  --print_fused          Print to file (_fused.fasta) fused contigs just before fusion, for inspecting the fusion locations" << endl << endl;
+void print_usage( std::string prog ){
+  std::cout << "Usage: " << prog << " -c contigsfile(s) -r readsfile(s) [-o outfile] [-m sort_char] [-s sub_len]" << std::endl;
+  std::cout << "          [-l search_loops] [-i min_cov] [-p min_overlap] [-t max_threads]" << std::endl;
+  std::cout << "          [-d initial_trim] [-e max_missed] [-f stop_ext] [-g mismatch] [-x extend_len]" << std::endl;
+  std::cout << "          [--silent] [--no_log] [--no_fusion] [--verbose] [--print_fused]" << std::endl << std::endl;
+  std::cout << "       " << prog << " -h [--help]" << std::endl << std::endl;
+  std::cout << std::endl;
+  std::cout << "  -c, contigsfiles       Space (or comma) separated list of files containing contigs" << std::endl;
+  std::cout << "  -r, readsfiles         Space (or comma) separated list of files containing reads" << std::endl;
+  std::cout << "  -o, outfile            Output will be printed to the outfile specified, with a .fa extension for the contigs and .log extension for the logfile" << std::endl;
+  std::cout << "  -m, sort_char          [default:   4] Sorts the reads by the first max_sort_char characters" << std::endl;
+  std::cout << "  -s, sub_len            [default: 100] Will focus on the current last contig_sub_len characters of the contig in each search" << std::endl;
+  std::cout << "  -l, search_loops       [default:  10] Will search against each contig a maximum of max_search_loops times to attempt extension" << std::endl;
+  std::cout << "  -i, min_cov            [default:   3] Will stop adding bp's once the coverage falls below min_cov" << std::endl;
+  std::cout << "  -p, min_overlap        [default:  20] Only those reads overlapping the contig by at least min_overlap bp's will be returned in each search" << std::endl;
+  std::cout << "  -t, max_threads        [default:   4] Will only run max_threads threads at a time" << std::endl;
+  std::cout << "  -d, initial_trim       [default:   0] Length to trim off the beginning and end of each contig at the start of the program" << std::endl;
+  std::cout << "  -e, max_missed         [default:   5] Maximum allowable mismatched bp's for each read when checking troubled contig fusions" << std::endl;
+  std::cout << "  -f, stop_ext           [default:  .5] During extension, if the percentage of reads remaining after cleaning is below stop_ext, do not extend here" << std::endl;
+  std::cout << "  -g, mismatch           [default:  .1] maximum percentage of mismatches allowed when fusing two contigs" << std::endl;
+  std::cout << "  -x, extend_len         [default:  40] Will add a max of extend_len bp's each search loop" << std::endl;
+  std::cout << "  --silent               Suppress screen output" << std::endl;
+  std::cout << "  --no_log               Suppress log file creation" << std::endl;
+  std::cout << "  --no_fusion            Only extend, no attempt will be made to fuse contigs" << std::endl;
+  std::cout << "  --verbose              Output additional information to logfile and/or screen (except if output to that location is suppressed)" << std::endl;
+  std::cout << "  --print_fused          Print to file (_fused.fasta) fused contigs just before fusion, for inspecting the fusion locations" << std::endl << std::endl;
 }
 
 /////////////////////////////////////////////////////////////////////////////////\
@@ -56,13 +54,13 @@ int main( int argc, char** argv ){
   int c;
   bool quit_flag = false;
   Process process;
-  
+
   // initialize global Log object
   Log::Inst();
-  
+
   // prevent output to stderr if erroneous option is found
   opterr = 0;
-  
+
   int option_index = 0;
 
   static struct option long_options[] =
@@ -90,7 +88,7 @@ int main( int argc, char** argv ){
     {"test_run",      no_argument,        0,  'z'},
     {0, 0, 0, 0}
   };
-  
+
   // get all options that have been provided on the command line
   while (( c = getopt_long(argc, argv, "hr:c:o:s:l:x:m:i:p:t:d:e:f:g:z", long_options, &option_index )) != -1 ) {
     switch( c ) {
@@ -133,7 +131,7 @@ int main( int argc, char** argv ){
         break;
       // max_threads option
       case 't':
-        max_threads = stoi(optarg);
+        max_threads = std::stoi(optarg);
         break;
       // initial_trim option
       case 'd':
@@ -159,25 +157,25 @@ int main( int argc, char** argv ){
       case 'r':
         optind--;
         // loop through each file
-        while ( optind < argc && argv[optind][0] != '-' ) { 
+        while ( optind < argc && argv[optind][0] != '-' ) {
           if( process.readsfiles != "" ){
             process.readsfiles.append( "," );
           }
           process.readsfiles.append( argv[optind] );
           optind++;
-        }   
+        }
         break;
       // contig file option
       case 'c':
         optind--;
         // loop through each file
-        while ( optind < argc && argv[optind][0] != '-' ) { 
+        while ( optind < argc && argv[optind][0] != '-' ) {
           if( process.contigsfiles != "" ){
             process.contigsfiles.append( "," );
           }
           process.contigsfiles.append( argv[optind] );
           optind++;
-        }   
+        }
         break;
       // test_run option
       case 'z':
@@ -209,7 +207,7 @@ int main( int argc, char** argv ){
         abort();
     }
   }
-  
+
   /////////////////
   // End Options //
   /////////////////

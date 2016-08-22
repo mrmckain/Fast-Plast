@@ -3,8 +3,6 @@
 #include "extension.hpp"
 #include "process.hpp"
 
-using namespace std;
-
 Extension::Extension( Readlist *reads, int len ) : reads(reads), len(len), matches(Match(reads)){
   start = -1;
   missed_bp_tot = 0;
@@ -15,7 +13,7 @@ Extension::Extension( Readlist *reads, int len ) : reads(reads), len(len), match
   pos_mult = -1;
 }
 
-Extension::Extension( Readlist *reads, int len, string contig ) : reads(reads), len(len), matches(Match(reads,contig)){
+Extension::Extension( Readlist *reads, int len, std::string contig ) : reads(reads), len(len), matches(Match(reads,contig)){
   start = -1;
   missed_bp_tot = 0;
   missed_bp_avg = 0;
@@ -26,7 +24,7 @@ Extension::Extension( Readlist *reads, int len, string contig ) : reads(reads), 
 }
 
 // set the value of the missed_bp vector
-void Extension::set_missed_bp( vector<int> missed_bp ){
+void Extension::set_missed_bp( std::vector<int> missed_bp ){
   this->missed_bp = missed_bp;
 }
 
@@ -38,8 +36,8 @@ void Extension::set_missed_avg( int missed_avg ){
 // first step of get_extension: determine bp count and max represented bp at each position
 void Extension::bp_count(){
   for( int i=0; i<len; i++ ){
-    // initialize temporary vector 
-    vector<int> ATCG_curr = { 0,0,0,0,0 };
+    // initialize temporary vector
+    std::vector<int> ATCG_curr = { 0,0,0,0,0 };
     int next_char = 0;
 
     // loop through matches to get count of each nucleotide present at the current position
@@ -60,7 +58,7 @@ void Extension::bp_count(){
       }
     }
 
-    // determine maximum number of any nucleotide 
+    // determine maximum number of any nucleotide
     for( int j=0; j<4; j++ ){
       if( ATCG_curr[j] > ATCG_curr[4] ){
         ATCG_curr[4] = ATCG_curr[j];
@@ -129,25 +127,25 @@ bool Extension::error_removal(){
   if( start_size > 5 && matches.get_matchlist_size() < start_size * stop_ext ){
     return false;
   }
-  
+
   return true;
 }
 
 // fourth step in get_extension: build extension sequence
 void Extension::build_string(){
-  string ATCGstr( "ATCG" );
+  std::string ATCGstr( "ATCG" );
 
   // loop len times processing 1 basepair at a time
   for( int i=0; i<len; i++ ){
-    vector<int> ATCG_curr = { 0,0,0,0 };
+    std::vector<int> ATCG_curr = { 0,0,0,0 };
     int max = 0;
     int avg = 0;
-    
+
     // check coverage at current position
     if( matches.check_cov( start+(pos_mult*i) ) < min_cov ){
       break;
     }
-    
+
     int next_char = 0;
 
     for( int j=0; j<matches.get_matchlist_size(); j++ ){
@@ -184,9 +182,9 @@ void Extension::build_string(){
   }
 }
 
-/// checks the matches against each other and the contig, compiles an extension of length len (or less if the length is limited by matches) that is returned 
+/// checks the matches against each other and the contig, compiles an extension of length len (or less if the length is limited by matches) that is returned
 /// used for off the front matching
-string Extension::get_extension( string contig, bool back ){
+std::string Extension::get_extension( std::string contig, bool back ){
   // contains multiplier for position calculation
   exten_seq = "";
   missed_bp_tot = 0;
@@ -197,7 +195,7 @@ string Extension::get_extension( string contig, bool back ){
   // reset parameters of Match object
   matches.set_seq( contig, back );
   matches.start_match();
-  
+
   // get matches
   if( back ){
     start = contig.length();
@@ -219,12 +217,12 @@ string Extension::get_extension( string contig, bool back ){
 
   // create missed bp's vector to keep track of how many bp's each read contains that are below the max at that position
   missed_bp.resize( matches.get_matchlist_size(), 0 );
- 
+
   /////////////////////////////////////
   // STEP 1: First Pass Over Matches //
   // loop through bp's for initial pass to tally up missed nucleotides
   bp_count();
-  
+
   ///////////////////////////////////////////
   // STEP 2: Mark Errant Reads For Removal //
   // loop through bp's to determine which reads, if any, should be eliminated from the matchlist
@@ -245,7 +243,7 @@ string Extension::get_extension( string contig, bool back ){
 
   /////////////////////////////////
   // STEP 3: Remove Errant Reads //
-  // loop through missed_bp list to eliminate any matches that have a missed level greater than the avg 
+  // loop through missed_bp list to eliminate any matches that have a missed level greater than the avg
   if ( !error_removal() ){
     // reset lists
     ATCG.clear();
@@ -266,6 +264,6 @@ string Extension::get_extension( string contig, bool back ){
 }
 
 // simply returns the built extension string
-string Extension::get_extension(){
+std::string Extension::get_extension(){
   return exten_seq;
 }

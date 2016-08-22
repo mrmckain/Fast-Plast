@@ -5,8 +5,6 @@
 #include <ctime>
 #include <vector>
 
-using namespace std;
-
 Log* Log::p_Inst = NULL;
 
 Log::Log(){}
@@ -24,8 +22,8 @@ Log* Log::Inst(){
 }
 
 // initalize logfile
-void Log::open_log( string logfile ){
-  log_fs.open( logfile, fstream::out | fstream::trunc );
+void Log::open_log( std::string logfile ){
+  log_fs.open( logfile, std::fstream::out | std::fstream::trunc );
 
   // ensure logfile has opened properly
   if( log_fs.fail() ){
@@ -36,27 +34,27 @@ void Log::open_log( string logfile ){
 
 // closes logfile
 void Log::close_log(){
-  log_fs << get_time() << "\tProcess terminated" << endl;
+  log_fs << get_time() << "\tProcess terminated" << std::endl;
   log_fs.close();
 }
 
 // prints notes to file as the program progresses
-void Log::log_it( string note ){
+void Log::log_it( std::string note ){
   if( log_output ){
-    log_fs << get_time() << "\t" << note << endl;
+    log_fs << get_time() << "\t" << note << std::endl;
   }
   if( screen_output ){
-    cout << get_time() << "\t" << note << endl;
+    std::cout << get_time() << "\t" << note << std::endl;
   }
 }
 
 // return a string of the current time in the program
-string Log::get_time(){
-  string curr_time = "";
+std::string Log::get_time(){
+  std::string curr_time = "";
   char buffer[100];
 
   int t_now = difftime( time(0), timer );   // get time now
-  
+
   int t_hour = t_now / 3600;
   t_now = t_now % 3600;
 

@@ -7,11 +7,9 @@
 #include <cstdio>
 #include "revcomp.hpp"
 
-using namespace std;
-
 // return the reverse compliment of str
-string revcomp( string str ){
-  string rc(str);
+std::string revcomp( std::string str ){
+  std::string rc(str);
   int len = str.length();
   int i;
 

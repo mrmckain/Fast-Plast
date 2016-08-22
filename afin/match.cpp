@@ -4,19 +4,17 @@
 #include "process.hpp"
 #include "revcomp.hpp"
 
-using namespace std;
-
 Match::Match( Readlist *reads ) : reads(reads) {
   back = false;
   sequence = "";
 }
 
-Match::Match( Readlist *reads, string sequence ) : reads(reads), sequence(sequence){
+Match::Match( Readlist *reads, std::string sequence ) : reads(reads), sequence(sequence){
   back = false;
 }
 
 // set sequence and back variables
-void Match::set_seq( string sequence, bool back ){
+void Match::set_seq( std::string sequence, bool back ){
   this->back = back;
   this->sequence = sequence;
 }
@@ -24,7 +22,7 @@ void Match::set_seq( string sequence, bool back ){
 // return matchlist length
 size_t Match::get_matchlist_size(){
   return matchlist.size();
-} 
+}
 
 // return char in matchlist read at pos
 char Match::get_pos( int read, int pos ){
@@ -32,11 +30,11 @@ char Match::get_pos( int read, int pos ){
 }
 
 // adds a read to the read list
-void Match::push_match( string read, int pos ){
+void Match::push_match( std::string read, int pos ){
   matchlist.push_back(Read( read, pos ));
 }
 
-void Match::push_match( string read, int pos, bool rev ){
+void Match::push_match( std::string read, int pos, bool rev ){
   matchlist.push_back(Read( read, pos, rev ));
 }
 
@@ -54,28 +52,28 @@ void Match::start_match(){
 void Match::match_contig_fr(){
   // loop through possible substrings of sequence to check for matches in readlist
   for( int i=sequence.length()-2; i>=min_overlap; i-- ){
-    string seq_sub_rc( sequence.substr( 0, i ));
+    std::string seq_sub_rc( sequence.substr( 0, i ));
     seq_sub_rc = revcomp( seq_sub_rc );
-    tuple<long,long,long,long> range = reads->get_read_range( seq_sub_rc.substr( 0, max_sort_char ) );
+    std::tuple<long,long,long,long> range = reads->get_read_range( seq_sub_rc.substr( 0, max_sort_char ) );
 
-    if( get<0>(range) != -1 ){
-      // check reads in range against sequence 
-      if( get<0>(range) != 0 ){
-        for( int j=get<0>(range)-1; j<get<1>(range); j++ ){
+    if( std::get<0>(range) != -1 ){
+      // check reads in range against sequence
+      if( std::get<0>(range) != 0 ){
+        for( int j=std::get<0>(range)-1; j<std::get<1>(range); j++ ){
           // check if the current read matches the sequence from this point
           if( reads->get_read(j).compare( 0, seq_sub_rc.length(), seq_sub_rc ) == 0 ){
-            string read_rc = revcomp( reads->get_read(j) );
+            std::string read_rc = revcomp( reads->get_read(j) );
             push_match( read_rc, i, true );
           }
         }
       }
 
       // check if there are revcomp reads to be checked
-      if( get<2>(range) != 0 ){
+      if( std::get<2>(range) != 0 ){
         // check reverse complements
-        for( int j=get<2>(range)-1; j<get<3>(range); j++ ){
+        for( int j=std::get<2>(range)-1; j<std::get<3>(range); j++ ){
           // check if the current read matches the sequence from this point
-          string rc = reads->get_rc_read(j);
+          std::string rc = reads->get_rc_read(j);
 
           if( rc.compare( 0, seq_sub_rc.length(), seq_sub_rc ) == 0 ){
             push_match( rc, i );
@@ -90,13 +88,13 @@ void Match::match_contig_fr(){
 void Match::match_contig_rr(){
   // loop through possible substrings of sequence to check for matches in readlist
   for( int i=1; i<sequence.length()-min_overlap; i++ ){
-    string seq_sub( sequence.substr( i, sequence.length()-1 ));
-    tuple<long,long,long,long> range = reads->get_read_range( seq_sub.substr( 0, max_sort_char ) );
+    std::string seq_sub( sequence.substr( i, sequence.length()-1 ));
+    std::tuple<long,long,long,long> range = reads->get_read_range( seq_sub.substr( 0, max_sort_char ) );
 
-    if( get<0>(range) != -1 ){
-      // check reads in range against sequence 
-      if( get<0>(range) != 0 ){
-        for( int j=get<0>(range)-1; j<get<1>(range); j++ ){
+    if( std::get<0>(range) != -1 ){
+      // check reads in range against sequence
+      if( std::get<0>(range) != 0 ){
+        for( int j=std::get<0>(range)-1; j<std::get<1>(range); j++ ){
           // check if the current read matches the sequence from this point
           if( reads->get_read(j).compare( 0, seq_sub.length(), seq_sub ) == 0 ){
             push_match( reads->get_read(j), i );
@@ -105,11 +103,11 @@ void Match::match_contig_rr(){
       }
 
       // check if there are revcomp reads to be checked
-      if( get<2>(range) != 0 ){
+      if( std::get<2>(range) != 0 ){
         // check reverse complements
-        for( int j=get<2>(range)-1; j<get<3>(range); j++ ){
+        for( int j=std::get<2>(range)-1; j<std::get<3>(range); j++ ){
           // check if the current read matches the sequence from this point
-          string rc = reads->get_rc_read(j);
+          std::string rc = reads->get_rc_read(j);
 
           if( rc.compare( 0, seq_sub.length(), seq_sub ) == 0 ){
             push_match( rc, i, true );
