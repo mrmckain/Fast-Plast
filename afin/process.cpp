@@ -108,7 +108,7 @@ void Process::parse_option( std::string opt_key, std::vector<int>* iter_vect ){
 		}
 	}
 	catch( std::exception const & e ){
-		Log::Inst()->log_it( "Error: " + std::string(e.what(), strlen(e.what())) + " : Invalid values: " + opt + " For option: " + opt_key );
+		Log::Inst()->log_it( "Error: " + std::string(e.what(), std::strlen(e.what())) + " : Invalid values: " + opt + " For option: " + opt_key );
 		exit(0);
 	}
 }
@@ -132,7 +132,7 @@ void Process::parse_option( std::string opt_key, std::vector<double>* iter_vect 
 		}
 	}
 	catch( std::exception const & e ){
-		Log::Inst()->log_it( "Error: " + std::string(e.what(), strlen(e.what())) + " : Invalid values: " + opt + " For option: " + opt_key );
+		Log::Inst()->log_it( "Error: " + std::string(e.what(), std::strlen(e.what())) + " : Invalid values: " + opt + " For option: " + opt_key );
 		exit(0);
 	}
 }
