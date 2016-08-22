@@ -37,7 +37,7 @@ Process::Process(){
   reads = 0;
   contigs = 0;
   fuse = 0;
-  max_iterations = 0;
+  max_iterations = 1;
 
   // initialize unordered_map for iterable options
   iterable_opts["max_search_loops"] = "10";

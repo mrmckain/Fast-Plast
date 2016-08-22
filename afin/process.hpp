@@ -122,12 +122,11 @@ class Process{
     std::vector<double> stop_ext_iter;
     std::vector<double> mismatch_threshold_iter;
 
-    int max_iterations;
-
   public:
     std::string outfile;
     std::string readsfiles;
     std::string contigsfiles;
+    int max_iterations;
 
     // iterable_opts is built of 10 elements containing the 10 different options that can be used as iterating options in afin
     std::unordered_map<std::string,std::string> iterable_opts;
