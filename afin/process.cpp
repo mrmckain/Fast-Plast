@@ -165,7 +165,6 @@ void Process::populate_iterables(){
 }
 
 // set iterables global values at each iteration
-// NOTE:: rebuild to check for length of vector
 void Process::set_iterables( int i ){
   // max_search_loops_iter
   if( max_search_loops_iter.size() > i ){
@@ -249,6 +248,8 @@ void Process::start_run(){
 
 	// process iterable options
 	populate_iterables();
+  set_iterables(0);
+  logfile_print_options();
 
   // import reads once
   reads = new Readlist( readsfiles );
@@ -296,6 +297,7 @@ void Process::run_manager(){
   // create thread array with max_thread entries
   std::vector<std::thread> t;
   Queue<int> qu;
+  int extension_sum = 0;
 
   // loop max search loops
   for( int j=0; j<max_search_loops; j++ ){
@@ -304,6 +306,7 @@ void Process::run_manager(){
     // initialize threads
     for( int i=0; i<max_threads; i++ ){
       t.push_back(std::thread( &Process::thread_worker, this, std::ref(qu), i ));
+      extension_count.push_back(0);
     }
 
     if( test_run ){
@@ -323,10 +326,12 @@ void Process::run_manager(){
     // join threads
     for( int i=0; i<max_threads; i++ ){
       t[i].join();
+      extension_sum += extension_count[i];
     }
 
     // remove threads from vector
-    t.erase( t.begin(), t.begin()+max_threads );
+    t.clear();
+    extension_count.clear();
 
     // removed for master branch until algorithm can be adjusted
     if( ! no_fusion )
@@ -337,9 +342,13 @@ void Process::run_manager(){
       contigs->output_contigs( 0, outfile + ".fus" + std::to_string(j), "mid" );
     }
 
-    // if there is only one contig left, no need to continue
-    if( contigs->get_list_size() == 1 )
+    // if there is only one contig left or no extensions or fusions were made this round, no need to continue
+    if( (contigs->get_list_size() == 1) || (extension_sum == 0 && fuse->fusions_completed == 0) )
       return;
+
+    // reset extension_sum and fusions_completed
+    extension_sum = 0;
+    fuse->fusions_completed = 0;
   }
 }
 
@@ -351,8 +360,8 @@ void Process::thread_worker( Queue<int>& q, unsigned int id) {
       break;
     }
     else{
-      contigs->get_contig_ref(item)->extend( false );
-      contigs->get_contig_ref(item)->extend( true );
+      extension_count[id] += contigs->get_contig_ref(item)->extend( false );
+      extension_count[id] += contigs->get_contig_ref(item)->extend( true );
     }
   }
 }

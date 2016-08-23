@@ -65,7 +65,7 @@ std::string Contig::get_contig_id(){
 }
 
 // extend performs loops iterations of get_extension with length extend_len of each extension, at each iteration the extension is added to contig, and uses contig_sub_len characters from the front or back of the contig, which end is determined by the boolean value of back
-void Contig::extend( bool back ){
+int Contig::extend( bool back ){
   std::string exten_seq("");
   std::string contig_sub("");
   std::string contig_end("");
@@ -87,14 +87,14 @@ void Contig::extend( bool back ){
     Log::Inst()->log_it( contig_id + contig_end + "extension: " + exten_seq );
   }
 
-  if( exten_seq.length() == 0 ){
-    return;
+  if( exten_seq.length() > 0 ){
+    if( back ){
+      contig.append( exten_seq );
+    }
+    else{
+      contig.insert( 0, exten_seq );
+    }
   }
 
-  if( back ){
-    contig.append( exten_seq );
-  }
-  else{
-    contig.insert( 0, exten_seq );
-  }
+  return exten_seq.length();
 }

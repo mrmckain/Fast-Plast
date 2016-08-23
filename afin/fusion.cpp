@@ -3,7 +3,9 @@
 #include "process.hpp"
 #include "revcomp.hpp"
 
-Fusion::Fusion( Contiglist *contigs, Readlist *reads ) : contigs(contigs), reads(reads){}
+Fusion::Fusion( Contiglist *contigs, Readlist *reads ) : contigs(contigs), reads(reads){
+  fusions_completed = 0;
+}
 
 // creates id of fused contigs
 std::string Fusion::get_fused_id( std::string contig1_id, std::string contig2_id ){
@@ -40,6 +42,8 @@ void Fusion::commit_fusion( std::string fused, std::string fused_id, int index_i
   Log::Inst()->log_it( "Committing: " + fused_id );
   Log::Inst()->log_it( "\t" + fused );
   contigs->append_contig( 0, Contig( reads, fused, fused_id ));
+
+  fusions_completed++;
 }
 
 // check overlap section for mismatches
