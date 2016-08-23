@@ -47,7 +47,6 @@ Process::Process(){
   iterable_opts["max_sort_char"] = "4";
   iterable_opts["min_cov"] = "3";
   iterable_opts["min_overlap"] = "20";
-  iterable_opts["initial_trim"] = "0";
   iterable_opts["max_missed"] = "5";
   iterable_opts["stop_ext"] = "0.5";
   iterable_opts["mismatch_threshold"] = "0.1";
@@ -59,7 +58,6 @@ Process::Process(){
 	std::vector<int> max_sort_char_iter;
 	std::vector<int> min_cov_iter;
 	std::vector<int> min_overlap_iter;
-	std::vector<int> initial_trim_iter;
 	std::vector<int> max_missed_iter;
 	std::vector<double> stop_ext_iter;
 	std::vector<double> mismatch_threshold_iter;
@@ -71,10 +69,9 @@ Process::~Process(){
   delete contigs;
 }
 
-// initalize logfile
-void Process::logfile_init(){
-  Log::Inst()->open_log( outfile + ".log" );
-
+// print options values to logfile
+void Process::logfile_print_options(){
+  // NOTE:: add capability to print iterable logfile options
   // output starting option values
   Log::Inst()->log_it( "OPTION VALUES" );
   Log::Inst()->log_it( "contig_sub_len: " + std::to_string(contig_sub_len) );
@@ -88,6 +85,12 @@ void Process::logfile_init(){
   Log::Inst()->log_it( "mismatch_threshold: " + std::to_string(mismatch_threshold) );
   Log::Inst()->log_it( "max_threads: " + std::to_string(max_threads) );
   Log::Inst()->log_it( "stop_ext: " + std::to_string(stop_ext) );
+}
+
+// initalize logfile
+void Process::logfile_init(){
+  Log::Inst()->open_log( outfile + ".log" );
+  logfile_print_options();
 }
 
 // Parse option int
@@ -147,7 +150,6 @@ void Process::populate_iterables(){
   parse_option( "max_sort_char", &max_sort_char_iter );
   parse_option( "min_cov", &min_cov_iter );
   parse_option( "min_overlap", &min_overlap_iter );
-  parse_option( "initial_trim", &initial_trim_iter );
   parse_option( "max_missed", &max_missed_iter );
   parse_option( "stop_ext", &stop_ext_iter );
   parse_option( "mismatch_threshold", &mismatch_threshold_iter );
@@ -205,14 +207,6 @@ void Process::set_iterables( int i ){
     min_overlap = min_overlap_iter.back();
   }
 
-  // initial_trim_iter
-  if( initial_trim_iter.size() > i ){
-		initial_trim = initial_trim_iter[i];
-  }
-  else{
-    initial_trim = initial_trim_iter.back();
-  }
-
   // max_missed_iter
   if( max_missed_iter.size() > i ){
 		max_missed = max_missed_iter[i];
@@ -251,6 +245,10 @@ void Process::start_run(){
   // import reads once
   reads = new Readlist( readsfiles );
 
+  // initialize objects (read in contigs here)
+  contigs = new Contiglist( reads, contigsfiles, outfile );
+  fuse = new Fusion( contigs, reads );
+
   // loop through iterated options if present
 	for( int i=0; i < max_iterations; i++ ){
 		// prevent printing of fused contigs
@@ -259,13 +257,11 @@ void Process::start_run(){
 
     // Set options for this iteration
     set_iterables(i);
+    // print current options for current iteration
+    logfile_print_options();
 
 		// log output file
 		Log::Inst()->log_it( std::string("output file: ") + outfile );
-
-		// initialize objects
-		contigs = new Contiglist( reads, contigsfiles, outfile );
-		fuse = new Fusion( contigs, reads );
 
 		Log::Inst()->log_it( "End initialization phase" );
 

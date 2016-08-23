@@ -137,7 +137,7 @@ int main( int argc, char** argv ){
         break;
       // initial_trim option
       case 'd':
-        process.iterable_opts["initial_trim"] = optarg;
+        initial_trim = std::stoi(optarg);
         break;
       // max_missed option
       case 'e':

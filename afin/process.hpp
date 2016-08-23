@@ -138,17 +138,20 @@ class Process{
     // initalize logfile
     void logfile_init();
 
-	// Parse option int
-	void parse_option( std::string opt_key, std::vector<int>* iter_vect );
+    // print options values to logfile
+    void logfile_print_options();
 
-	// Parse option double
-	void parse_option( std::string opt_key, std::vector<double>* iter_vect );
+    // Parse option int
+    void parse_option( std::string opt_key, std::vector<int>* iter_vect );
 
-	// Populate iterable options vector
-	void populate_iterables();
+    // Parse option double
+    void parse_option( std::string opt_key, std::vector<double>* iter_vect );
 
-	// set iterables global values at each iteration
-	void set_iterables( int i );
+    // Populate iterable options vector
+    void populate_iterables();
+
+    // set iterables global values at each iteration
+    void set_iterables( int i );
 
     // Initializes data structures and turns over control to run_manager()
     void start_run();
