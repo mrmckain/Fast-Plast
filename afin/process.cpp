@@ -90,7 +90,6 @@ void Process::logfile_print_options(){
 // initalize logfile
 void Process::logfile_init(){
   Log::Inst()->open_log( outfile + ".log" );
-  logfile_print_options();
 }
 
 // Parse option int
@@ -161,7 +160,6 @@ void Process::populate_iterables(){
   parse_option( "max_missed", &max_missed_iter );
   parse_option( "stop_ext", &stop_ext_iter );
   parse_option( "mismatch_threshold", &mismatch_threshold_iter );
-
 }
 
 // set iterables global values at each iteration
