@@ -42,7 +42,7 @@ class Contig{
     std::string get_contig_id();
 
     // extend() performs loops iterations of create_extension with length extend_len of each extension, at each iteration the extension is added to contig, and uses contig_sub_len characters from the front or back of the contig, which end is determined by the boolean value back
-    void extend( bool back );
+    int extend( bool back );
 };
 //////////////////////
 // End Contig Class //

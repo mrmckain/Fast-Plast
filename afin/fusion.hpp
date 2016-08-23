@@ -14,10 +14,13 @@ class Fusion{
     Readlist *reads;
     std::vector<Mismatch> match_list;
     std::vector<int> contig_remove_list;
-    
+
   public:
-    Fusion( Contiglist *contigs, Readlist *reads );
+    // include variable for counting fusions in each loop
+    int fusions_completed;
     
+    Fusion( Contiglist *contigs, Readlist *reads );
+
     // creates id of fused contigs
     std::string get_fused_id( std::string contig1_id, std::string contig2_id );
 
@@ -45,7 +48,7 @@ class Fusion{
     // compile list of best mismatch scores between contigs that meet the mismatch threshold
     std::vector<Mismatch> get_mismatch_scores( bool first_run );
 
-    // sort the match_list for easier 
+    // sort the match_list for easier
     void sort_matches();
 
     // cleans match_list from conflicting matches

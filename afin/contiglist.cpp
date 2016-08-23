@@ -5,9 +5,7 @@
 #include <sstream>
 #include <iostream>
 
-using namespace std;
-
-Contiglist::Contiglist( Readlist *reads, string contigsfiles, string outfile ) : reads(reads), outfile(outfile){
+Contiglist::Contiglist( Readlist *reads, std::string contigsfiles, std::string outfile ) : reads(reads), outfile(outfile){
   Log::Inst()->log_it( "Begin add_contigs()" );
   add_contigs( contigsfiles );
 }
@@ -45,29 +43,29 @@ void Contiglist::append_contig( int list_num, Contig cont ){
 // cycles through each contig and parses out the first section of the id
 void Contiglist::parse_ids(){
   for( int i=0; i<contigs.size(); i++ ){
-    string contig_id = contigs[i].get_contig_id(); 
+    std::string contig_id = contigs[i].get_contig_id();
     size_t pos = contig_id.find( "_", 5, 1 );
 
-    if( pos != string::npos ){
+    if( pos != std::string::npos ){
       contig_id = contig_id.substr( 0, pos );
     }
   }
 }
 
 // put contigs from contfile into contlist
-void Contiglist::add_contigs( string contigsfiles ){
-  stringstream ss;
+void Contiglist::add_contigs( std::string contigsfiles ){
+  std::stringstream ss;
   ss.str( contigsfiles );
-  string filename;
-  string buffer("");
-  string line("");
-  string contig_id("");
-  
+  std::string filename;
+  std::string buffer("");
+  std::string line("");
+  std::string contig_id("");
+
   while( getline( ss, filename, ',' )){
     Log::Inst()->log_it( "contigsfile: " + filename );
- 
+
     // open contig file
-    ifstream cont( filename );
+    std::ifstream cont( filename );
 
     // read in contig objects
     while( getline( cont, line ) ){
@@ -98,7 +96,7 @@ void Contiglist::add_contigs( string contigsfiles ){
         buffer += line;
       }
     }
-    
+
     // close contig file
     cont.close();
   }
@@ -110,44 +108,44 @@ void Contiglist::add_contigs( string contigsfiles ){
 }
 
 // print contigs
-void Contiglist::output_contigs( int list_num, string file, string id_suffix ){
-  vector<Contig> clist = contigs;  
+void Contiglist::output_contigs( int list_num, std::string file, std::string id_suffix ){
+  std::vector<Contig> clist = contigs;
 
-  cout << "output_contigs" << endl;
+  std::cout << "output_contigs" << std::endl;
   if( list_num )
     clist = contigs_fused;
-  
+
   // open outfile
-  ofstream outfile_fp( file+".fa");
+  std::ofstream outfile_fp( file+".fa");
 
   // print out each line to the
   for( int i=0; i<clist.size(); i++ ){
-    string seq = clist[i].get_sequence();
-    outfile_fp << ">" << "contig" << i << "_len_" << seq.length() << "_" << id_suffix << endl;
-    outfile_fp << seq << endl;
+    std::string seq = clist[i].get_sequence();
+    outfile_fp << ">" << "contig" << i << "_len_" << seq.length() << "_" << id_suffix << std::endl;
+    outfile_fp << seq << std::endl;
   }
 
   outfile_fp.close();
 }
 
 // prints results to fasta file with outfile prefix and additional information is printed to a text based file with outfile prefix
-void Contiglist::create_final_fasta(){
+void Contiglist::create_final_fasta( int current_iteration ){
   // remove directories from outfile to form id_suffix if necessary
   size_t id_suffix_pos = outfile.find_last_of( "/" );
-  string id_suffix = outfile;
-  if( id_suffix_pos != string::npos ){
+  std::string id_suffix = outfile;
+  if( id_suffix_pos != std::string::npos ){
     id_suffix = id_suffix.substr( id_suffix_pos + 1 );
   }
 
-  cout << "create_final_fasta" << endl;
+  std::cout << "create_final_fasta" << std::endl;
   // print completed contigs to file
-  output_contigs( 0, outfile, id_suffix );
+  output_contigs( 0, outfile + "_iter" + std::to_string(current_iteration), id_suffix );
 
   if( print_fused ){
-    output_contigs( 1, outfile+"_fused", id_suffix );
+    output_contigs( 1, outfile + "_iter" + std::to_string(current_iteration) + "_fused", id_suffix );
   }
 
   if( log_output || screen_output ){
     Log::Inst()->close_log();
   }
-} 
+}

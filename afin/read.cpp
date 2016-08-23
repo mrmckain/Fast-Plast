@@ -7,11 +7,9 @@
 #include <cstdlib>
 #include <unistd.h>
 
-using namespace std;
-
 //////// READ FUNCTIONS //////////////
 // constructor.. default revcomp will be false
-Read::Read( string read, int match, bool rev ){
+Read::Read( std::string read, int match, bool rev ){
   this->read = read;
   start = match;
   misses = 0;
@@ -19,7 +17,7 @@ Read::Read( string read, int match, bool rev ){
 
 }
 
-Read::Read( string read, int match ){
+Read::Read( std::string read, int match ){
   this->read = read;
   start = match;
   misses = 0;
@@ -42,5 +40,5 @@ char Read::get_pos( int pos, bool back ){
     }
   }
 
-  return -1; 
+  return -1;
 }
