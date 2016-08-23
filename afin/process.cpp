@@ -115,6 +115,10 @@ void Process::parse_option( std::string opt_key, std::vector<int>* iter_vect ){
 		Log::Inst()->log_it( "Error: " + std::string(e.what(), strlen(e.what())) + " : Invalid values: " + opt + " For option: " + opt_key );
 		exit(0);
 	}
+
+  // increase max_iterations if this option is longer than the current max_iterations
+  if( iter_vect->size() > max_iterations )
+    max_iterations = iter_vect->size();
 }
 
 // Parse option double
@@ -139,6 +143,10 @@ void Process::parse_option( std::string opt_key, std::vector<double>* iter_vect 
 		Log::Inst()->log_it( "Error: " + std::string(e.what(), strlen(e.what())) + " : Invalid values: " + opt + " For option: " + opt_key );
 		exit(0);
 	}
+
+  // increase max_iterations if this option is longer than the current max_iterations
+  if( iter_vect->size() > max_iterations )
+    max_iterations = iter_vect->size();
 }
 
 // Populate iterable options vector

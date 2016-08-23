@@ -29,7 +29,6 @@ void print_usage( std::string prog ){
   std::cout << "  -f,--stop_ext           [default:  .5] During extension, if the percentage of reads remaining after cleaning is below stop_ext, do not extend here" << std::endl;
   std::cout << "  -g,--mismatch           [default:  .1] maximum percentage of mismatches allowed when fusing two contigs" << std::endl;
   std::cout << "  -x,--extend_len         [default:  40] Will add a max of extend_len bp's each search loop" << std::endl;
-  std::cout << "  -a,--max_iterations     [default:   1] sets max number of times afin will iterate until exiting" << std::endl;
   std::cout << "  --silent                Suppress screen output" << std::endl;
   std::cout << "  --no_log                Suppress log file creation" << std::endl;
   std::cout << "  --no_fusion             Only extend, no attempt will be made to fuse contigs" << std::endl;
@@ -85,14 +84,13 @@ int main( int argc, char** argv ){
     {"mismatch",      required_argument,  0,  'g'},
     {"extend_len",    required_argument,  0,  'x'},
     {"stop_ext",      required_argument,  0,  'f'},
-    {"max_iterations",required_argument,  0,  'a'},
     {"help",          no_argument,        0,  'h'},
     {"test_run",      no_argument,        0,  'z'},
     {0, 0, 0, 0}
   };
 
   // get all options that have been provided on the command line
-  while (( c = getopt_long(argc, argv, "hr:c:o:s:l:x:m:i:p:t:d:e:f:g:a:z", long_options, &option_index )) != -1 ) {
+  while (( c = getopt_long(argc, argv, "hr:c:o:s:l:x:m:i:p:t:d:e:f:g:z", long_options, &option_index )) != -1 ) {
     switch( c ) {
       case 0:
         /* If this option set a flag, do nothing else now. */
@@ -150,10 +148,6 @@ int main( int argc, char** argv ){
       // mismatch_threshold option
       case 'g':
         process.iterable_opts["mismatch_threshold"] = optarg;
-        break;
-      // max_iterations option
-      case 'a':
-        process.max_iterations = std::stoi(optarg);
         break;
       // outputfile option
       case 'o':
