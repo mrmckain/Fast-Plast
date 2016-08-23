@@ -284,6 +284,10 @@ void Process::start_run(){
 
     // write contigs to fasta
     contigs->create_final_fasta(i);
+
+    // if there is only one contig left, no need to continue
+    if( contigs->get_list_size() == 1 )
+      break;
 	}
 }
 
@@ -328,9 +332,14 @@ void Process::run_manager(){
     if( ! no_fusion )
       fuse->run_fusion( false );
 
+    // for test_runs, writes intermediate contigs to file to help troubleshoot
     if( test_run ){
       contigs->output_contigs( 0, outfile + ".fus" + std::to_string(j), "mid" );
     }
+
+    // if there is only one contig left, no need to continue
+    if( contigs->get_list_size() == 1 )
+      return;
   }
 }
 
