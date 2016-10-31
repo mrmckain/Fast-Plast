@@ -6,8 +6,6 @@
 #include "contig.hpp"
 #include "process.hpp"
 
-using namespace std;
-
 ////////// Contig FUNCTIONS ////////////
 Contig::Contig(){
   reads = 0;
@@ -16,14 +14,14 @@ Contig::Contig(){
   contig_id = "";
 };
 
-Contig::Contig( Readlist *reads, string str, string id ) : reads(reads), contig(str), contig_id(id){
+Contig::Contig( Readlist *reads, std::string str, std::string id ) : reads(reads), contig(str), contig_id(id){
   extension = new Extension( reads, extend_len );
 }
 
 Contig::~Contig(){
   delete extension;
 }
-    
+
 // copy, move, =
 Contig::Contig( const Contig& rhs ) : reads(rhs.reads), contig(rhs.contig), contig_id(rhs.contig_id){
   extension = new Extension( reads, extend_len );
@@ -37,7 +35,7 @@ Contig::Contig( const Contig& rhs ) : reads(rhs.reads), contig(rhs.contig), cont
   extension->contig = rhs.extension->contig;
   extension->exten_seq = rhs.extension->exten_seq;
   extension->pos_mult = rhs.extension->pos_mult;
-} 
+}
 
 Contig::Contig( Contig&& rhs ) : Contig(){
   swap( *this, rhs );
@@ -58,20 +56,20 @@ void swap( Contig& data1, Contig& data2 ){
 }
 
 // return contig_id
-string Contig::get_sequence(){
+std::string Contig::get_sequence(){
   return contig;
 }
 
-string Contig::get_contig_id(){
+std::string Contig::get_contig_id(){
   return contig_id;
 }
 
 // extend performs loops iterations of get_extension with length extend_len of each extension, at each iteration the extension is added to contig, and uses contig_sub_len characters from the front or back of the contig, which end is determined by the boolean value of back
-void Contig::extend( bool back ){
-  string exten_seq("");
-  string contig_sub("");
-  string contig_end("");
- 
+int Contig::extend( bool back ){
+  std::string exten_seq("");
+  std::string contig_sub("");
+  std::string contig_end("");
+
   // get extension sequence through get_extension
   if( back ){
     contig_sub = contig.substr( contig.length() - ( contig_sub_len ) );
@@ -83,20 +81,20 @@ void Contig::extend( bool back ){
   }
 
   exten_seq = extension->get_extension( contig_sub, back );
-  
+
   if( verbose ){
-    lock_guard<mutex> lk_g(log_mut);
+    std::lock_guard<std::mutex> lk_g(log_mut);
     Log::Inst()->log_it( contig_id + contig_end + "extension: " + exten_seq );
   }
 
-  if( exten_seq.length() == 0 ){
-    return;
+  if( exten_seq.length() > 0 ){
+    if( back ){
+      contig.append( exten_seq );
+    }
+    else{
+      contig.insert( 0, exten_seq );
+    }
   }
 
-  if( back ){
-    contig.append( exten_seq );
-  }
-  else{
-    contig.insert( 0, exten_seq );
-  }
+  return exten_seq.length();
 }

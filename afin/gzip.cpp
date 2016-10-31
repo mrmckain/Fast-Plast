@@ -6,22 +6,20 @@
 #include <zlib.h>
 #include "log.hpp"
 
-using namespace std;
-
-IO_Wrapper::IO_Wrapper( string filename ){
-  fs = new ifstream( filename );
+IO_Wrapper::IO_Wrapper( std::string filename ){
+  fs = new std::ifstream( filename );
 }
 
 // access string getline to return next line in ifstream object
-string IO_Wrapper::getline(){
-  string line("");
+std::string IO_Wrapper::getline(){
+  std::string line("");
   std::getline( *fs, line );
   return line;
 }
 
-Gzip::Gzip( string filename ): BUFF_SIZE(16384), buffer(""), filename(filename){
+Gzip::Gzip( std::string filename ): BUFF_SIZE(16384), buffer(""), filename(filename){
   fp = fopen( filename.c_str(), "rb" );
-  
+
   /* allocate inflate state */
   zs.zalloc = Z_NULL;
   zs.zfree = Z_NULL;
@@ -124,17 +122,17 @@ void Gzip::fill_buffer(){
 }
 
 // return the next line in the gzip file
-string Gzip::getline(){
+std::string Gzip::getline(){
   size_t next_pos = 0;
-  string line( "" );
+  std::string line( "" );
 
   // check if buffer has a full line in it, if not, fill_buffer
-  while((next_pos = buffer.find( '\n' )) == string::npos && status == Z_OK ){
+  while((next_pos = buffer.find( '\n' )) == std::string::npos && status == Z_OK ){
     fill_buffer();
   }
 
   // if last line in file, store results for return
-  if( status == Z_STREAM_END && next_pos == string::npos ){
+  if( status == Z_STREAM_END && next_pos == std::string::npos ){
     line = buffer;
     buffer = "";
 

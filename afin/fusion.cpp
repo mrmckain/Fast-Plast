@@ -3,36 +3,36 @@
 #include "process.hpp"
 #include "revcomp.hpp"
 
-using namespace std;
-
-Fusion::Fusion( Contiglist *contigs, Readlist *reads ) : contigs(contigs), reads(reads){}
+Fusion::Fusion( Contiglist *contigs, Readlist *reads ) : contigs(contigs), reads(reads){
+  fusions_completed = 0;
+}
 
 // creates id of fused contigs
-string Fusion::get_fused_id( string contig1_id, string contig2_id ){
+std::string Fusion::get_fused_id( std::string contig1_id, std::string contig2_id ){
   if( contig1_id.length() >= 5 && contig1_id.compare( 0, 5, "fused" ) == 0 ){
     contig1_id = contig1_id.substr( 5 );
   }
-  
+
   if( contig1_id.length() >= 5 && contig2_id.compare( 0, 5, "fused" ) == 0 ){
     contig2_id = contig2_id.substr( 5 );
   }
-    
+
   return contig1_id+"_<>_"+contig2_id;
 }
 
 // complete contig_fusion process
-void Fusion::contig_fusion_log( Mismatch fus ){ 
+void Fusion::contig_fusion_log( Mismatch fus ){
   // print messages to logfile about current actions
   Log::Inst()->log_it( "Contig fused: " );
-  Log::Inst()->log_it( "  Overlap length: " + to_string(fus.get_length()) );
-  Log::Inst()->log_it( "  Mismatch_score: " + to_string(fus.get_score()) );
+  Log::Inst()->log_it( "  Overlap length: " + std::to_string(fus.get_length()) );
+  Log::Inst()->log_it( "  Mismatch_score: " + std::to_string(fus.get_score()) );
   Log::Inst()->log_it( "  Contig_i: " + contigs->get_contig(fus.get_index_i()).get_contig_id() );
   Log::Inst()->log_it( "  Contig_j: " + contigs->get_contig(fus.get_index_j()).get_contig_id() );
   Log::Inst()->log_it( "" );
 }
 
 // complete contig_fusion process
-void Fusion::commit_fusion( string fused, string fused_id, int index_i, int index_j ){ 
+void Fusion::commit_fusion( std::string fused, std::string fused_id, int index_i, int index_j ){
   contigs->append_contig( 1, contigs->get_contig(index_i) );
   Log::Inst()->log_it( "Contig moved to fused file: " + contigs->get_contig(index_i).get_contig_id() );
 
@@ -42,10 +42,12 @@ void Fusion::commit_fusion( string fused, string fused_id, int index_i, int inde
   Log::Inst()->log_it( "Committing: " + fused_id );
   Log::Inst()->log_it( "\t" + fused );
   contigs->append_contig( 0, Contig( reads, fused, fused_id ));
+
+  fusions_completed++;
 }
 
 // check overlap section for mismatches
-Mismatch Fusion::overlap_check( string contig_a, string contig_b, int overlap, int end_i, int end_j ){
+Mismatch Fusion::overlap_check( std::string contig_a, std::string contig_b, int overlap, int end_i, int end_j ){
   Mismatch mim;
   mim.set_end_i( end_i );
   mim.set_end_j( end_j );
@@ -92,8 +94,8 @@ Mismatch Fusion::overlap_check( string contig_a, string contig_b, int overlap, i
 }
 
 // create fused contig string
-string Fusion::build_fusion_string( string contig_a, string contig_b, int overlap ){
-  string fused( contig_a.substr( 0, contig_a.length() - (overlap/2) ) );
+std::string Fusion::build_fusion_string( std::string contig_a, std::string contig_b, int overlap ){
+  std::string fused( contig_a.substr( 0, contig_a.length() - (overlap/2) ) );
   fused.append( contig_b.substr( overlap/2 + overlap%2 ) );
 
   return fused;
@@ -140,16 +142,16 @@ void Fusion::process_removals(){
 }
 
 // compile list of best mismatch scores between contigs that meet the mismatch threshold
-vector<Mismatch> Fusion::get_mismatch_scores( bool first_run ){
-  vector<Mismatch> match_list;
+std::vector<Mismatch> Fusion::get_mismatch_scores( bool first_run ){
+  std::vector<Mismatch> match_list;
   int overlap_len = extend_len * 4;
 
   // loop through each contig to get the end of the contig
   for( int i=0; i<contigs->get_list_size(); i++ ){
     for( int j=i+1; j<contigs->get_list_size(); j++ ){
-      string contig_i( contigs->get_contig(i).get_sequence() );
-      string contig_j( contigs->get_contig(j).get_sequence() );
-      string contig_j_rev( revcomp( contig_j ) );
+      std::string contig_i( contigs->get_contig(i).get_sequence() );
+      std::string contig_j( contigs->get_contig(j).get_sequence() );
+      std::string contig_j_rev( revcomp( contig_j ) );
       int overlap = overlap_len;
       Mismatch mim;
 
@@ -204,7 +206,7 @@ vector<Mismatch> Fusion::get_mismatch_scores( bool first_run ){
   return match_list;
 }
 
-// sort the match_list for easier 
+// sort the match_list for easier
 void Fusion::sort_matches(){
   Mismatch temp_mim;
 
@@ -265,19 +267,19 @@ void Fusion::process_fusions(){
     // fuse contigs
     int index_i = match_list[i].get_index_i();
     int index_j = match_list[i].get_index_j();
-    string contig_i = contigs->get_contig(index_i).get_sequence();
-    string contig_j = contigs->get_contig(index_j).get_sequence();
-    string fused_id("");
-    string fused("");
-    string rev_i("");
-    string rev_j("");
+    std::string contig_i = contigs->get_contig(index_i).get_sequence();
+    std::string contig_j = contigs->get_contig(index_j).get_sequence();
+    std::string fused_id("");
+    std::string fused("");
+    std::string rev_i("");
+    std::string rev_j("");
 
     // find the reverse compliment of the contigs where necessary
     if( match_list[i].get_end_i() == 0 ){
       contig_i = revcomp( contig_i );
       rev_i = "_r";
     }
-    
+
     if( match_list[i].get_end_j() == 1 ){
       contig_j = revcomp( contig_j );
       rev_j = "_r";
@@ -286,14 +288,14 @@ void Fusion::process_fusions(){
     contig_fusion_log( match_list[i] );
     fused_id = get_fused_id( contigs->get_contig(index_i).get_contig_id()+rev_i, contigs->get_contig(index_j).get_contig_id()+rev_j );
     fused_id = "fused(" + fused_id + ")";
- 
+
     // push each index onto the remove vector
     contig_remove_list.push_back( index_i );
     contig_remove_list.push_back( index_j );
 
     // create fused contig
     fused = build_fusion_string( contig_i, contig_j, match_list[i].get_length() );
-            
+
     // commit fusion here
     commit_fusion( fused, fused_id, index_i, index_j );
     int new_index = contigs->get_list_size()-1;
@@ -323,14 +325,14 @@ void Fusion::process_fusions(){
 
 // contig_fusion: Attempt to support fusion in case of possibly poorly constructed end.. returns new score from section in question
 //    ::> contig object is the second while contig_ref is the first and the extension is being made off the front of the object
-double Fusion::check_fusion_support( string contig, string contig_ref ){
-  Extension *exten = new Extension( reads, contig_ref.length(), contig ); 
-  
-  string support_string( "" );
+double Fusion::check_fusion_support( std::string contig, std::string contig_ref ){
+  Extension *exten = new Extension( reads, contig_ref.length(), contig );
+
+  std::string support_string( "" );
   double score = 0;
   const int pos = contig_ref.length() - 1;
   const int start = -1;
-  
+
   exten->matches.start_match();
 
   // return if matches found is less than min_cov
@@ -340,8 +342,8 @@ double Fusion::check_fusion_support( string contig, string contig_ref ){
   }
 
   // create missed bp's vector to keep track of how many bp's each read contains that are below the max at that position
-  vector<int> mismatch( exten->matches.get_matchlist_size(), 0 );
-  vector<int> ambiguous_bp( exten->matches.get_matchlist_size(), 0 );
+  std::vector<int> mismatch( exten->matches.get_matchlist_size(), 0 );
+  std::vector<int> ambiguous_bp( exten->matches.get_matchlist_size(), 0 );
   int mismatch_tot = 0;
   int mismatch_avg = 0;
   int cmp_len = 0;
@@ -370,7 +372,7 @@ double Fusion::check_fusion_support( string contig, string contig_ref ){
   exten->set_missed_bp( ambiguous_bp );
   exten->set_missed_avg( 3 );
   exten->error_removal();
-  
+
   // if matchlist is smaller than min_cov, bail, return 1.0 (the least supportive return value)
   if( exten->matches.get_matchlist_size() < min_cov ){
     delete exten;
@@ -394,7 +396,7 @@ double Fusion::check_fusion_support( string contig, string contig_ref ){
   }
 
   score = mismatch_score( support_string.substr( support_string.length() - cmp_len), contig_ref.substr( contig_ref.length() - cmp_len ) );
-  
+
   delete exten;
   return score;
 }
@@ -402,21 +404,21 @@ double Fusion::check_fusion_support( string contig, string contig_ref ){
 // fuse contigs wherever possible
 void Fusion::run_fusion( bool first_run ){
   Log::Inst()->log_it( "Fuse contigs" );
-  
+
   // MISMATCH SCORES //
   match_list = get_mismatch_scores( first_run );
-  
+
   // SORT AND CLEAN MATCH LIST //
   sort_matches();
   clean_matches();
 
   if( verbose ){
     for( int i=0; i<match_list.size(); i++ ){
-      Log::Inst()->log_it( "score: " + to_string( match_list[i].get_score() ) );
-      Log::Inst()->log_it( "i: " + to_string( match_list[i].get_index_i() ) +  " j: " + to_string( match_list[i].get_index_j() ) );
+      Log::Inst()->log_it( "score: " + std::to_string( match_list[i].get_score() ) );
+      Log::Inst()->log_it( "i: " + std::to_string( match_list[i].get_index_i() ) +  " j: " + std::to_string( match_list[i].get_index_j() ) );
     }
   }
- 
+
   // FUSE CONTIGS //
   process_fusions();
 
@@ -425,7 +427,7 @@ void Fusion::run_fusion( bool first_run ){
 }
 
 // tally mismatches in substrings passed and return score in the form of misatches per length
-double Fusion::mismatch_score( string contig_sub_a, string contig_sub_b ){
+double Fusion::mismatch_score( std::string contig_sub_a, std::string contig_sub_b ){
   int mismatch = 0;
 
   // protect against division by zero

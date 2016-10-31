@@ -13,7 +13,7 @@ class Contiglist{
     std::vector<Contig> contigs;
     std::vector<Contig> contigs_fused;
     std::string outfile;
-    
+
   public:
     Contiglist( Readlist *reads, std::string contigsfiles, std::string outfile );
 
@@ -42,7 +42,7 @@ class Contiglist{
     void output_contigs( int list_num, std::string file, std::string id_suffix );
 
     // prints results to fasta file with outfile prefix and additional information is printed to a text based file with outfile prefix
-    void create_final_fasta();
+    void create_final_fasta( int current_iteration );
 };
 
 #endif
