@@ -269,33 +269,109 @@ mkdir("Afin_Assembly");
 chdir("Afin_Assembly");
 
 `perl $FPBIN/filter_coverage_assembly.pl ../Spades_Assembly/spades_iter1/contigs.fasta`;
-my $afin_exec = $AFIN_DIR . "/afin -c filtered_spades_contigs.fsa -r ../Trimmed_Reads/" . $name .".trimmed* -l 100 -f .1 -d 100 -x " $maxsize*0.75 . " -p 20 -i 2 -o ". $name . "_afin";
-system($afin_exec);
 
-my %contig_lengths;
-my $afin_contig;
-my $max_afin=0;
-my $min_afin=100000000;
 
-open my $afin_file, "<", $name . "_afin_iter0.fa";
-while(<$afin_file){
-	chomp;
-	if(/>/){
-		/len_(\d+)/;
-		my $afinlen=$1;
-		$contig_lengths{$_}=$afinlen;
-		if($max_afin < $afinlen){
-			$max_afin = $afinlen;
+
+my ($total_afin_contigs, $max_afin, $min_afin) = &run_afin(100,100,2,"filtered_spades_contigs.fsa");
+
+print "After first attempt at afin, there are $total_afin_contigs with a maximum size of $max_afin and a minimum size of $min_afin.\n";
+
+if( $total_afin_contigs > 1){
+	my $current_afin = $name . "_afin_iter0.fa";
+
+	`$BLAST/makeblastdb -in $current_afin -dbtype nucl`;
+	my $blast_afin_exec = $BLAST . " -query " . $current_afin . " -db " . $current_afin . " -evalue 1e-40 -outfmt 6 > " . $current_afin . ".blastn";
+
+	my %delete_contigs;
+	open my $checkblast, "<", $current_afin . "blastn";
+	while(<$checkblast>){
+		chomp;
+		my @tarray = split /\s+/;
+		if($tarray[0] eq $tarray[1]){
+			next;
 		}
-		if($min_afin > $afinlen){
-			$min_afin = $afinlen;
+		$tarrary[0] =~ /len_(\d+)/;
+		my $len1 = $1;
+
+		$tarray[1] =~ /len_(\d+)/;
+		my $len2 = $1;
+
+		my $max = 0;
+		my $min = 0;
+
+		if ($len1 > $len2){
+			$len1 = $max;
+			$len2 = $min;
+		}
+		else{
+			$len2 = $max;
+			$len1 = $min;
+		}
+
+		my $overlap = $tarray[3];
+		if ($overlap/$min >= 0.9){
+			if($len1 == $min){
+				$delete_contigs{">".$tarray[0]}=0;
+			}
+			else{
+				$delete_contigs{">".$tarray[1]}=0;
+			}
+
+		}
+
+	}
+
+	open my $afinout, ">", $current_afin . "_fixed";
+	open my $oldafin, "<", $current_afin;
+
+	my $tempsid;
+	while(<$oldafin>){
+		chomp;
+		if(/>/){
+			if(exists $delete_contigs{$_});
+				$tempsid=();
+				next;
+			}
+			else{
+				print $afinout	"$tempsid\n";
+				$tempsid=$_;
+			}
+		}
+		elsif($tempsid){
+			print $afinout "$_\n";
 		}
 	}
+	`mv $current_afin\_fixed $current_afin`;
+	$total_afin_contigs = &count_contigs($current_afin);
+
+	if ($total_afin_contigs > 1){
+		my ($total_afin_contigs, $max_afin, $min_afin) = &run_afin(100,100,2,"filtered_spades_contigs.fsa");
+
+	}
+    
+
 }
 
-my $total_afin_contigs = keys %contig_lengths;
 
-print "After first attempt at afin, there are $total_afin_contigs with a maximum size of $max_afin and a minimum size of $min_afin.\n"
+########## Check current assembly for genes #########
+
+my $current_afin = $name . "_afin_iter0.fa";
+my $blast_afin_exec = $BLAST . " -query " . $current_afin . " -db " . $FPBIN . "/Angiosperm_Chloroplast_Genes.fsa -evalue 1e-40 -outfmt 6 > " . $current_afin . ".blastn";
+system($blast_afin_exec);
+
+
+if($total_afin_contigs > 1){
+	my $percent_recovered_genes = &cpgene_recovery($total_afin_contigs);
+}
+
+print "After first attempt at afin, there are $percent_recovered_genes of known angiosperm chloroplast genes were recovered.\n";
+
+if($percent_recovered_genes < 0.9){
+
+
+}
+
+
 
 
 
@@ -310,6 +386,94 @@ mkdir("Plastome_Finishing");
 chdir("Plastome_Finishing");
 
 
+##########
+sub count_contigs {
+	my %contig_lengths;
+	my $afin_contig;
+	my $max_afin=0;
+	my $min_afin=100000000;
+
+	open my $afin_file, "<", $_[0];
+	while(<$afin_file){
+		chomp;
+		if(/>/){
+			/len_(\d+)/;
+			my $afinlen=$1;
+			$contig_lengths{$_}=$afinlen;
+			if($max_afin < $afinlen){
+				$max_afin = $afinlen;
+			}
+			if($min_afin > $afinlen){
+				$min_afin = $afinlen;
+			}
+		}
+	}
+	my $total_afin_contigs = keys %contig_lengths;
+	return ($total_afin_contigs);
+}
+#########
+sub run_afin {
+	###Sub must be given number of iterations, trim length, and number of reads needed to fuse contigs.
+	my $afin_exec = $AFIN_DIR . "/afin -c " . $_[3] . " -r ../Trimmed_Reads/" . $name .".trimmed* -l " . $_[0] . " -f .1 -d " . $_[1] " -x " $maxsize*0.75 . " -p " . $_[2] . " -i " . $_[3] " -o ". $name . "_afin";
+	system($afin_exec);
+
+	my %contig_lengths;
+	my $afin_contig;
+	my $max_afin=0;
+	my $min_afin=100000000;
+
+	open my $afin_file, "<", $name . "_afin_iter0.fa";
+	while(<$afin_file){
+		chomp;
+		if(/>/){
+			/len_(\d+)/;
+			my $afinlen=$1;
+			$contig_lengths{$_}=$afinlen;
+			if($max_afin < $afinlen){
+				$max_afin = $afinlen;
+			}
+			if($min_afin > $afinlen){
+				$min_afin = $afinlen;
+			}
+		}
+	}
+	my $total_afin_contigs = keys %contig_lengths;
+	return ($total_afin_contigs, $max_afin, $min_afin);
+}
+
+##########
+
+sub cpgene_recovery {
+	my %chloroplast_db_genes;
+	open my $cpdbgenes, "<", $FPBIN . "/Angiosperm_Chloroplast_Genes.fsa";
+	while(<$cpdbgenes>){
+		chomp;
+		if(/>/){
+			/(.*?)\_/;
+			$chloroplast_db_genes{$1}=1;
+		}
+	}
+
+	my $total_chloroplast_db_genes= scalar key %chlorplast_db_genes;
+
+	my %hit_chloroplast_db_genes;
+	my %contigs_db_genes;
+	open my $hitcpdbgenes, "<", $current_afin . ".blastn";
+	while(<$hitcpdbgenes>){
+		chomp;
+		my @tarray = split /\s+/;
+		$tarray[1] =~ /(.*?)\_/;
+		$hit_chloroplast_db_genes{$1}=1;
+		$contigs_db_genes{$tarray[0]}{$1}=1;
+	}
+	my $total_hit_chlorplast_db_genes= scalar key %hit_chlorplast_db_genes;
+	my $percent_recovered_genes = $total_hit_chlorplast_db_genes/$total_chloroplast_db_genes;
+
+	if(scalar keys %contigs_db_genes > 1){
+		return $percent_recovered_genes;
+	}
+	
+}
 
 ########## USAGE BELOW ##########
 =pod
