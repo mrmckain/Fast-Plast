@@ -168,72 +168,45 @@ void Process::set_iterables( int i ){
   if( max_search_loops_iter.size() > i ){
   	max_search_loops = max_search_loops_iter[i];
   }
-  else{
-    max_search_loops = max_search_loops_iter.back();
-  }
 
   // contig_sub_len_iter
   if( contig_sub_len_iter.size() > i ){
 		contig_sub_len = contig_sub_len_iter[i];
-  }
-  else{
-    contig_sub_len = contig_sub_len_iter.back();
   }
 
   // extend_len_iter
   if( extend_len_iter.size() > i ){
 		extend_len = extend_len_iter[i];
   }
-  else{
-    extend_len = extend_len_iter.back();
-  }
 
   // max_sort_char_iter
   if( max_sort_char_iter.size() > i ){
 		max_sort_char = max_sort_char_iter[i];
-  }
-  else{
-    max_sort_char = max_sort_char_iter.back();
   }
 
   // min_cov_iter
   if( min_cov_iter.size() > i ){
 		min_cov = min_cov_iter[i];
   }
-  else{
-    min_cov = min_cov_iter.back();
-  }
 
   // min_overlap_iter
   if( min_overlap_iter.size() > i ){
 		min_overlap = min_overlap_iter[i];
-  }
-  else{
-    min_overlap = min_overlap_iter.back();
   }
 
   // max_missed_iter
   if( max_missed_iter.size() > i ){
 		max_missed = max_missed_iter[i];
   }
-  else{
-    max_missed = max_missed_iter.back();
-  }
 
   // stop_ext_iter
   if( stop_ext_iter.size() > i ){
 		stop_ext = stop_ext_iter[i];
   }
-  else{
-    stop_ext = stop_ext_iter.back();
-  }
 
   // mismatch_threshold_iter
   if( mismatch_threshold_iter.size() > i ){
 		mismatch_threshold = mismatch_threshold_iter[i];
-  }
-  else{
-    mismatch_threshold = mismatch_threshold_iter.back();
   }
 }
 
@@ -246,8 +219,6 @@ void Process::start_run(){
 
 	// process iterable options
 	populate_iterables();
-  set_iterables(0);
-  logfile_print_options();
 
   // import reads once
   reads = new Readlist( readsfiles );
@@ -296,6 +267,7 @@ void Process::run_manager(){
   std::vector<std::thread> t;
   Queue<int> qu;
   int extension_sum = 0;
+  fuse->fusions_completed = 0;
 
   // loop max search loops
   for( int j=0; j<max_search_loops; j++ ){
