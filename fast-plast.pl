@@ -34,10 +34,10 @@ my $paired_end2;
 my $single_end;
 my $name;
 my $bowtie_index=$FPBIN . "/Verdant";
-my $posgenes;
+my $posgenes= $FPBIN . "/Angiosperm_Chloroplast_Genes.fsa";
 my $coverage_check;
 my $threads = 4;
-my $adapters = $FPBIN . "NEB-PE.fa";
+my $adapters = $FPBIN . "/NEB-PE.fa";
 
 GetOptions('help|?' => \$help, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "name=s" => \$name, 'coverage_analysis' => \$coverage_check,'positional_genes' => \$posgenes, "threads=i" => \$threads, "adapters=s" => \$adapters)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
 
@@ -268,20 +268,23 @@ print "$current_runtime\tStarting improved assembly with afin.\n";
 mkdir("Afin_Assembly");
 chdir("Afin_Assembly");
 
-`perl $FPBIN/filter_coverage_assembly.pl ../Spades_Assembly/spades_iter1/contigs.fasta`;
+`perl $FPBIN/filter_coverage_assembly_weighted.pl ../Spades_Assembly/spades_iter1/contigs.fasta`;
 
+my $current_afin;
 
+my ($total_afin_contigs, $max_afin, $min_afin) = &run_afin(100,100,"20,15,10", "2,1,1", "filtered_spades_contigs.fsa");
 
-my ($total_afin_contigs, $max_afin, $min_afin) = &run_afin(100,100,2,"filtered_spades_contigs.fsa");
+print "After afin, there are $total_afin_contigs contigs with a maximum size of $max_afin and a minimum size of $min_afin.\n";
 
-print "After first attempt at afin, there are $total_afin_contigs with a maximum size of $max_afin and a minimum size of $min_afin.\n";
-
+$current_runtime = time - $start_time;
+print "$current_runtime\tRemoving nested contigs.\n";
+my $gotofinish;
 if( $total_afin_contigs > 1){
-	my $current_afin = $name . "_afin_iter0.fa";
+	$current_afin = $name . "_afin_iter1.fa";
 
 	`$BLAST/makeblastdb -in $current_afin -dbtype nucl`;
 	my $blast_afin_exec = $BLAST . " -query " . $current_afin . " -db " . $current_afin . " -evalue 1e-40 -outfmt 6 > " . $current_afin . ".blastn";
-
+	`$blast_afin_exec`;
 	my %delete_contigs;
 	open my $checkblast, "<", $current_afin . "blastn";
 	while(<$checkblast>){
@@ -328,7 +331,7 @@ if( $total_afin_contigs > 1){
 	while(<$oldafin>){
 		chomp;
 		if(/>/){
-			if(exists $delete_contigs{$_});
+			if(exists $delete_contigs{$_}){;
 				$tempsid=();
 				next;
 			}
@@ -345,35 +348,68 @@ if( $total_afin_contigs > 1){
 	$total_afin_contigs = &count_contigs($current_afin);
 
 	if ($total_afin_contigs > 1){
-		my ($total_afin_contigs, $max_afin, $min_afin) = &run_afin(100,100,2,"filtered_spades_contigs.fsa");
+		my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
+		my %contigs_db_genes = %$contigs_db_genes;
+		$percent_recovered_genes=$percent_recovered_genes*100;
+		print "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in retained contigs.\n";
 
-	}
+
+		#&scaffolding($current_afin,$name);
+
+		$total_afin_contigs = &count_contigs($current_afin);
+		if($total_afin_contigs > 1){
+				my $temppwd = `pwd`;
+				chomp($temppwd);
+				$tempwd .= "/". $current_afin;
+				open my $cpcomposition, ">", "Chloroplast_gene_composition_of_final_contigs.txt";
+			for my $contig_name (sort keys %contigs_db_genes){
+				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
+						print $cpcomposition "$contig_name\t$gene_name\n";
+				}
+			}
+			close ($cpcomposition);
+				die "Cannot scaffold contigs into a single piece.  Coverage is too low. Best contigs are in $tempwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
+		}
+	}	
+
+	else{
+
+		my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
+		my %contigs_db_genes = %$contigs_db_genes;
+		$percent_recovered_genes=$percent_recovered_genes*100;
+		print "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in retained contigs.\n";
+		open my $cpcomposition, ">", "Chloroplast_gene_composition_of_final_contigs.txt";
+			for my $contig_name (sort keys %contigs_db_genes){
+				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
+						print $cpcomposition "$contig_name\t$gene_name\n";
+				}
+			}
+		close ($cpcomposition);
+	
+	}	
+
+
+
+
+}
     
 
+
+else{
+	$current_afin = $name . "_afin_iter1.fa";
+	
+	my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
+	my %contigs_db_genes = %$contigs_db_genes;
+	$percent_recovered_genes=$percent_recovered_genes*100;
+	print "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in retained contigs.\n";
+	open my $cpcomposition, ">", "Chloroplast_gene_composition_of_final_contigs.txt";
+			for my $contig_name (sort keys %contigs_db_genes){
+				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
+						print $cpcomposition "$contig_name\t$gene_name\n";
+				}
+			}
+	close ($cpcomposition);
 }
-
-
-########## Check current assembly for genes #########
-
-my $current_afin = $name . "_afin_iter0.fa";
-my $blast_afin_exec = $BLAST . " -query " . $current_afin . " -db " . $FPBIN . "/Angiosperm_Chloroplast_Genes.fsa -evalue 1e-40 -outfmt 6 > " . $current_afin . ".blastn";
-system($blast_afin_exec);
-
-
-if($total_afin_contigs > 1){
-	my $percent_recovered_genes = &cpgene_recovery($total_afin_contigs);
-}
-
-print "After first attempt at afin, there are $percent_recovered_genes of known angiosperm chloroplast genes were recovered.\n";
-
-if($percent_recovered_genes < 0.9){
-
-
-}
-
-
-
-
 
 chdir("../");
 
@@ -385,7 +421,63 @@ print "$current_runtime\tStarting plastome finishing.\nUsing $posgenes for LSC, 
 mkdir("Plastome_Finishing");
 chdir("Plastome_Finishing");
 
+`perl $FPBIN/sequence_based_ir_id.pl ../Afin_Assembly/$current_afin $name 1`;
 
+`$BLAST/makeblastdb -in $posgenes -dbtype nucl`;
+my $blast_afin_exec = $BLAST . " -query " . $current_afin . " -db " . $posgenes . " -evalue 1e-40 -outfmt 6 > " . $current_afin\_positional_genes . ".blastn";
+`$blast_afin_exec`;
+
+###in the middle of fixing the orientation script to handle the large gene set
+
+
+
+##########
+sub scaffolding {
+	$current_runtime = time - $start_time;
+	print "$current_runtime\tStarting scaffolding.\n";
+	my $bowtie2_build_exec = $BOWTIE2 " " . $_[0] . " " . $_[1];
+	system($bowtie2_build_exec);
+	my $bowtie2_exec = $BOWTIE2 " --very-sensitive --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $_[1] . " -1 ../Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . "_scaffold.sam";
+	system($bowtie2_exec);
+
+	my %pairs;
+	my $sum_insert=0;
+	my $total_pairs=0;
+	#####NEED a data structure to store the contigs for scaffolding
+	open my $samfile, "<", $name . "_scaffold.sam";
+	while(<$samfile>){
+    	chomp;
+        if(/^@/){
+        	next;
+        }
+        my @tarray = split /\s+/;
+
+        if($tarray[2] eq "*"){
+            next;
+        }
+        if(abs($tarray[8]) > 0){
+			$sum_insert+=$tarray[8];
+			$total_pairs++;
+		}
+        $tarray[2] =~ /len_(\d+)/;
+        my $length = $1;
+
+        unless ($tarray[3] < 1000 || $tarray[3] >= ($length-1000)){
+        	next;
+        }
+        if(exists $pairs{$tarray[0]}){
+            if($pairs{$tarray[0]} ne $tarray[2] || substr($pairs{$tarray[0]},0,-2) ne substr($tarray[2],0,-2)){
+                #               if($tarray[4] == 3 || $tarray[4] == 8 || $tarray[4] == 23 || $tarray[4] == 24 || $tarray[4] == 40 || $tarray[4] == 42){
+                                print "$tarray[0]\n";
+                        }#}
+                }
+        #       if($tarray[4] == 3 || $tarray[4] == 8 || $tarray[4] == 23 || $tarray[4] == 24 || $tarray[4] == 40 || $tarray[4] == 42){
+                $pairs{$tarray[0]}=$tarray[2];
+#}
+
+}
+
+}
 ##########
 sub count_contigs {
 	my %contig_lengths;
@@ -444,6 +536,8 @@ sub run_afin {
 ##########
 
 sub cpgene_recovery {
+	$current_runtime = time - $start_time;
+	print "$current_runtime\tChecking chloroplast gene recovery in contigs.\n";
 	my %chloroplast_db_genes;
 	open my $cpdbgenes, "<", $FPBIN . "/Angiosperm_Chloroplast_Genes.fsa";
 	while(<$cpdbgenes>){
@@ -453,8 +547,10 @@ sub cpgene_recovery {
 			$chloroplast_db_genes{$1}=1;
 		}
 	}
-
-	my $total_chloroplast_db_genes= scalar key %chlorplast_db_genes;
+	`$BLAST/makeblastdb -in $FPBIN/Angiosperm_Chloroplast_Genes.fsa -dbtype nucl`;
+	my $blast_afin_exec = $BLAST . " -query " . $current_afin . " -db " . $posgenes . " -evalue 1e-40 -outfmt 6 > " . $current_afin\_positional_genes . ".blastn";
+	`$blast_afin_exec`;
+	my $total_chloroplast_db_genes= scalar keys %chlorplast_db_genes;
 
 	my %hit_chloroplast_db_genes;
 	my %contigs_db_genes;
@@ -466,12 +562,12 @@ sub cpgene_recovery {
 		$hit_chloroplast_db_genes{$1}=1;
 		$contigs_db_genes{$tarray[0]}{$1}=1;
 	}
-	my $total_hit_chlorplast_db_genes= scalar key %hit_chlorplast_db_genes;
+	my $total_hit_chlorplast_db_genes= scalar keys %hit_chlorplast_db_genes;
 	my $percent_recovered_genes = $total_hit_chlorplast_db_genes/$total_chloroplast_db_genes;
 
-	if(scalar keys %contigs_db_genes > 1){
-		return $percent_recovered_genes;
-	}
+	
+	return ($percent_recovered_genes, \%contigs_db_genes);
+
 	
 }
 
