@@ -31,12 +31,13 @@ if($answer =~ /n/i){
 		die "\nPlease install all dependencies prior to installing Fast-Plast.\n";
 	}
 	else{
+		chdir("bin/");
 		print "\nOK. I am only going to try to install the Linux binaries. Let's do this one-by-one. Would you like me to install Trimmomatic? Yes/No: ";
 		$answer = <STDIN>;
 		chomp($answer);
 		my $trimmomatic;
 		if($answer =~ /y/i){
-			chdir("bin/");
+		
 			system("wget http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/Trimmomatic-0.36.zip");
 			
 			if(-e "Trimmomatic-0.36.zip"){
@@ -52,34 +53,34 @@ if($answer =~ /n/i){
 		else{
 			print "Please provide the absolute path to the Trimmomatic directory. If Trimmomatic is in your PATH already, just type PATH: ";
 
-my $trimmomatic = <STDIN>;
-chomp ($trimmomatic);
+			my $trimmomatic = <STDIN>;
+			chomp ($trimmomatic);
 
-if($trimmomatic =~ /path/i){
-	$trimmomatic= <"trimmomatic*.jar">;
-	if(!$trimmomatic){
+			if($trimmomatic =~ /path/i){
+				$trimmomatic= <"trimmomatic*.jar">;
+				if(!$trimmomatic){
 
-		my @path = split(/:/, $PATH);
-		for my $pot (@path){
-			if($pot =~ /trimmomatic/i){
-				$trimmomatic = glob ("$pot/*.jar");
+					my @path = split(/:/, $PATH);
+					for my $pot (@path){
+						if($pot =~ /trimmomatic/i){
+							$trimmomatic = glob ("$pot/*.jar");
+						}
+					}
+					if(!$trimmomatic){
+						die "\nSorry. I cannot locate the Trimmomatic jar file in your path\. Please check again.\n";
+					}
+				}	
+
 			}
-		}
-		if(!$trimmomatic){
-			die "\nSorry. I cannot locate the Trimmomatic jar file in your path\. Please check again.\n";
-		}
-	}	
+			else{
+				my $temp_trim = $trimmomatic;
+				$trimmomatic = glob ("$trimmomatic/*.jar");
+				if(!$trimmomatic){
+					die "\nSorry. I cannot locate the Trimmomatic jar file in $temp_trim\. Please check again.\n";
+				}
+			}
 
-}
-else{
-	my $temp_trim = $trimmomatic;
-	$trimmomatic = glob ("$trimmomatic/*.jar");
-	if(!$trimmomatic){
-		die "\nSorry. I cannot locate the Trimmomatic jar file in $temp_trim\. Please check again.\n";
-	}
-}
-
-print "\nTrimmomatic jar file located: $trimmomatic\n";
+			print "\nTrimmomatic jar file located: $trimmomatic\n";
 		}
 
 		`perl -pi -e "s/my \$TRIMMOMATIC;/my \$TRIMMOMATIC = $trimmomatic\;/" $FPROOT/fast-plast.pl`;
@@ -89,9 +90,7 @@ print "\nTrimmomatic jar file located: $trimmomatic\n";
 		chomp($answer);
 		my $bowtie2;
 		if($answer =~ /y/i){
-			
 			system("wget https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.2.9/bowtie2-2.2.9-linux-x86_64.zip");
-			
 			if(-e "bowtie2-2.2.9-linux-x86_64.zip"){
 				system("unzip bowtie2-2.2.9-linux-x86_64.zip");
 				$bowtie2 = $FPROOT . "/bin/bowtie2-2.2.9-linux-x86_64/";
@@ -103,45 +102,41 @@ print "\nTrimmomatic jar file located: $trimmomatic\n";
 		}
 		else{
 			print "\nPlease provide the absolute path to the bowtie2 executable. If bowtie2 is in your PATH already, just type PATH: ";
+			my $bowtie2 = <STDIN>;
+			chomp ($bowtie2);
+			if($bowtie2 =~ /path/i){
+				$bowtie2=<"bowtie2">;
+				if(!$bowtie2){
+					my @path = split(/:/, $PATH);
+					for my $pot (@path){
+						if($pot =~ /$bowtie2/i){
+							$bowtie2 = glob ("$pot/bowtie2");
+						}
+					}
+					if(!$bowtie2){
+						die "\nSorry. I cannot locate the bowtie2 executable file in your path\. Please check again.\n";
+					}
+				}
 
-my $bowtie2 = <STDIN>;
-chomp ($bowtie2);
-
-if($bowtie2 =~ /path/i){
-	$bowtie2=<"bowtie2">;
-	if(!$bowtie2){
-		my @path = split(/:/, $PATH);
-		for my $pot (@path){
-			if($pot =~ /$bowtie2/i){
-				$bowtie2 = glob ("$pot/bowtie2");
 			}
-		}
-		if(!$bowtie2){
-			die "\nSorry. I cannot locate the bowtie2 executable file in your path\. Please check again.\n";
-		}
-	}
+			else{
+				my $temp_bow = $bowtie2;
+				$trimmomatic = glob ("$bowtie2/bowtie2");
+				if(!$bowtie2){
+					die "\nSorry. I cannot locate the bowtie2 executable file in $temp_bow\. Please check again.\n";
+				}
+			}
 
-}
-else{
-	my $temp_bow = $bowtie2;
-	$trimmomatic = glob ("$bowtie2/bowtie2");
-	if(!$bowtie2){
-		die "\nSorry. I cannot locate the bowtie2 executable file in $temp_bow\. Please check again.\n";
-	}
-}
-
-print "\nbowtie2 executable located: $bowtie2\n";
+			print "\nbowtie2 executable located: $bowtie2\n";
 		}
 
-		`perl -pi -e "s/my \$BOWTIE2;/my \$BOWTIE2 = $bowtie2\;/" $FPROOT/fast-plast.pl`;
+		`perl -pi -e "s/my \$BOWTIE2\;/my \$BOWTIE2 = $bowtie2\;/" $FPROOT/fast-plast.pl`;
 		print "\nWould you like me to install SPAdes? Yes/No: ";
 		$answer = <STDIN>;
 		chomp($answer);
 		my $spades;
-		if($answer =~ /y/i){
-			
+		if($answer =~ /y/i){	
 			system("wget http://spades.bioinf.spbau.ru/release3.9.0/SPAdes-3.9.0-Linux.tar.gz");
-			
 			if(-e "SPAdes-3.9.0-Linux.tar.gz"){
 				system("tar -xvzf SPAdes-3.9.0-Linux.tar.gz");
 				$spades = $FPROOT . "/bin/SPAdes-3.9.0-Linux/";
@@ -154,47 +149,45 @@ print "\nbowtie2 executable located: $bowtie2\n";
 		else{
 			print "\nPlease provide the absolute path to the SPAdes program directory. If SPAdes is in your PATH already, just type PATH: ";
 
-my $spades = <STDIN>;
-chomp ($spades);
+			my $spades = <STDIN>;
+			chomp ($spades);
 
-if($spades =~ /path/i){
-	$spades=<"spades.py">;
-	if(!$spades){
-		my @path = split(/:/, $PATH);
-		for my $pot (@path){
-			if($pot =~ /spades/i){
-				$spades = glob ("$pot/bin/spades.py");
+			if($spades =~ /path/i){
+				$spades=<"spades.py">;
+				if(!$spades){
+					my @path = split(/:/, $PATH);
+					for my $pot (@path){
+						if($pot =~ /spades/i){
+							$spades = glob ("$pot/bin/spades.py");
+						}
+					}
+					if(!$spades){
+						die "\nSorry. I cannot locate the SPAdes executable file in your path\. Please check again.\n";
+					}
+				}
 			}
-		}
-		if(!$spades){
-			die "\nSorry. I cannot locate the SPAdes executable file in your path\. Please check again.\n";
-		}
-	}
-}
-else{
-	my $temp_spades = $spades;
-	$spades = glob ("$spades/spades.py");
-	if(!$spades){
-		$spades = glob ("$temp_spades/bin/spades.py");
-	}
-	if(!$spades){
-		die "\nSorry. I cannot locate the SPAdes executable file in $temp_spades\. Please check again.\n";
-	}
-}
+			else{
+				my $temp_spades = $spades;
+				$spades = glob ("$spades/spades.py");
+				if(!$spades){
+					$spades = glob ("$temp_spades/bin/spades.py");
+				}
+				if(!$spades){
+					die "\nSorry. I cannot locate the SPAdes executable file in $temp_spades\. Please check again.\n";
+				}
+			}
 
-print "\nSPAdes executable located: $spades\n";
+			print "\nSPAdes executable located: $spades\n";
 		}
 
-		`perl -pi -e "s/my \$SPADES;/my \$SPADES = $spades\;/" $FPROOT/fast-plast.pl`;
+		`perl -pi -e "s/my \$SPADES\;/my \$SPADES = $spades\;/" $FPROOT/fast-plast.pl`;
 
 		print "\nWould you like me to install bowtie1? Yes/No: ";
 		$answer = <STDIN>;
 		chomp($answer);
 		my $bowtie1;
 		if($answer =~ /y/i){
-			
 			system("wget https://sourceforge.net/projects/bowtie-bio/files/bowtie/1.1.2/bowtie-1.1.2-linux-x86_64.zip");
-			
 			if(-e "bowtie-1.1.2-linux-x86_64.zip"){
 				system("unzip bowtie-1.1.2-linux-x86_64.zip");
 				$bowtie1 = $FPROOT . "/bin/bowtie-1.1.2-linux-x86_64/";
@@ -206,46 +199,41 @@ print "\nSPAdes executable located: $spades\n";
 		}
 		else{
 			print "\nPlease provide the absolute path to the bowtie1 executable. If bowtie1 is in your PATH already, just type PATH: ";
-
-my $bowtie1 = <STDIN>;
-chomp ($bowtie1);
-
-if($bowtie1 =~ /path/i){
-	$bowtie1=<"bowtie">;
-	if(!$bowtie1){
-		my @path = split(/:/, $PATH);
-		for my $pot (@path){
-			if($pot =~ /bowtie/i){
-				$bowtie1 = glob ("$pot/bowtie");
+			my $bowtie1 = <STDIN>;
+			chomp ($bowtie1);
+			if($bowtie1 =~ /path/i){
+				$bowtie1=<"bowtie">;
+				if(!$bowtie1){
+					my @path = split(/:/, $PATH);
+					for my $pot (@path){
+						if($pot =~ /bowtie/i){
+							$bowtie1 = glob ("$pot/bowtie");
+						}
+					}
+					if(!$bowtie1){
+						die "\nSorry. I cannot locate the bowtie1 executable file in your path\. Please check again.\n";
+					}
+				}
 			}
-		}
-		if(!$bowtie1){
-			die "\nSorry. I cannot locate the bowtie1 executable file in your path\. Please check again.\n";
-		}
-	}
+			else{
+				my $temp_bow1 = $bowtie1;
+				$bowtie1 = glob ("$bowtie1/bowtie");
+				if(!$bowtie1){
+					die "\nSorry. I cannot locate the bowtie1 executable file in $temp_bow1\. Please check again.\n";
+				}
+			}
 
-}
-else{
-	my $temp_bow1 = $bowtie1;
-	$trimmomatic = glob ("$bowtie1/bowtie");
-	if(!$bowtie1){
-		die "\nSorry. I cannot locate the bowtie1 executable file in $temp_bow1\. Please check again.\n";
-	}
-}
-
-print "\nbowtie1 executable located: $bowtie1\n";
+			print "\nbowtie1 executable located: $bowtie1\n";
 		}
 
-		`perl -pi -e "s/my \$BOWTIE1;/my \$BOWTIE1 = $bowtie1\;/" $FPROOT/fast-plast.pl`;
+		`perl -pi -e "s/my \$BOWTIE1\;/my \$BOWTIE1 = $bowtie1\;/" $FPROOT/fast-plast.pl`;
 
 		print "\nWould you like me to install SSPACE? Yes/No: ";
 		$answer = <STDIN>;
 		chomp($answer);
 		my $sspace;
-		if($answer =~ /y/i){
-			
+		if($answer =~ /y/i){	
 			system("wget https://github.com/nsoranzo/sspace_basic/archive/v2.1.1.zip");
-			
 			if(-e "sspace_basic-2.1.1.zip"){
 				system("unzip sspace_basic-2.1.1.zip");
 				$sspace = $FPROOT . "/bin/sspace_basic-2.1.1/";
@@ -258,38 +246,38 @@ print "\nbowtie1 executable located: $bowtie1\n";
 		else{
 			print "\nPlease provide the absolute path to the SSPACE program directory. If SSPACE is in your PATH already, just type PATH: ";
 
-my $sspace = <STDIN>;
-chomp ($sspace);
+			my $sspace = <STDIN>;
+			chomp ($sspace);
 
-if($sspace =~ /path/i){
-	$sspace=<"SSPACE_Basic.pl">;
-	if(!$sspace){
-		my @path = split(/:/, $PATH);
-		for my $pot (@path){
-			if($pot =~ /sspace/i){
-				$sspace = glob ("$pot/SSPACE_Basic.pl");
+			if($sspace =~ /path/i){
+				$sspace=<"SSPACE_Basic.pl">;
+				if(!$sspace){
+					my @path = split(/:/, $PATH);
+					for my $pot (@path){
+						if($pot =~ /sspace/i){
+							$sspace = glob ("$pot/SSPACE_Basic.pl");
+						}
+					}
+					if(!$sspace){
+						die "\nSorry. I cannot locate the SSPACE executable file in your path\. Please check again.\n";
+					}
+				}
 			}
-		}
-		if(!$sspace){
-			die "\nSorry. I cannot locate the SSPACE executable file in your path\. Please check again.\n";
-		}
-	}
-}
-else{
-	my $temp_sspace = $sspace;
-	$sspace = glob ("$sspace/SSPACE_Basic.pl");
-	if(!$sspace){
-		$sspace = glob ("$temp_sspace/SSPACE_Basic.pl");
-	}
-	if(!$sspace){
-		die "\nSorry. I cannot locate the SSPACE executable file in $temp_sspace\. Please check again.\n";
-	}
-}
+			else{
+				my $temp_sspace = $sspace;
+				$sspace = glob ("$sspace/SSPACE_Basic.pl");
+				if(!$sspace){
+					$sspace = glob ("$temp_sspace/SSPACE_Basic.pl");
+				}
+				if(!$sspace){
+					die "\nSorry. I cannot locate the SSPACE executable file in $temp_sspace\. Please check again.\n";
+				}
+			}
 
-print "\nSSPACE executable located: $sspace\n";
+			print "\nSSPACE executable located: $sspace\n";
 		}
 
-		`perl -pi -e "s/my \$SSPACE;/my \$SSPACE = $sspace\;/" $FPROOT/fast-plast.pl`;
+		`perl -pi -e "s/my \$SSPACE\;/my \$SSPACE = $sspace\;/" $FPROOT/fast-plast.pl`;
 
 		print "\nWould you like me to install BLAST+? Yes/No: ";
 		$answer = <STDIN>;
@@ -316,33 +304,33 @@ print "\nSSPACE executable located: $sspace\n";
 
 			if($blastn =~ /path/i){
 				$blastn=<"blastn">;
-			if(!$blastn){
-		my @path = split(/:/, $PATH);
-		for my $pot (@path){
-			if($pot =~ /blast/i){
-				$blastn = glob ("$pot/blastn");
 				if(!$blastn){
-					$blastn = glob ("$pot/bin/blastn");
+					my @path = split(/:/, $PATH);
+					for my $pot (@path){
+						if($pot =~ /blast/i){
+							$blastn = glob ("$pot/blastn");
+							if(!$blastn){
+								$blastn = glob ("$pot/bin/blastn");
+							}
+						}
+					}
+					if(!$blastn){
+						die "\nSorry. I cannot locate the blastn executable in your path\. Please check again.\n";
+					}
+				}
+			}
+			else{
+				my $temp_blastn = $blastn;
+				$blastn = glob ("$blastn/blastn");
+				if(!$blastn){
+					$blastn = glob ("$temp_blastn/bin/blastn");
+				}
+				if(!$blastn){
+					die "\nSorry. I cannot locate the blastn executable in $temp_blastn\. Please check again.\n";
 				}
 			}
 		}
-		if(!$blastn){
-			die "\nSorry. I cannot locate the blastn executable in your path\. Please check again.\n";
-		}
-	}
-}
-else{
-	my $temp_blastn = $blastn;
-	$blastn = glob ("$blastn/blastn");
-	if(!$blastn){
-		$blastn = glob ("$temp_blastn/bin/blastn");
-	}
-	if(!$blastn){
-		die "\nSorry. I cannot locate the blastn executable in $temp_blastn\. Please check again.\n";
-	}
-}
-		}
-		`perl -pi -e "s/my \$BLAST;/my \$BLAST = $blastn\;/" $FPROOT/fast-plast.pl`;
+		`perl -pi -e "s/my \$BLAST\;/my \$BLAST = $blastn\;/" $FPROOT/fast-plast.pl`;
 		
 
 		print "\nWould you like me to install Jellyfish 2? Yes/No: ";
@@ -398,32 +386,43 @@ else{
 
 			print "\njellyfish executable located: $jellyfish\n";
 
-			`perl -pi -e "s/my \$JELLYFISH;/my \$JELLYFISH = $jellyfish\;/" $FPROOT/Coverage_Analysis/coverage.pl`;
+			`perl -pi -e "s/my \$JELLYFISH\;/my \$JELLYFISH = $jellyfish\;/" $FPROOT/Coverage_Analysis/coverage.pl`;
 		}
-
 	}
-}
-
-print "Great! Do you want to install the main Fast-Plast pipleline or just the Coverage Analysis pipeline? You will be prompted to install the Coverage Pipeline after the main Fast-Plast pipeline. Please, enter Fast-Plast or Coverage ";
+	print "Would you like me to compile afin? Yes or No: ";
 
 $answer = <STDIN>;
-chomp ($answer);
+chomp($answer);
 
-if($answer =~ /fast/i){
+if($answer =~ /y/i){
+	chdir("../afin");
+	`make`;
+	if(! -e "afin"){
+		die "Could not compile afin.  You might be missing a required library.  Check that you have GCC 4.5+ and go to https://github.com/mrmckain/Fast-Plast/tree/master/afin for more information.\n";
+	}
+	print "\nAfin installed successfully.\n";
+	chdir ("../");
+}
+print "Fast-Plast installation complete.  See manual for directions on how to get started.\n"
+}
+else{
+	print "Great! We still need to set up Fast-Plast. Follow the promps.";
 
 
-print "To get started, we are going to set the paths to Trimmomatic, bowtie2, SPAdes, bowtie1, SSPACE, and BLAST+.  After set up for the main pipeline, we will try to set up the Coverage Analysis pipeline.\n\n";
 
-print "Please provide the absolute path to the Trimmomatic directory. If Trimmomatic is in your PATH already, just type PATH: ";
 
-my $trimmomatic = <STDIN>;
-chomp ($trimmomatic);
+		print "To get started, we are going to set the paths to Trimmomatic, bowtie2, SPAdes, bowtie1, SSPACE, and BLAST+.  After set up for the main pipeline, we will try to set up the Coverage Analysis pipeline.\n\n";
 
-if($trimmomatic =~ /path/i){
-	$trimmomatic= <"trimmomatic*.jar">;
-	if(!$trimmomatic){
+		print "Please provide the absolute path to the Trimmomatic directory. If Trimmomatic is in your PATH already, just type PATH: ";
 
-		my @path = split(/:/, $PATH);
+		my $trimmomatic = <STDIN>;
+		chomp ($trimmomatic);
+
+		if($trimmomatic =~ /path/i){
+			$trimmomatic= <"trimmomatic*.jar">;
+		if(!$trimmomatic){
+
+			my @path = split(/:/, $PATH);
 		for my $pot (@path){
 			if($pot =~ /trimmomatic/i){
 				$trimmomatic = glob ("$pot/*.jar");
@@ -631,14 +630,8 @@ if($answer =~ /y/i){
 `perl -pi -e "s/my \$BLAST;/my \$BLAST = $blastn\;/" $FPROOT/fast-plast.pl`;
 
 
-print "\nInstallation of primary Fast-Plast is complete. Would you like to install the Coverage Analysis pipeline (recommended)? Yes or No: ";
-$answer = <STDIN>;
-chomp($answer);
-}
 
 
-if($answer =~ /y/i || $answer =~ /cov/i){
-	print "\nLet's start the Coverage Pipeline installation.\n";
 	print "\nPlease provide the absolute path to the Jellyfish 2 executable. If Jellyfish is in your PATH already, just type PATH: ";
 
 	my $jellyfish = <STDIN>;
@@ -676,7 +669,7 @@ if($answer =~ /y/i || $answer =~ /cov/i){
 
 	`perl -pi -e "s/my \$JELLYFISH;/my \$JELLYFISH = $jellyfish\;/" $FPROOT/Coverage_Analysis/coverage.pl`;
 
-	print "\nThe Coverage Analysis pipeline is now installed. Remember, R must be available to run this pipeline.\n";
+print "Fast-Plast installation complete.  See manual for directions on how to get started.\n"
 }
 
 
