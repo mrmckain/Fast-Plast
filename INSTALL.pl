@@ -215,7 +215,7 @@ if($bowtie1 =~ /path/i){
 	if(!$bowtie1){
 		my @path = split(/:/, $PATH);
 		for my $pot (@path){
-			if($pot =~ /$bowtie/i){
+			if($pot =~ /bowtie/i){
 				$bowtie1 = glob ("$pot/bowtie");
 			}
 		}
@@ -270,18 +270,18 @@ if($sspace =~ /path/i){
 				$sspace = glob ("$pot/SSPACE_Basic.pl");
 			}
 		}
-		if(!$$sspace){
+		if(!$sspace){
 			die "\nSorry. I cannot locate the SSPACE executable file in your path\. Please check again.\n";
 		}
 	}
 }
 else{
-	my $temp_$sspace = $$sspace;
-	$$sspace = glob ("$sspace/SSPACE_Basic.pl");
-	if(!$$sspace){
-		$$sspace = glob ("$temp_sspace/SSPACE_Basic.pl");
+	my $temp_sspace = $sspace;
+	$sspace = glob ("$sspace/SSPACE_Basic.pl");
+	if(!$sspace){
+		$sspace = glob ("$temp_sspace/SSPACE_Basic.pl");
 	}
-	if(!$$sspace){
+	if(!$sspace){
 		die "\nSorry. I cannot locate the SSPACE executable file in $temp_sspace\. Please check again.\n";
 	}
 }
@@ -531,7 +531,7 @@ else{
 	my $temp_bowtie1 = $bowtie1;
 	$bowtie1 = glob ("$bowtie1/bowtie");
 	if(!$bowtie1){
-		$bowtie1 = glob ("$temp_spades/bowtie");
+		$bowtie1 = glob ("$temp_bowtie1/bowtie");
 	}
 	if(!$bowtie1){
 		die "\nSorry. I cannot locate the bowtie1 executable file in $temp_bowtie1\. Please check again.\n";
