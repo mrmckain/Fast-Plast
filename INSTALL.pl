@@ -285,11 +285,11 @@ if($answer =~ /n/i){
 		my $blastn;
 		if($answer =~ /y/i){
 			
-			system("wget ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.5.0+-x64-linux.tar.gz");
+			system("wget ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.6.0/ncbi-blast-2.6.0+-x64-linux.tar.gz");
 			
-			if(-e "ncbi-blast-2.5.0+-x64-linux.tar.gz"){
-				system("tar -xvzf ncbi-blast-2.5.0+-x64-linux.tar.gz");
-				$blastn = $FPROOT . "/bin/ncbi-blast-2.5.0+/";
+			if(-e "ncbi-blast-2.6.0+-x64-linux.tar.gz"){
+				system("tar -xvzf ncbi-blast-2.6.0+-x64-linux.tar.gz");
+				$blastn = $FPROOT . "/bin/ncbi-blast-2.6.0+/";
 				$blastn = glob ("$blastn/bin/blastn");
 			}
 			else{
