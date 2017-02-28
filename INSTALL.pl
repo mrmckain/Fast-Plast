@@ -21,7 +21,7 @@ print "Do you have all dependecies installed? Yes/No: ";
 
 my $answer = <STDIN>;
 chomp ($answer);
-
+my $control_file =$FPROOT . "/fast-plast.pl";
 if($answer =~ /n/i){
 
 	print "\nDo you want me to try to install them? Yes/No: ";
@@ -82,8 +82,10 @@ if($answer =~ /n/i){
 
 			print "\nTrimmomatic jar file located: $trimmomatic\n";
 		}
-
-		`perl -pi -e "s/my \$TRIMMOMATIC;/my \$TRIMMOMATIC = $trimmomatic\;/" $FPROOT/fast-plast.pl`;
+		my $tempf = read_file($control_file);
+		$tempf =~ s/my \$TRIMMOMATIC\;/my \$TRIMMOMATIC=\"$trimmomatic\"\;/;
+		write_file($control_file, $tempf);
+		
 
 		print "\nWould you like me to install bowtie2? Yes/No: ";
 		$answer = <STDIN>;
@@ -93,7 +95,7 @@ if($answer =~ /n/i){
 			system("wget https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.2.9/bowtie2-2.2.9-linux-x86_64.zip");
 			if(-e "bowtie2-2.2.9-linux-x86_64.zip"){
 				system("unzip bowtie2-2.2.9-linux-x86_64.zip");
-				$bowtie2 = $FPROOT . "/bin/bowtie2-2.2.9-linux-x86_64/";
+				$bowtie2 = $FPROOT . "/bin/bowtie2-2.2.9";
 				$bowtie2 = glob ("$bowtie2/bowtie2");
 			}
 			else{
@@ -129,8 +131,9 @@ if($answer =~ /n/i){
 
 			print "\nbowtie2 executable located: $bowtie2\n";
 		}
-
-		`perl -pi -e "s/my \$BOWTIE2\;/my \$BOWTIE2 = $bowtie2\;/" $FPROOT/fast-plast.pl`;
+		$tempf = read_file($control_file);
+		$tempf =~ s/my \$BOWTIE2\;/my \$BOWTIE2=\"$bowtie2\"\;/;
+		write_file($control_file, $tempf);
 		print "\nWould you like me to install SPAdes? Yes/No: ";
 		$answer = <STDIN>;
 		chomp($answer);
@@ -139,7 +142,7 @@ if($answer =~ /n/i){
 			system("wget http://spades.bioinf.spbau.ru/release3.9.0/SPAdes-3.9.0-Linux.tar.gz");
 			if(-e "SPAdes-3.9.0-Linux.tar.gz"){
 				system("tar -xvzf SPAdes-3.9.0-Linux.tar.gz");
-				$spades = $FPROOT . "/bin/SPAdes-3.9.0-Linux/";
+				$spades = $FPROOT . "/bin/SPAdes-3.9.0-Linux";
 				$spades = glob ("$spades/bin/spades.py");
 			}
 			else{
@@ -179,8 +182,9 @@ if($answer =~ /n/i){
 
 			print "\nSPAdes executable located: $spades\n";
 		}
-
-		`perl -pi -e "s/my \$SPADES\;/my \$SPADES = $spades\;/" $FPROOT/fast-plast.pl`;
+		 $tempf = read_file($control_file);
+		$tempf =~ s/my \$SPADES\;/my \$SPADES=\"$spades\"\;/;
+		write_file($control_file, $tempf);
 
 		print "\nWould you like me to install bowtie1? Yes/No: ";
 		$answer = <STDIN>;
@@ -190,7 +194,7 @@ if($answer =~ /n/i){
 			system("wget https://sourceforge.net/projects/bowtie-bio/files/bowtie/1.1.2/bowtie-1.1.2-linux-x86_64.zip");
 			if(-e "bowtie-1.1.2-linux-x86_64.zip"){
 				system("unzip bowtie-1.1.2-linux-x86_64.zip");
-				$bowtie1 = $FPROOT . "/bin/bowtie-1.1.2-linux-x86_64/";
+				$bowtie1 = $FPROOT . "/bin/bowtie-1.1.2";
 				$bowtie1 = glob ("$bowtie1/bowtie");
 			}
 			else{
@@ -225,8 +229,9 @@ if($answer =~ /n/i){
 
 			print "\nbowtie1 executable located: $bowtie1\n";
 		}
-
-		`perl -pi -e "s/my \$BOWTIE1\;/my \$BOWTIE1 = $bowtie1\;/" $FPROOT/fast-plast.pl`;
+		$tempf = read_file($control_file);
+		$tempf =~ s/my \$BOWTIE1\;/my \$BOWTIE1=\"$bowtie1\"\;/;
+		write_file($control_file, $tempf);
 
 		print "\nWould you like me to install SSPACE? Yes/No: ";
 		$answer = <STDIN>;
@@ -234,8 +239,8 @@ if($answer =~ /n/i){
 		my $sspace;
 		if($answer =~ /y/i){	
 			system("wget https://github.com/nsoranzo/sspace_basic/archive/v2.1.1.zip");
-			if(-e "sspace_basic-2.1.1.zip"){
-				system("unzip sspace_basic-2.1.1.zip");
+			if(-e "v2.1.1.zip"){
+				system("unzip v2.1.1.zip");
 				$sspace = $FPROOT . "/bin/sspace_basic-2.1.1/";
 				$sspace = glob ("$sspace/SSPACE_Basic.pl");
 			}
@@ -276,8 +281,9 @@ if($answer =~ /n/i){
 
 			print "\nSSPACE executable located: $sspace\n";
 		}
-
-		`perl -pi -e "s/my \$SSPACE\;/my \$SSPACE = $sspace\;/" $FPROOT/fast-plast.pl`;
+		 $tempf = read_file($control_file);
+		$tempf =~ s/my \$SSPACE\;/my \$SSPACE=\"$sspace\"\;/;
+		write_file($control_file, $tempf);
 
 		print "\nWould you like me to install BLAST+? Yes/No: ";
 		$answer = <STDIN>;
@@ -330,7 +336,10 @@ if($answer =~ /n/i){
 				}
 			}
 		}
-		`perl -pi -e "s/my \$BLAST\;/my \$BLAST = $blastn\;/" $FPROOT/fast-plast.pl`;
+		
+		 $tempf = read_file($control_file);
+		$tempf =~ s/my \$BLAST\;/my \$BLAST=\"$blastn\"\;/;
+		write_file($control_file, $tempf);
 		
 
 		print "\nWould you like me to install Jellyfish 2? Yes/No: ";
@@ -344,10 +353,15 @@ if($answer =~ /n/i){
 			if(-e "jellyfish-2.2.6.tar.gz"){
 				system("tar -xvzf jellyfish-2.2.6.tar.gz");
 				$jellyfish = $FPROOT . "/bin/jellyfish-2.2.6/";
-				$jellyfish = glob ("$jellyfish/jellyfish");
+				$jellyfish = glob ("$jellyfish/bin/jellyfish");
+				chdir($jellyfish);
+				system("./configure");
+				system("make");
+				$jellyfish = glob ("$jellyfish/bin/jellyfish");
+				chdir("../");
 			}
 			else{
-				print "\nUnable to install BLAST+.\n";
+				print "\nUnable to install Jellyfish2.\n";
 			}
 		}
 		else{
@@ -385,8 +399,10 @@ if($answer =~ /n/i){
 			}
 
 			print "\njellyfish executable located: $jellyfish\n";
+			my $tempf = read_file($control_file);
+			$tempf =~ s/my \$JELLYFISH\;/my \$JELLYFISH=\"$jellyfish\"\;/;
+			write_file($control_file, $tempf);
 
-			`perl -pi -e "s/my \$JELLYFISH\;/my \$JELLYFISH = $jellyfish\;/" $FPROOT/Coverage_Analysis/coverage.pl`;
 		}
 	}
 	print "Would you like me to compile afin? Yes or No: ";
@@ -420,18 +436,24 @@ else{
 
 		if($trimmomatic =~ /path/i){
 			$trimmomatic= <"trimmomatic*.jar">;
+			
 		if(!$trimmomatic){
 
 			my @path = split(/:/, $PATH);
-		for my $pot (@path){
+			for my $pot (@path){
 			if($pot =~ /trimmomatic/i){
 				$trimmomatic = glob ("$pot/*.jar");
+				
 			}
 		}
 		if(!$trimmomatic){
 			die "\nSorry. I cannot locate the Trimmomatic jar file in your path\. Please check again.\n";
 		}
+		
 	}	
+	my $tempf = read_file($control_file);
+		$tempf =~ s/my \$TRIMMOMATIC\;/my \$TRMIMMOMATIC=\"$trimmomatic\"\;/;
+		write_file($control_file, $tempf);
 
 }
 else{
@@ -440,6 +462,9 @@ else{
 	if(!$trimmomatic){
 		die "\nSorry. I cannot locate the Trimmomatic jar file in $temp_trim\. Please check again.\n";
 	}
+	my $tempf = read_file($control_file);
+		$tempf =~ s/my \$TRIMMOMATIC\;/my \$TRMIMMOMATIC=\"$trimmomatic\"\;/;
+		write_file($control_file, $tempf);
 }
 
 print "\nTrimmomatic jar file located: $trimmomatic\n";
@@ -461,7 +486,11 @@ if($bowtie2 =~ /path/i){
 		if(!$bowtie2){
 			die "\nSorry. I cannot locate the bowtie2 executable file in your path\. Please check again.\n";
 		}
+		
 	}
+	my $tempf = read_file($control_file);
+		$tempf =~ s/my \$BOWTIE2\;/my \$BOWTIE2=\"$bowtie2\"\;/;
+		write_file($control_file, $tempf);
 
 }
 else{
@@ -470,6 +499,9 @@ else{
 	if(!$bowtie2){
 		die "\nSorry. I cannot locate the bowtie2 executable file in $temp_bow\. Please check again.\n";
 	}
+	my $tempf = read_file($control_file);
+		$tempf =~ s/my \$BOWTIE2\;/my \$BOWTIE2=\"$bowtie2\"\;/;
+		write_file($control_file, $tempf);
 }
 
 print "\nbowtie2 executable located: $bowtie2\n";
@@ -493,6 +525,9 @@ if($spades =~ /path/i){
 			die "\nSorry. I cannot locate the SPAdes executable file in your path\. Please check again.\n";
 		}
 	}
+	my $tempf = read_file($control_file);
+		$tempf =~ s/my \$SPADES\;/my \$SPADES=\"$spades\"\;/;
+		write_file($control_file, $tempf);
 }
 else{
 	my $temp_spades = $spades;
@@ -503,6 +538,9 @@ else{
 	if(!$spades){
 		die "\nSorry. I cannot locate the SPAdes executable file in $temp_spades\. Please check again.\n";
 	}
+	my $tempf = read_file($control_file);
+		$tempf =~ s/my \$SPADES\;/my \$SPADES=\"$spades\"\;/;
+		write_file($control_file, $tempf);
 }
 
 print "\nSPAdes executable located: $spades\n";
@@ -525,6 +563,9 @@ if($bowtie1 =~ /path/i){
 			die "\nSorry. I cannot locate the bowtie1 executable file in your path\. Please check again.\n";
 		}
 	}
+	my $tempf = read_file($control_file);
+		$tempf =~ s/my \$BOWTIE1\;/my \$BOWTIE1=\"$bowtie1\"\;/;
+		write_file($control_file, $tempf);
 }
 else{
 	my $temp_bowtie1 = $bowtie1;
@@ -535,6 +576,9 @@ else{
 	if(!$bowtie1){
 		die "\nSorry. I cannot locate the bowtie1 executable file in $temp_bowtie1\. Please check again.\n";
 	}
+	my $tempf = read_file($control_file);
+		$tempf =~ s/my \$BOWTIE1\;/my \$BOWTIE1=\"$bowtie1\"\;/;
+		write_file($control_file, $tempf);
 }
 print "\nBowtie1 executable located: $bowtie1\n";
 
@@ -557,6 +601,9 @@ if($sspace =~ /path/i){
 			die "\nSorry. I cannot locate the SSPACE executable file in your path\. Please check again.\n";
 		}
 	}
+	my $tempf = read_file($control_file);
+		$tempf =~ s/my \$SSPACE\;/my \$SSPACE=\"$sspace\"\;/;
+		write_file($control_file, $tempf);
 }
 else{
 	my $temp_sspace = $sspace;
@@ -567,6 +614,9 @@ else{
 	if(!$sspace){
 		die "\nSorry. I cannot locate the SSPACE executable file in $temp_sspace\. Please check again.\n";
 	}
+	my $tempf = read_file($control_file);
+		$tempf =~ s/my \$SSPACE\;/my \$SSPACE=\"$sspace\"\;/;
+		write_file($control_file, $tempf);
 }
 
 print "\nSSPACE executable located: $sspace\n";
@@ -592,6 +642,9 @@ if($blastn =~ /path/i){
 			die "\nSorry. I cannot locate the blastn executable in your path\. Please check again.\n";
 		}
 	}
+	my $tempf = read_file($control_file);
+		$tempf =~ s/my \$BLAST\;/my \$BLAST=\"$blastn\"\;/;
+		write_file($control_file, $tempf);
 }
 else{
 	my $temp_blastn = $blastn;
@@ -602,6 +655,9 @@ else{
 	if(!$blastn){
 		die "\nSorry. I cannot locate the blastn executable in $temp_blastn\. Please check again.\n";
 	}
+	my $tempf = read_file($control_file);
+		$tempf =~ s/my \$BLAST\;/my \$BLAST=\"$blastn\"\;/;
+		write_file($control_file, $tempf);
 }
 
 print "\nblastn executable located: $blastn\n";
@@ -613,13 +669,13 @@ $answer = <STDIN>;
 chomp($answer);
 
 if($answer =~ /y/i){
-	chdir("afin");
+	chdir("../afin");
 	`make`;
 	if(! -e "afin"){
 		die "Could not compile afin.  You might be missing a required library.  Check that you have GCC 4.5+ and go to https://github.com/mrmckain/Fast-Plast/tree/master/afin for more information.\n";
 	}
 	print "\nAfin installed successfully.\n";
-	chdir ("../");
+	chdir ("../bin");
 }
 
 
@@ -653,6 +709,10 @@ if($answer =~ /y/i){
 				die "\nSorry. I cannot locate the jellyfish executable in your path\. Please check again.\n";
 			}
 		}
+		print "\njellyfish executable located: $jellyfish\n";
+			my $tempf = read_file($control_file);
+			$tempf =~ s/my \$JELLYFISH\;/my \$JELLYFISH=\"$jellyfish\"\;/;
+			write_file($control_file, $tempf);
 	}
 	else{
 		my $temp_jellyfish = $jellyfish;
@@ -663,6 +723,10 @@ if($answer =~ /y/i){
 				die "\nSorry. I cannot locate the jellyfish executable file in $temp_jellyfish\. Please check again.\n";
 			}
 		}
+		print "\njellyfish executable located: $jellyfish\n";
+			my $tempf = read_file($control_file);
+			$tempf =~ s/my \$JELLYFISH\;/my \$JELLYFISH=\"$jellyfish\"\;/;
+			write_file($control_file, $tempf);
 	}
 
 	print "\njellyfish executable located: $jellyfish\n";
@@ -673,5 +737,25 @@ print "Fast-Plast installation complete.  See manual for directions on how to ge
 }
 
 
+sub read_file {
+    my ($filename) = @_;
+ 
+    open my $in, '<:encoding(UTF-8)', $filename or die "Could not open '$filename' for reading $!";
+    local $/ = undef;
+    my $all = <$in>;
+    close $in;
+ 
+    return $all;
+}
+
+sub write_file {
+    my ($filename, $content) = @_;
+ 
+    open my $out, '>:encoding(UTF-8)', $filename or die "Could not open '$filename' for writing $!";;
+    print $out $content;
+    close $out;
+ 
+    return;
+}
 
 
