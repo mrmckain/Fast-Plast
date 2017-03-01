@@ -144,8 +144,4 @@ void Contiglist::create_final_fasta( int current_iteration ){
   if( print_fused ){
     output_contigs( 1, outfile + "_iter" + std::to_string(current_iteration) + "_fused", id_suffix );
   }
-
-  if( log_output || screen_output ){
-    Log::Inst()->close_log();
-  }
 }

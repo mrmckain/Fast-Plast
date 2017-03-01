@@ -168,45 +168,72 @@ void Process::set_iterables( int i ){
   if( max_search_loops_iter.size() > i ){
   	max_search_loops = max_search_loops_iter[i];
   }
+  else{
+    max_search_loops = max_search_loops_iter.back();
+  }
 
   // contig_sub_len_iter
   if( contig_sub_len_iter.size() > i ){
 		contig_sub_len = contig_sub_len_iter[i];
+  }
+  else{
+    contig_sub_len = contig_sub_len_iter.back();
   }
 
   // extend_len_iter
   if( extend_len_iter.size() > i ){
 		extend_len = extend_len_iter[i];
   }
+  else{
+    extend_len = extend_len_iter.back();
+  }
 
   // max_sort_char_iter
   if( max_sort_char_iter.size() > i ){
 		max_sort_char = max_sort_char_iter[i];
+  }
+  else{
+    max_sort_char = max_sort_char_iter.back();
   }
 
   // min_cov_iter
   if( min_cov_iter.size() > i ){
 		min_cov = min_cov_iter[i];
   }
+  else{
+    min_cov = min_cov_iter.back();
+  }
 
   // min_overlap_iter
   if( min_overlap_iter.size() > i ){
 		min_overlap = min_overlap_iter[i];
+  }
+  else{
+    min_overlap = min_overlap_iter.back();
   }
 
   // max_missed_iter
   if( max_missed_iter.size() > i ){
 		max_missed = max_missed_iter[i];
   }
+  else{
+    max_missed = max_missed_iter.back();
+  }
 
   // stop_ext_iter
   if( stop_ext_iter.size() > i ){
 		stop_ext = stop_ext_iter[i];
   }
+  else{
+    stop_ext = stop_ext_iter.back();
+  }
 
   // mismatch_threshold_iter
   if( mismatch_threshold_iter.size() > i ){
 		mismatch_threshold = mismatch_threshold_iter[i];
+  }
+  else{
+    mismatch_threshold = mismatch_threshold_iter.back();
   }
 }
 
@@ -219,6 +246,8 @@ void Process::start_run(){
 
 	// process iterable options
 	populate_iterables();
+  Log::Inst()->log_it( std::string("Max Iterations of afin: ") + std::to_string(max_iterations) );
+  set_iterables(0);
 
   // import reads once
   reads = new Readlist( readsfiles );
@@ -229,6 +258,8 @@ void Process::start_run(){
 
   // loop through iterated options if present
 	for( int i=0; i < max_iterations; i++ ){
+    Log::Inst()->log_it( std::string("Begin Iteration of afin: ") + std::to_string(i+1) );
+
 		// prevent printing of fused contigs
 		if( no_fusion )
 			print_fused = 0;
@@ -256,9 +287,16 @@ void Process::start_run(){
     contigs->create_final_fasta(i);
 
     // if there is only one contig left, no need to continue
-    if( contigs->get_list_size() == 1 )
+    if( contigs->get_list_size() == 1 ){
+      Log::Inst()->log_it( "Assembled into 1 contig. Exiting" );
       break;
+    }
 	}
+
+  // close the log file dude
+  if( log_output || screen_output ){
+    Log::Inst()->close_log();
+  }
 }
 
 // Manages run
@@ -309,12 +347,17 @@ void Process::run_manager(){
 
     // for test_runs, writes intermediate contigs to file to help troubleshoot
     if( test_run ){
-      contigs->output_contigs( 0, outfile + ".fus" + std::to_string(j), "mid" );
+      contigs->output_contigs( 0, outfile + ".fus" + std::to_string(j) + ".iter" + std::to_string(i), "mid" );
     }
 
     // if there is only one contig left or no extensions or fusions were made this round, no need to continue
-    if( (contigs->get_list_size() == 1) || (extension_sum == 0 && fuse->fusions_completed == 0) )
+    if( (contigs->get_list_size() == 1) || (extension_sum == 0 && fuse->fusions_completed == 0) ){
+      Log::Inst()->log_it( "Nothing to do here:" );
+      Log::Inst()->log_it( std::string("  contigs:           ") + std::to_string(contigs->get_list_size()) );
+      Log::Inst()->log_it( std::string("  extension_sum:     ") + std::to_string(extension_sum) );
+      Log::Inst()->log_it( std::string("  fusions_completed: ") + std::to_string(fuse->fusions_completed) );
       return;
+    }
 
     // reset extension_sum and fusions_completed
     extension_sum = 0;
