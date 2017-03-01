@@ -20,8 +20,8 @@ my $current_end;
 my $ir;
 my $count=0;
 
-for (my $i=0; $i<$seqlen-51; $i++){
-	my $tempseq = substr($sequence, $i, 51);
+for (my $i=0; $i<$seqlen-151; $i++){
+	my $tempseq = substr($sequence, $i, 151);
 	my $rcseq = reverse($tempseq);
 	$rcseq =~ tr/ATCGatcg/TAGCtagc/;
 	if($sequence =~ /$rcseq/){
@@ -46,9 +46,9 @@ for (my $i=0; $i<$seqlen-51; $i++){
 	else{
 	
 		if($ir){
-			$regions{$current_start}{$current_end+50}="ir";#"contig_" . $count. "_" . $current_start . "-" . $current_end;
+			$regions{$current_start}{$current_end+150}="ir";#"contig_" . $count. "_" . $current_start . "-" . $current_end;
 				$count++;
-				$current_start=$i+50;
+				$current_start=$i+150;
 				$current_end=$i;
 				$ir=();
 		}
