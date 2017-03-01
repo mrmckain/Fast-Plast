@@ -281,16 +281,17 @@ void Process::start_run(){
 		if( test_run )
 			contigs->output_contigs( 0, outfile + ".fus", "mid" );
 
-		run_manager();
+		run_manager(i);
 
     // write contigs to fasta
     contigs->create_final_fasta(i);
 
-    // if there is only one contig left, no need to continue
-    if( contigs->get_list_size() == 1 ){
-      Log::Inst()->log_it( "Assembled into 1 contig. Exiting" );
-      break;
-    }
+    // NOTE:: REMOVED TO allow single contigs to be further extended.. will remove this code later
+    // // if there is only one contig left, no need to continue
+    // if( contigs->get_list_size() == 1 ){
+    //   Log::Inst()->log_it( "Assembled into 1 contig. Exiting" );
+    //   break;
+    // }
 	}
 
   // close the log file dude
@@ -300,7 +301,7 @@ void Process::start_run(){
 }
 
 // Manages run
-void Process::run_manager(){
+void Process::run_manager(int current_iteration){
   // create thread array with max_thread entries
   std::vector<std::thread> t;
   Queue<int> qu;
@@ -347,11 +348,11 @@ void Process::run_manager(){
 
     // for test_runs, writes intermediate contigs to file to help troubleshoot
     if( test_run ){
-      contigs->output_contigs( 0, outfile + ".fus" + std::to_string(j) + ".iter" + std::to_string(i), "mid" );
+      contigs->output_contigs( 0, outfile + ".fus" + std::to_string(j) + ".iter" + std::to_string(current_iteration), "mid" );
     }
 
-    // if there is only one contig left or no extensions or fusions were made this round, no need to continue
-    if( (contigs->get_list_size() == 1) || (extension_sum == 0 && fuse->fusions_completed == 0) ){
+    // if no extensions or fusions were made this round, no need to continue
+    if( extension_sum == 0 && fuse->fusions_completed == 0 ){
       Log::Inst()->log_it( "Nothing to do here:" );
       Log::Inst()->log_it( std::string("  contigs:           ") + std::to_string(contigs->get_list_size()) );
       Log::Inst()->log_it( std::string("  extension_sum:     ") + std::to_string(extension_sum) );

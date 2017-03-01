@@ -158,7 +158,7 @@ class Process{
     void start_run();
 
     // Manages run
-    void run_manager();
+    void run_manager(int current_iteration);
 
     // closes logfile
     void close_log();
