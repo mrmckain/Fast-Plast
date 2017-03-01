@@ -69,18 +69,14 @@ else{
 	$ssc_pos =1;
 }
 
-my %cp_genes;
-open $file, "<", $ARGV[1];
-while(<$file>){
-	chomp;
-	if(/>/){
-		$sid = substr($_,1);
-	}
-	else{
-		$sequences{$sid}.=$_;
-	}
-}
 my %gene_orientations;
+$gene_orientations{lsc}{"-"}=0;
+$gene_orientations{lsc}{"+"}=0;
+$gene_orientations{ssc}{"-"}=0;
+$gene_orientations{ssc}{"+"}=0;
+$gene_orientations{ir}{"-"}=0;
+$gene_orientations{ir}{"+"}=0;
+
 my $ir_rrns;
 open my $blast, "<", $ARGV[1];
 while(<$blast>){
@@ -124,7 +120,7 @@ if($gene_orientations{lsc}{"+"} > $gene_orientations{lsc}{"-"}){
 	$lsc =~ tr/ATGCatgc/TACGtacg/;
 }
 else{
-	$lsc = $sequences{lsc_id};
+	$lsc = $sequences{$lsc_id};
 }
 if($gene_orientations{ssc}{"+"} > $gene_orientations{ssc}{"-"}){
 	$ssc = reverse($sequences{$ssc_id});
