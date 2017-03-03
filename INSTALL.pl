@@ -353,7 +353,6 @@ if($answer =~ /n/i){
 			if(-e "jellyfish-2.2.6.tar.gz"){
 				system("tar -xvzf jellyfish-2.2.6.tar.gz");
 				$jellyfish = $FPROOT . "/bin/jellyfish-2.2.6/";
-				$jellyfish = glob ("$jellyfish/bin/jellyfish");
 				chdir($jellyfish);
 				system("./configure");
 				system("make");
@@ -411,7 +410,7 @@ $answer = <STDIN>;
 chomp($answer);
 
 if($answer =~ /y/i){
-	chdir("../afin");
+	chdir("$FPROOT/afin");
 	`make`;
 	if(! -e "afin"){
 		die "Could not compile afin.  You might be missing a required library.  Check that you have GCC 4.5+ and go to https://github.com/mrmckain/Fast-Plast/tree/master/afin for more information.\n";
