@@ -30,7 +30,6 @@ my $SSPACE;
 my $BOWTIE1;
 my $JELLYFISH;
 
-
 my $help;
 my $paired_end1;
 my $paired_end2;
@@ -65,7 +64,10 @@ if ( !$name ) {
 ### Get full paths for files.  Glob would work for all of them, but it requires perl 5.6+.  Only using it for the ~ calls, just in case. ####
 my $datestring = localtime();
 my $start_time = time;
-print "$datestring\tStarting Fast-Plast.\n";
+open(STDERR, '>', $name.'_results_error.log') or die "Can't open log.\n";
+open(STDOUT, '>', $name.'_result_out.log') or die "Can't open log.\n";
+open my $LOGFILE, ">", $name."_Fast-Plast_Progress.log" or die "Can't open log.\n";
+print $LOGFILE "$datestring\tStarting Fast-Plast.\n";
 
 my @p1_array;
 if($paired_end1){
@@ -111,13 +113,12 @@ if(!$s_libs){
 	$s_libs = 0;
 }
 
-print "Assemblying plastome with $s_libs single end libraries and $pe_libs paired end libraries.\n";
+print $LOGFILE "Assemblying plastome with $s_libs single end libraries and $pe_libs paired end libraries.\n";
 
 
 ###Get read size###
-my $end_run = time();
-my $current_runtime = $end_run - $start_time;
-print "$current_runtime\tDetermining best kmer sizes.\n";
+my $current_runtime = localtime(); 
+print $LOGFILE "$current_runtime\tDetermining best kmer sizes.\n";
 
 my $maxsize=0;
 
@@ -201,22 +202,19 @@ else{
 	$spades_kmer = "23,27,31";
 }
 
-print "K-mer sizes for SPAdes set at $spades_kmer.\n";
+print $LOGFILE "K-mer sizes for SPAdes set at $spades_kmer.\n";
 ##########
 
 ########## Create Directory ###########
 
 mkdir("$name");
 chdir("$name");
-
 ########## Start Trimmomatic ##########
-
-$current_runtime = time - $start_time;
-print "$current_runtime\tStarting read trimming with Trimmomatic.\nUsing $TRIMMOMATIC.\n";
+$current_runtime = localtime();
+print $LOGFILE "$current_runtime\tStarting read trimming with Trimmomatic.\nUsing $TRIMMOMATIC.\n";
 
 mkdir("Trimmed_Reads");
 chdir("Trimmed_Reads");
-
 if(@p1_array){
 	for (my $i=0; $i < $pe_libs; $i++){
 		my $trim_exec = "java -classpath " . $TRIMMOMATIC . " org.usadellab.trimmomatic.TrimmomaticPE -threads " . $threads . " " . $p1_array[$i] . " " . $p2_array[$i] . " " . $name."_".$i.".trimmed_P1.fq " . $name."_".$i.".trimmed_U1.fq " . $name."_".$i.".trimmed_P2.fq " . $name."_".$i.".trimmed_U2.fq " . "ILLUMINACLIP:".$adapters.":1:30:10 SLIDINGWINDOW:10:20 MINLEN:40";
@@ -234,128 +232,114 @@ if(@s_array){
 	}
 	`cat $name\*trimmed_SE.fq >> $name.trimmed_UP.fq`;
 }
-
 chdir("../");
 
 ########## Start Bowtie2 ##########
 
-$current_runtime = time - $start_time;
-print "$current_runtime\tStarting read mapping with bowtie2.\nUsing $BOWTIE2.\n";
+$current_runtime = localtime();
+print $LOGFILE "$current_runtime\tStarting read mapping with bowtie2.\nUsing $BOWTIE2.\n";
 
 
 mkdir("Bowtie_Mapping");
 chdir("Bowtie_Mapping");
-
 my $bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $bowtie_index . " -1 ../Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
-system($bowtie2_exec);
-
+#system($bowtie2_exec);
 chdir("../");
 
 ########## Start SPAdes ##########
 
-$current_runtime = time - $start_time;
-print "$current_runtime\tStarting initial assembly with SPAdes.\nUsing $SPADES.\n";
-
+$current_runtime = localtime();
+print $LOGFILE "$current_runtime\tStarting initial assembly with SPAdes.\nUsing $SPADES.\n";
 mkdir("Spades_Assembly");
 chdir("Spades_Assembly");
 
-my $spades_exec = "python " . $SPADES . " -o spades_iter1 -1 ../Bowtie_Mapping/map_pair_hits.1.fq -2 map_pair_hits.2.fq -s map_hits.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
-system($spades_exec);
-
+my $spades_exec = "python " . $SPADES . " -o spades_iter1 -1 ../Bowtie_Mapping/map_pair_hits.1.fq -2 ../Bowtie_Mapping/map_pair_hits.2.fq -s ../Bowtie_Mapping/map_hits.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
+#system($spades_exec);
 chdir("../");
-
 ########## Start Afin ##########
-
-$current_runtime = time - $start_time;
-print "$current_runtime\tStarting improved assembly with afin.\n";
+$current_runtime = localtime();
+print $LOGFILE "$current_runtime\tStarting improved assembly with afin.\n";
 
 mkdir("Afin_Assembly");
 chdir("Afin_Assembly");
 
 `perl $FPBIN/filter_spades_contigs_weigthed.pl ../Spades_Assembly/spades_iter1/contigs.fasta`;
 
+my %temp_filtered;
+my $temp_filter_id;
+open my $file_filter, "<", "filtered_spades_contigs.fsa";
+open my $out_filter, ">", "temp_filtered_spades_contigs.fsa";
+while(<$file_filter>){
+	chomp;
+	if(/>/){
+		$temp_filter_id=$_;
+	}
+	else{
+		$temp_filtered{$temp_filter_id}.=$_;
+	}
+}
+my @bases = ("A", "C", "T", "G");
+
+my %repeats;
+for my $base (@bases){
+	for my $base2 (@bases){
+		$repeats{$base.$base2}=0;
+		$repeats{$base2.$base}=0;
+	}
+}
+
+for my $temp_seq (keys %temp_filtered){
+	my %temprepeats=%repeats;
+	for my $re (keys %repeats){
+	
+		for (my $i =0; $i <= length($temp_filtered{$temp_seq})-1; $i++){
+			my $result = index($temp_filtered{$temp_seq}, $re, $i);
+			if($result >= 0){
+				$temprepeats{$re}++;
+				$i = $result;
+			}	
+		}
+		
+	}
+	   my $max_repeat=0;
+                for my $re_val (keys %temprepeats){
+                        if($temprepeats{$re_val} >$max_repeat){
+                                $max_repeat = $temprepeats{$re_val};
+                        }
+                }
+	if($max_repeat/(length($temp_filtered{$temp_seq})/2) > 0.5){
+		next;
+	}
+	else{
+		print $out_filter "$temp_seq\n$temp_filtered{$temp_seq}\n";
+	}
+}
+`mv temp_filtered_spades_contigs.fsa filtered_spades_contigs.fsa`;
+
+
 my $current_afin;
-
-my ($total_afin_contigs, $max_afin, $min_afin) = &run_afin(100,100,"20,15,10", "2,1,1", "filtered_spades_contigs.fsa");
-
-print "After afin, there are $total_afin_contigs contigs with a maximum size of $max_afin and a minimum size of $min_afin.\n";
-
-$current_runtime = time - $start_time;
-print "$current_runtime\tRemoving nested contigs.\n";
+my $extension = $maxsize*0.75;
+my ($total_afin_contigs, $max_afin, $min_afin) = &run_afin("150,50,50",100,"20,15,10","2,1,1","filtered_spades_contigs.fsa",$extension);
+print $LOGFILE "After afin, there are $total_afin_contigs contigs with a maximum size of $max_afin and a minimum size of $min_afin.\n";
+$current_runtime = localtime();
+print $LOGFILE "$current_runtime\tRemoving nested contigs.\n";
 my $gotofinish;
 if( $total_afin_contigs > 1){
-	$current_afin = $name . "_afin_iter1.fa";
+	$current_afin = $name . "_afin_iter2.fa";
 
 	`$BLAST/makeblastdb -in $current_afin -dbtype nucl`;
-	my $blast_afin_exec = $BLAST . " -query " . $current_afin . " -db " . $current_afin . " -evalue 1e-40 -outfmt 6 > " . $current_afin . ".blastn";
+	my $blast_afin_exec = $BLAST . "blastn -query " . $current_afin . " -db " . $current_afin . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $current_afin . ".blastn";
 	`$blast_afin_exec`;
-	my %delete_contigs;
-	open my $checkblast, "<", $current_afin . "blastn";
-	while(<$checkblast>){
-		chomp;
-		my @tarray = split /\s+/;
-		if($tarray[0] eq $tarray[1]){
-			next;
-		}
-		$tarray[0] =~ /len_(\d+)/;
-		my $len1 = $1;
 
-		$tarray[1] =~ /len_(\d+)/;
-		my $len2 = $1;
-
-		my $max = 0;
-		my $min = 0;
-
-		if ($len1 > $len2){
-			$len1 = $max;
-			$len2 = $min;
-		}
-		else{
-			$len2 = $max;
-			$len1 = $min;
-		}
-
-		my $overlap = $tarray[3];
-		if ($overlap/$min >= 0.9){
-			if($len1 == $min){
-				$delete_contigs{">".$tarray[0]}=0;
-			}
-			else{
-				$delete_contigs{">".$tarray[1]}=0;
-			}
-
-		}
-
-	}
-
-	open my $afinout, ">", $current_afin . "_fixed";
-	open my $oldafin, "<", $current_afin;
-
-	my $tempsid;
-	while(<$oldafin>){
-		chomp;
-		if(/>/){
-			if(exists $delete_contigs{$_}){;
-				$tempsid=();
-				next;
-			}
-			else{
-				print $afinout	"$tempsid\n";
-				$tempsid=$_;
-			}
-		}
-		elsif($tempsid){
-			print $afinout "$_\n";
-		}
-	}
-	`mv $current_afin\_fixed $current_afin`;
+	&remove_nested($current_afin, $current_afin.".blastn");
+	
 	$total_afin_contigs = &count_contigs($current_afin);
 
 	if ($total_afin_contigs > 1){
 		my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 		my %contigs_db_genes = %$contigs_db_genes;
 		$percent_recovered_genes=$percent_recovered_genes*100;
-		print "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in retained contigs.\n";
+		print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in scaffolded contigs.\n";
 
 
 		$current_afin = &scaffolding($current_afin,$name);
@@ -363,9 +347,6 @@ if( $total_afin_contigs > 1){
 		$current_afin=$name.".final.scaffolds.fasta";
 		$total_afin_contigs = &count_contigs($current_afin);
 		if($total_afin_contigs > 1){
-				my $temppwd = `pwd`;
-				chomp($temppwd);
-				$temppwd .= "/". $current_afin;
 				open my $cpcomposition, ">", "Chloroplast_gene_composition_of_final_contigs.txt";
 			for my $contig_name (sort keys %contigs_db_genes){
 				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
@@ -373,6 +354,13 @@ if( $total_afin_contigs > 1){
 				}
 			}
 			close ($cpcomposition);
+				mkdir("../Final_Assembly");
+				rename($current_afin, "../Final_Assembly/".$current_afin);
+				rename("Chloroplast_gene_composition_of_final_contigs.txt", "../Final_Assembly/Chloroplast_gene_composition_of_final_contigs.txt");
+				chdir("../Final_Assembly");
+				my $temppwd = `pwd`;
+                                chomp($temppwd);
+                                $temppwd .= "/". $current_afin;	
 				die "Cannot scaffold contigs into a single piece.  Coverage is too low. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
 		}
 	}	
@@ -382,8 +370,8 @@ if( $total_afin_contigs > 1){
 		my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 		my %contigs_db_genes = %$contigs_db_genes;
 		$percent_recovered_genes=$percent_recovered_genes*100;
-		print "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in retained contigs.\n";
-		open my $cpcomposition, ">", "Chloroplast_gene_composition_of_final_contigs.txt";
+		print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in retained contigs.\n";
+		open my $cpcomposition, ">", "Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt";
 			for my $contig_name (sort keys %contigs_db_genes){
 				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
 						print $cpcomposition "$contig_name\t$gene_name\n";
@@ -401,13 +389,13 @@ if( $total_afin_contigs > 1){
 
 
 else{
-	$current_afin = $name . "_afin_iter1.fa";
+	$current_afin = $name . "_afin_iter2.fa";
 	
 	my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 	my %contigs_db_genes = %$contigs_db_genes;
 	$percent_recovered_genes=$percent_recovered_genes*100;
-	print "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in retained contigs.\n";
-	open my $cpcomposition, ">", "Chloroplast_gene_composition_of_final_contigs.txt";
+	print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in retained contigs.\n";
+	open my $cpcomposition, ">", "Chloroplast_gene_composition_of_afin_contigs.txt";
 			for my $contig_name (sort keys %contigs_db_genes){
 				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
 						print $cpcomposition "$contig_name\t$gene_name\n";
@@ -420,108 +408,58 @@ chdir("../");
 
 ########## Start Plastome Finishing ##########
 
-$current_runtime = time - $start_time;
-print "$current_runtime\tStarting plastome finishing.\nUsing $posgenes for LSC, SSC, and IR identification.\n";
+$current_runtime = localtime(); 
+print $LOGFILE "$current_runtime\tStarting plastome finishing.\nUsing $posgenes for LSC, SSC, and IR identification.\n";
 
 mkdir("Plastome_Finishing");
 chdir("Plastome_Finishing");
 
-`perl $FPBIN/sequence_based_ir_id.pl ../Afin_Assembly/$current_afin $name 1`;
-
-`$BLAST/makeblastdb -in $posgenes -dbtype nucl`;
-my $split_fullname= $name ."_regions_split_1.fsa";
-
-my $blast_afin_exec = $BLAST . " -query " . $split_fullname . " -db " . $posgenes . " -evalue 1e-40 -outfmt 6 > " . $current_afin . "_positional_genes" . ".blastn";
-system($blast_afin_exec);
-my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($split_fullname);
-my %contigs_db_genes = %$contigs_db_genes;
-$percent_recovered_genes=$percent_recovered_genes*100;
-if($percent_recovered_genes > .9){
-
-	`perl $FPBIN/orientate_plastome_v.2.0.pl $split_fullname $current_afin\_positional_genes.blastn $name`;
-	my $final_seq = $name ."_FULLCP.fsa";
-	$blast_afin_exec = $BLAST . " -query " . $final_seq . " -db " . $posgenes . " -evalue 1e-40 -outfmt 6 > " . $current_afin . "_positional_genes" . ".blastn";
-	`$blast_afin_exec`;
-	($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($split_fullname);
-	%contigs_db_genes = %$contigs_db_genes;
-	$percent_recovered_genes=$percent_recovered_genes*100;
-
-	open my $cpcomposition, ">", "Chloroplast_gene_composition_of_final_chloroplast_sequence.txt";
-			for my $contig_name (sort keys %contigs_db_genes){
-				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
-						print $cpcomposition "$contig_name\t$gene_name\n";
-				}
-			}
-		close ($cpcomposition);
-}
-else{
-	`perl $FPBIN/sequence_based_ir_id.pl ../Afin_Assembly/$current_afin $name 2`;
-	$split_fullname= $name ."_regions_split_2.fsa";
-	`$BLAST/makeblastdb -in $posgenes -dbtype nucl`;
-	$blast_afin_exec = $BLAST . " -query " . $split_fullname . " -db " . $posgenes . " -evalue 1e-40 -outfmt 6 > " . $current_afin . "_positional_genes" . ".blastn";
-	`$blast_afin_exec`;
-	($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($split_fullname);
-	%contigs_db_genes = %$contigs_db_genes;
-	$percent_recovered_genes=$percent_recovered_genes*100;
-	if($percent_recovered_genes > 0.9){
-		`perl $FPBIN/orientate_plastome_v.2.0.pl $split_fullname $current_afin\_positional_genes.blastn $name`;
-		my $final_seq = $name ."_FULLCP.fsa";
-		$blast_afin_exec = $BLAST . " -query " . $final_seq . " -db " . $posgenes . " -evalue 1e-40 -outfmt 6 > " . $current_afin . "_positional_gene" . ".blastn";
-		`$blast_afin_exec`;
-		($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($split_fullname);
-		%contigs_db_genes = %$contigs_db_genes;
-		$percent_recovered_genes=$percent_recovered_genes*100;
-
-		open my $cpcomposition, ">", "Chloroplast_gene_composition_of_final_chloroplast_sequence.txt";
-			for my $contig_name (sort keys %contigs_db_genes){
-				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
-						print $cpcomposition "$contig_name\t$gene_name\n";
-				}
-			}
-		close ($cpcomposition);
-	}
-	else{
-		
-		($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery("../Afin_Assembly/".$current_afin);
-		%contigs_db_genes = %$contigs_db_genes;
-		$percent_recovered_genes=$percent_recovered_genes*100;
-
-	open my $cpcomposition, ">", "Chloroplast_gene_composition_of_final_contig.txt";
-			for my $contig_name (sort keys %contigs_db_genes){
-				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
-						print $cpcomposition "$contig_name\t$gene_name\n";
-				}
-			}
-		close ($cpcomposition);
-	}
-}
+&orientate_plastome("../Afin_Assembly/".$current_afin, $name); 
 chdir("../");
-$current_runtime = time - $start_time;
-print "$current_runtime\tAssembly finished.\n";
+if(!-d "Final_Assembly"){
+	mkdir("Final_Assembly");
+        rename("Afin_Assembly/".$current_afin, "Final_Assembly/".$current_afin);
+	if( -e "Afin_Assembly/Chloroplast_gene_composition_of_afin_contigs.txt"){
+        	rename("Afin_Assembly/Chloroplast_gene_composition_of_afin_contigs.txt", "Final_Assembly/Chloroplast_gene_composition_of_final_contigs.txt");	  
+		my $temppwd = `pwd`;
+                chomp($temppwd);
+                $temppwd .= "/Final_Assembly/". $current_afin;
+                die "Could not properly orientate the plastome. Either your plastome does not have an IR or there was an issue with the assembly. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
+	}
+	if( -e "Afin_Assembly/Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt"){
+                rename("Afin_Assembly/Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt", "Final_Assembly/Chloroplast_gene_composition_of_final_contigs.txt");
+                my $temppwd = `pwd`;
+                chomp($temppwd);
+                $temppwd .= "/Final_Assembly/". $current_afin;
+                die "Could not properly orientate the plastome. Either your plastome does not have an IR or there was an issue with the assembly. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
+	}
+}
+$current_runtime = localtime();
+print $LOGFILE "$current_runtime\tAssembly finished. Check Final_Assembly directory for chloroplast assembly and accessory files.\n";
 
 ########## Start Coverage Analysis ##########
-
-$current_runtime = time - $start_time;
-print "$current_runtime\tStarting coverage analyses.\n";
-my $check_finish = "Plastome_Finishing/".$name."_FULLCP.fsa";
+if($coverage_check){
+$current_runtime = localtime();
+print $LOGFILE "$current_runtime\tStarting coverage analyses.\n";
+my $check_finish = "Final_Assembly/".$name."_FULLCP.fsa";
 unless(-e $check_finish){
 	die "Cannot complete coverage analysis. Full chloroplast genome not complete.";
 }
 mkdir("Coverage_Analysis");
 chdir("Coverage_Analysis");
-my $build_bowtie2_exec = $BOWTIE2 . "-build ../Plastome_Finishing/" . $name . "_FULLCP.fsa" . $name . "_bowtie";
+my $build_bowtie2_exec = $BOWTIE2 . "-build ../Final_Assembly/" . $name . "_FULLCP.fsa " . $name . "_bowtie";
 system($build_bowtie2_exec);
 
 my $cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . " -1 ../Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
-system($bowtie2_exec);
+system($cov_bowtie2_exec);
 
-my $jellyfish_count_exec = $JELLYFISH . "count -m 25 -t ". $threads . " -C -s 1G map_*";
+my $jellyfish_count_exec = $JELLYFISH . " count -m 25 -t ". $threads . " -C -s 1G map_*";
 system($jellyfish_count_exec);
 
-my $jellyfish_dump_exec = $JELLYFISH . "dump mer_counts.jf . > " . $name . "_25dump";
+my $jellyfish_dump_exec = $JELLYFISH . " dump mer_counts.jf . > " . $name . "_25dump";
 system($jellyfish_dump_exec);
 
-my $window_cov_exec = "perl " . $COVERAGE_DIR . "/new_window_coverage.pl " . $name . "_25dump ../Plastome_Finishing/" . $name . "_FULLCP.fsa " . $name . " 25";
+my $window_cov_exec = "perl " . $COVERAGE_DIR . "/new_window_coverage.pl " . $name . "_25dump ../Final_Assembly/" . $name . "_FULLCP.fsa " . $name . " 25";
 system($window_cov_exec);
 
 my $rscript_exec = "Rscript " . $COVERAGE_DIR . "/plot_coverage.r " . $name . ".coverage_25kmer.txt ". $name;
@@ -531,16 +469,25 @@ my $check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $
 system($check_cov_exec);
 
 chdir("../");
-$current_runtime = time - $start_time;
-print "$current_runtime\tCoverage analysis finished.\n";
+$current_runtime = localtime(); 
+print $LOGFILE "$current_runtime\tCoverage analysis finished.\n";
+if(-z "Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt"){
+	print $LOGFILE "No issues with assembly coverage were identified.\n";
+}
+else{
+	print $LOGFILE "Problem areas identified for assembly coverage.  Check Coverage_Analysis/$name\_problem_regions_plastid_assembly.txt.\n";
+ }
+}
+else{
+	print $LOGFILE "Coverage analysis was not selected.  We highly recommend this option to verify the assembly.\n";
+}
 
 
-
-
+	
 ##########
 sub scaffolding {
-	$current_runtime = time - $start_time;
-	print "$current_runtime\tStarting scaffolding with SSPACE.\n";
+	$current_runtime = localtime();
+	print $LOGFILE "$current_runtime\tStarting scaffolding with SSPACE.\n";
 	mkdir ("Scaffolding");
 	chdir("Scaffolding");
 	my @p1_temp = <../../Trimmed_Reads/*P1*>;
@@ -576,14 +523,18 @@ sub count_contigs {
 	while(<$afin_file>){
 		chomp;
 		if(/>/){
-			/len_(\d+)/;
+			if(/len_(\d+)/){
 			my $afinlen=$1;
-			$contig_lengths{$_}=$afinlen;
 			if($lmax_afin < $afinlen){
 				$lmax_afin = $afinlen;
 			}
 			if($lmin_afin > $afinlen){
 				$lmin_afin = $afinlen;
+			}
+			$contig_lengths{$_}=$afinlen;
+			}
+			else{
+			$contig_lengths{$_}=1;
 			}
 		}
 	}
@@ -593,8 +544,9 @@ sub count_contigs {
 #########
 sub run_afin {
 	###Sub must be given number of iterations, trim length, and number of reads needed to fuse contigs.
-	my $extension = $maxsize*0.75;
-	my $afin_exec = $AFIN_DIR . "/afin -c " . $_[3] . " -r ../Trimmed_Reads/" . $name .".trimmed* -l " . $_[0] . " -f .1 -d " . $_[1] . " -x " . $extension . " -p " . $_[2] . " -i " . $_[3] ." -o ". $name . "_afin";
+	my $extension = $_[5];
+	my $afin_exec = $AFIN_DIR . "/afin -c " . $_[4] . " -r ../Trimmed_Reads/" . $name .".trimmed* -l " . $_[0] . " -f .1 -d " . $_[1] . " -x " . $extension . " -p " . $_[2] . " -i " . $_[3] ." -o ". $name . "_afin";
+	print $LOGFILE "Using command $afin_exec.\n";
 	system($afin_exec);
 
 	my %contig_lengths;
@@ -602,7 +554,7 @@ sub run_afin {
 	my $max_afin=0;
 	my $min_afin=100000000;
 
-	open my $afin_file, "<", $name . "_afin_iter0.fa";
+	open my $afin_file, "<", $name . "_afin_iter2.fa";
 	while(<$afin_file>){
 		chomp;
 		if(/>/){
@@ -624,27 +576,27 @@ sub run_afin {
 ##########
 
 sub cpgene_recovery {
-	$current_runtime = time - $start_time;
+	$current_runtime = localtime(); 
 	
-	print "$current_runtime\tChecking chloroplast gene recovery in contigs.\n";
+	print $LOGFILE "$current_runtime\tChecking chloroplast gene recovery in contigs.\n";
 	my $current_afin = $_[0];
 	my %chloroplast_db_genes;
 	open my $cpdbgenes, "<", $FPBIN . "/Angiosperm_Chloroplast_Genes.fsa";
 	while(<$cpdbgenes>){
 		chomp;
 		if(/>/){
-			/(.*?)\_/;
+			/>(.*?)\_/;
 			$chloroplast_db_genes{$1}=1;
 		}
 	}
 	`$BLAST/makeblastdb -in $FPBIN/Angiosperm_Chloroplast_Genes.fsa -dbtype nucl`;
-	my $blast_afin_exec = $BLAST . " -query " . $current_afin . " -db " . $posgenes . " -evalue 1e-40 -outfmt 6 > " . $current_afin."_positional_genes" . ".blastn";
+	my $blast_afin_exec = $BLAST . "blastn -query " . $current_afin . " -db " . $posgenes . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $current_afin."_positional_genes" . ".blastn";
 	`$blast_afin_exec`;
 	my $total_chloroplast_db_genes= scalar keys %chloroplast_db_genes;
 
 	my %hit_chloroplast_db_genes;
 	my %contigs_db_genes;
-	open my $hitcpdbgenes, "<", $current_afin . ".blastn";
+	open my $hitcpdbgenes, "<", $current_afin . "_positional_genes" .".blastn";
 	while(<$hitcpdbgenes>){
 		chomp;
 		my @tarray = split /\s+/;
@@ -661,6 +613,232 @@ sub cpgene_recovery {
 	
 }
 
+##########
+
+sub remove_nested {
+        
+        my $temp_contigsfile = $_[0]; #fasta file of contigs that were blasted against themselves
+        my $temp_blastfile = $_[1]; #blast file of self blast
+        my %delete_contigs;
+        my %blast_scores;
+          my %temp_seqs;
+
+        my $tesid;
+        open my $tsfile, "<", $temp_contigsfile;
+        while(<$tsfile>){
+                chomp;
+                if(/>/){
+                        $tesid = substr($_, 1);
+                }
+                else{
+                        $temp_seqs{$tesid}.=$_;
+                }
+        }
+
+        open my $checkblast, "<", $temp_blastfile;
+        while(<$checkblast>){
+                chomp;
+                my @tarray = split /\s+/;
+                if($tarray[0] eq $tarray[1]){
+                        next;
+                }
+                my $len1 = length($temp_seqs{$tarray[0]});
+                my $len2 = length($temp_seqs{$tarray[1]});
+
+                my $max = 0;
+                my $min = 0;
+
+                if ($len1 > $len2){
+                        $max = $len1;
+                        $min = $len2;
+                }
+                else{
+                        $max = $len2;
+                       $min =  $len1;
+                }
+
+                if($max == $len1){
+                        next;
+                }
+
+                my $qstart;
+                my $qstop;
+                my $qhit = $tarray[7]-$tarray[6];
+                
+                if($qhit < 0){
+                        $qstart=$tarray[7];
+                        $qstop=$tarray[6];
+                        $qhit=abs($qhit);
+                }
+                else{
+                        $qstart=$tarray[6];
+                        $qstop=$tarray[7];
+                }
+
+                my $shit = $tarray[9]-$tarray[8];
+                if(exists $blast_scores{$tarray[0]}{$tarray[1]}){
+                        for (my $i=$qstart-1; $i <= ($qstop-1); $i++){
+                                @{$blast_scores{$tarray[0]}{$tarray[1]}}[$i]++;
+                        }
+                }
+                elsif(exists $blast_scores{$tarray[1]}{$tarray[0]}){
+                        for (my $i=$qstart-1; $i <= ($qstop-1); $i++){
+                                @{$blast_scores{$tarray[0]}{$tarray[1]}}[$i]++;
+                        }
+                }
+                else{
+                        for (my $j=0; $j<$min; $j++){
+                                @{$blast_scores{$tarray[0]}{$tarray[1]}}[$j]=0;
+                        }
+                        for (my $i=$qstart-1; $i <= ($qstop-1); $i++){
+                                @{$blast_scores{$tarray[0]}{$tarray[1]}}[$i]++;
+                        }
+                }
+        }
+        
+        for my $blastid1 (keys %blast_scores){
+                for my $blastid2 (keys %{$blast_scores{$blastid1}}){
+                        my $overlap;
+                        for my $i (@{$blast_scores{$blastid1}{$blastid2}}){
+                                if($blast_scores{$blastid1}{$blastid2}[$i] > 0){
+                                        $overlap ++;
+                                }
+                        }
+                        
+
+                        my $len_min = length($temp_seqs{$blastid1});
+                        if ($overlap/$len_min >= 0.9){
+                                $delete_contigs{">".$blastid1}=0;
+                        }
+
+                }
+
+        }
+
+        open my $afinout, ">", $temp_contigsfile . "_fixed";
+        open my $oldafin, "<", $temp_contigsfile;
+
+        my $tempsid;
+        while(<$oldafin>){
+                chomp;
+                if(/>/){
+                        if(exists $delete_contigs{$_}){;
+                                $tempsid=();
+                                next;
+                        }
+                        else{
+                                $tempsid=$_;
+                                print $afinout  "$tempsid\n";
+                        }
+                }
+                elsif($tempsid){
+                        print $afinout "$_\n";
+                }
+        }
+
+        `mv $temp_contigsfile\_fixed $temp_contigsfile`;
+
+}
+
+##########
+
+sub orientate_plastome{
+        
+        my $current_afin = $_[0];
+        my $name = $_[1];
+
+        `$BLAST/makeblastdb -in $posgenes -dbtype nucl`;
+
+        for (my $i = 0; $i <=3; $i++){
+
+        	`perl $FPBIN/sequence_based_ir_id.pl ../Afin_Assembly/$current_afin $name $i`;
+        	my $split_fullname= $name ."_regions_split".$i.".fsa";
+
+        	`$BLAST/makeblastdb -in $split_fullname -dbtype nucl`;
+        	my $blast_afin_exec = $BLAST . "blastn -query " . $split_fullname . " -db " . $split_fullname . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $split_fullname . ".blastn";
+			system($blast_afin_exec);
+
+			&remove_nested($split_fullname,$split_fullname.".blastn");
+
+			my $chloroplast_pieces = &count_contigs($split_fullname);
+
+			if($chloroplast_pieces < 2){
+				next;
+			}
+			my $exists_ssc=0;
+			my $exists_ir=0;
+
+			my %cp_piece_pos;
+			open my $exists_file, "<", $split_fullname;
+			while(<$exists_file>){
+				chomp;
+				if(/ir/){
+					$exists_ir++;
+					/ir_(\d+).(\d+)/;
+					$cp_piece_pos{"ir"}{"len"}=$2-$1;
+					
+				}
+				if(/sc/){
+					$exists_ssc++;
+					/sc_(.+)/;
+					$cp_piece_pos{"sc"}{$1}=1;
+					
+				}
+			}
+
+			if($exists_ssc != 2 || $exists_ir != 1){
+				next;
+			}
+			
+			my @range;
+			
+			for my $sc_range (keys %{$cp_piece_pos{"sc"}}){		
+					$sc_range =~ /(\d+).(\d+)/;
+					push(@range, $1);
+					push(@range, $2);
+			}
+
+			my $temp_range1 = abs($range[3]-$range[0])-2;
+			my $temp_range2 = abs($range[2]-$range[1])-2;
+			unless($temp_range1 == $cp_piece_pos{"ir"}{"len"} || $temp_range2 == $cp_piece_pos{"ir"}{"len"}){
+				next;
+			}
+					
+			$blast_afin_exec = $BLAST . "blastn -query " . $split_fullname . " -db " . $posgenes . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $split_fullname . "_positional_genes" . ".blastn";
+			system($blast_afin_exec);
+			my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($split_fullname);
+			my %contigs_db_genes = %$contigs_db_genes;
+			$percent_recovered_genes=$percent_recovered_genes*100;
+
+			if($percent_recovered_genes > .9){
+					`perl $FPBIN/orientate_plastome_v.2.0.pl $split_fullname $current_afin\_positional_genes.blastn $name`;
+        			my $final_seq = $name ."_FULLCP.fsa";
+        			$blast_afin_exec = $BLAST . "blastn -query " . $final_seq . " -db " . $posgenes . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $current_afin . "_positional_genes" . ".blastn";
+        			system($blast_afin_exec);
+        			($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($split_fullname);
+        			%contigs_db_genes = %$contigs_db_genes;
+        			$percent_recovered_genes=$percent_recovered_genes*100;
+
+        			open my $cpcomposition, ">", "Chloroplast_gene_composition_of_final_chloroplast_sequence.txt";
+                    for my $contig_name (sort keys %contigs_db_genes){
+                        for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
+                            print $cpcomposition "$contig_name\t$gene_name\n";
+                        }
+                    }
+                    close ($cpcomposition);
+		    mkdir("../Final_Assembly");
+                    rename($final_seq, "../Final_Assembly/".$final_seq);
+                    rename("Chloroplast_gene_composition_of_final_chloroplast_sequence.txt", "../Final_Assembly/Chloroplast_gene_composition_of_final_contigs.txt");
+                    rename($name."_CP_pieces.fsa", "../Final_Assembly/".$name."_CP_pieces.fsa");
+		    return; #bad form to have multiple exits but i haven't worked out the "correct" way yet
+			}
+		}
+
+
+}
+
+        
+
 ########## USAGE BELOW ##########
 =pod
 
@@ -673,10 +851,6 @@ fast-plast.pl
     fast-plast.pl [-1 <paired_end_file1> -2 <paired_end_file2> || -single <singe_end_file>] -name <sample_name> [options] 
 or
     fast-plast.pl -help
-
-Required options:
-	
-	-1 <filenames>	 		File with forward paired-end reads. Multiple files can be designated with a comma-delimited list. Read files should be in matching order with other paired end files.
 	-2 <filenames> 	 		File with reverse paired-end reads. Multiple files can be designated with a comma-delimited list. Read files should be in matching order with other paired end files.
 	-s <filenames>	 		File with unpaired reads. Multiple files can be designated with a comma-delimited list.
 
