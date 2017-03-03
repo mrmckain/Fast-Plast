@@ -296,7 +296,7 @@ if($answer =~ /n/i){
 			if(-e "ncbi-blast-2.6.0+-x64-linux.tar.gz"){
 				system("tar -xvzf ncbi-blast-2.6.0+-x64-linux.tar.gz");
 				$blastn = $FPROOT . "/bin/ncbi-blast-2.6.0+/";
-				$blastn = glob ("$blastn/bin/blastn");
+				$blastn = glob ("$blastn/bin/");
 			}
 			else{
 				print "\nUnable to install BLAST+.\n";
@@ -316,7 +316,7 @@ if($answer =~ /n/i){
 						if($pot =~ /blast/i){
 							$blastn = glob ("$pot/blastn");
 							if(!$blastn){
-								$blastn = glob ("$pot/bin/blastn");
+								$blastn = glob ("$pot/bin/");
 							}
 						}
 					}
