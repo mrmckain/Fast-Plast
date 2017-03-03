@@ -329,7 +329,7 @@ if($answer =~ /n/i){
 				my $temp_blastn = $blastn;
 				$blastn = glob ("$blastn/blastn");
 				if(!$blastn){
-					$blastn = glob ("$temp_blastn/bin/blastn");
+					$blastn = glob ("$temp_blastn/bin");
 				}
 				if(!$blastn){
 					die "\nSorry. I cannot locate the blastn executable in $temp_blastn\. Please check again.\n";
