@@ -19,16 +19,17 @@ BEGIN {
 
 ###directories
 my $FPROOT = "$FindBin::RealBin";
-my $AFIN_DIR = "$FPROOT/afin";
+my $AFIN_DIR = "/mnt/ls15/scratch/users/mrmckain/Test_Fast-Plast/Fast-Plast/afin/";
 my $COVERAGE_DIR = "$FPROOT/Coverage_Analysis";
 my $FPBIN = "$FPROOT/bin";
-my $TRIMMOMATIC;
-my $BOWTIE2;
-my $SPADES;
-my $BLAST;
-my $SSPACE;
-my $BOWTIE1;
-my $JELLYFISH;
+my $TRIMMOMATIC="/mnt/ls15/scratch/users/mrmckain/Test_Fast-Plast/Fast-Plast-master/bin/Trimmomatic-0.36/trimmomatic-0.36.jar";
+my $BOWTIE2="/mnt/ls15/scratch/users/mrmckain/Test_Fast-Plast/Fast-Plast-master/bin/bowtie2-2.2.9/bowtie2";
+my $SPADES="/mnt/ls15/scratch/users/mrmckain/Test_Fast-Plast/Fast-Plast-master/bin/SPAdes-3.9.0-Linux/bin/spades.py";
+my $BLAST="/mnt/ls15/scratch/users/mrmckain/Test_Fast-Plast/Fast-Plast-master/bin/ncbi-blast-2.6.0+/bin/";
+my $SSPACE="/mnt/ls15/scratch/users/mrmckain/Test_Fast-Plast/Fast-Plast-master/bin/sspace_basic-2.1.1/SSPACE_Basic.pl";
+my $BOWTIE1="/mnt/ls15/scratch/users/mrmckain/Test_Fast-Plast/Fast-Plast-master/bin/bowtie-1.1.2/bowtie";
+my $JELLYFISH="/mnt/ls15/scratch/users/mrmckain/Test_Fast-Plast/Fast-Plast-master/bin/jellyfish-2.2.6/bin/jellyfish";
+
 
 my $help;
 my $paired_end1;
