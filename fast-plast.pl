@@ -486,28 +486,28 @@ else{
 	
 ##########
 sub scaffolding {
-	$current_runtime = localtime();
-	print $LOGFILE "$current_runtime\tStarting scaffolding with SSPACE.\n";
-	mkdir ("Scaffolding");
-	chdir("Scaffolding");
-	my @p1_temp = <../../Trimmed_Reads/*P1*>;
-	open my $lib_out, ">", $name . "_lib.txt";
-	my $lib_counter=1;
-	for my $p1file (@p1_temp){
-			my $libc ="lib" . $lib_counter;
-			my $short_p1=$p1file;
-			my $short_p2 = $short_p1;
-			$short_p2 =~ s/P1/P2/;
-			print $lib_out "$libc\t$short_p1\t$short_p2\t300\t0.75\tFR\n";
-	} 
-	close $lib_out;
-	my $sspace_build_exec = "perl " . $SSPACE ." -l " . $name."_lib.txt -s " .$_[0] . " -k 1 -g 1 -b" . $_[1];
-	system($sspace_build_exec);
-	
-	my $scaffolded_assembly = "Scaffolding/".$name . ".final.scaffolds.fasta";
+        $current_runtime = localtime();
+        print $LOGFILE "$current_runtime\tStarting scaffolding with SSPACE.\n";
+        mkdir ("Scaffolding");
+        chdir("Scaffolding");
+        my @p1_temp = <../../Trimmed_Reads/*P1*>;
+        open my $lib_out, ">", $name . "_lib.txt";
+        my $lib_counter=1;
+        for my $p1file (@p1_temp){
+                        my $libc ="lib" . $lib_counter;
+                        my $short_p1=$p1file;
+                        my $short_p2 = $short_p1;
+                        $short_p2 =~ s/P1/P2/;
+                        print $lib_out "$libc\t$short_p1\t$short_p2\t300\t0.75\tFR\n";
+        }
+        close $lib_out;
+        my $sspace_build_exec = "perl " . $SSPACE ." -l " . $name."_lib.txt -s ../" .$_[0] . " -k 1 -g 1 -b" . $_[1];
+        system($sspace_build_exec);
 
-	chdir ("../");
-	return($scaffolded_assembly);
+        my $scaffolded_assembly = "Scaffolding/".$name . ".final.scaffolds.fasta";
+
+        chdir ("../");
+        return($scaffolded_assembly);
 
 }
 
