@@ -243,7 +243,7 @@ print $LOGFILE "$current_runtime\tStarting read mapping with bowtie2.\nUsing $BO
 mkdir("Bowtie_Mapping");
 chdir("Bowtie_Mapping");
 my $bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $bowtie_index . " -1 ../Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
-#system($bowtie2_exec);
+system($bowtie2_exec);
 chdir("../");
 
 ########## Start SPAdes ##########
@@ -254,7 +254,7 @@ mkdir("Spades_Assembly");
 chdir("Spades_Assembly");
 
 my $spades_exec = "python " . $SPADES . " -o spades_iter1 -1 ../Bowtie_Mapping/map_pair_hits.1.fq -2 ../Bowtie_Mapping/map_pair_hits.2.fq -s ../Bowtie_Mapping/map_hits.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
-#system($spades_exec);
+system($spades_exec);
 chdir("../");
 ########## Start Afin ##########
 $current_runtime = localtime();
