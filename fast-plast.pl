@@ -361,7 +361,8 @@ if( $total_afin_contigs > 1){
 				my $temppwd = `pwd`;
                                 chomp($temppwd);
                                 $temppwd .= "/". $current_afin;	
-				die "Cannot scaffold contigs into a single piece.  Coverage is too low. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
+				print $LOGFILE "Cannot scaffold contigs into a single piece.  Coverage is too low. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
+				die;
 		}
 	}	
 
@@ -424,14 +425,16 @@ if(!-d "Final_Assembly"){
 		my $temppwd = `pwd`;
                 chomp($temppwd);
                 $temppwd .= "/Final_Assembly/". $current_afin;
-                die "Could not properly orientate the plastome. Either your plastome does not have an IR or there was an issue with the assembly. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
+                print $LOGFILE "Could not properly orientate the plastome. Either your plastome does not have an IR or there was an issue with the assembly. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
+				die;
 	}
 	if( -e "Afin_Assembly/Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt"){
                 rename("Afin_Assembly/Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt", "Final_Assembly/Chloroplast_gene_composition_of_final_contigs.txt");
                 my $temppwd = `pwd`;
                 chomp($temppwd);
                 $temppwd .= "/Final_Assembly/". $current_afin;
-                die "Could not properly orientate the plastome. Either your plastome does not have an IR or there was an issue with the assembly. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
+                print $LOGFILE "Could not properly orientate the plastome. Either your plastome does not have an IR or there was an issue with the assembly. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
+				die;
 	}
 }
 $current_runtime = localtime();
@@ -443,7 +446,8 @@ $current_runtime = localtime();
 print $LOGFILE "$current_runtime\tStarting coverage analyses.\n";
 my $check_finish = "Final_Assembly/".$name."_FULLCP.fsa";
 unless(-e $check_finish){
-	die "Cannot complete coverage analysis. Full chloroplast genome not complete.";
+	print $LOGFILE "Cannot complete coverage analysis. Full chloroplast genome not complete.";
+	die;
 }
 mkdir("Coverage_Analysis");
 chdir("Coverage_Analysis");
