@@ -698,7 +698,7 @@ sub remove_nested {
         
         for my $blastid1 (keys %blast_scores){
                 for my $blastid2 (keys %{$blast_scores{$blastid1}}){
-                        my $overlap;
+                        my $overlap=0;
                         for my $i (@{$blast_scores{$blastid1}{$blastid2}}){
                                 if($blast_scores{$blastid1}{$blastid2}[$i] > 0){
                                         $overlap ++;
