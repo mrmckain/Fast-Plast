@@ -65,9 +65,10 @@ if ( !$name ) {
 ### Get full paths for files.  Glob would work for all of them, but it requires perl 5.6+.  Only using it for the ~ calls, just in case. ####
 my $datestring = localtime();
 my $start_time = time;
-open(STDERR, '>', $name.'_results_error.log') or die "Can't open log";
-
-print "$datestring\tStarting Fast-Plast.\n";
+open(STDERR, '>', $name.'_results_error.log') or die "Can't open log.\n";
+open(STDOUT, '>', $name.'_result_out.log') or die "Can't open log.\n";
+open my $LOGFILE, ">", $name."_Fast-Plast_Progress.log" or die "Can't open log.\n";
+print $LOGFILE "$datestring\tStarting Fast-Plast.\n";
 
 my @p1_array;
 if($paired_end1){
@@ -113,12 +114,12 @@ if(!$s_libs){
 	$s_libs = 0;
 }
 
-print "Assemblying plastome with $s_libs single end libraries and $pe_libs paired end libraries.\n";
+print $LOGFILE "Assemblying plastome with $s_libs single end libraries and $pe_libs paired end libraries.\n";
 
 
 ###Get read size###
 my $current_runtime = localtime(); 
-print "$current_runtime\tDetermining best kmer sizes.\n";
+print $LOGFILE "$current_runtime\tDetermining best kmer sizes.\n";
 
 my $maxsize=0;
 
@@ -202,7 +203,7 @@ else{
 	$spades_kmer = "23,27,31";
 }
 
-print "K-mer sizes for SPAdes set at $spades_kmer.\n";
+print $LOGFILE "K-mer sizes for SPAdes set at $spades_kmer.\n";
 ##########
 
 ########## Create Directory ###########
@@ -211,7 +212,7 @@ mkdir("$name");
 chdir("$name");
 ########## Start Trimmomatic ##########
 $current_runtime = localtime();
-print "$current_runtime\tStarting read trimming with Trimmomatic.\nUsing $TRIMMOMATIC.\n";
+print $LOGFILE "$current_runtime\tStarting read trimming with Trimmomatic.\nUsing $TRIMMOMATIC.\n";
 
 mkdir("Trimmed_Reads");
 chdir("Trimmed_Reads");
@@ -237,28 +238,28 @@ chdir("../");
 ########## Start Bowtie2 ##########
 
 $current_runtime = localtime();
-print "$current_runtime\tStarting read mapping with bowtie2.\nUsing $BOWTIE2.\n";
+print $LOGFILE "$current_runtime\tStarting read mapping with bowtie2.\nUsing $BOWTIE2.\n";
 
 
 mkdir("Bowtie_Mapping");
 chdir("Bowtie_Mapping");
 my $bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $bowtie_index . " -1 ../Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
-system($bowtie2_exec);
+#system($bowtie2_exec);
 chdir("../");
 
 ########## Start SPAdes ##########
 
 $current_runtime = localtime();
-print "$current_runtime\tStarting initial assembly with SPAdes.\nUsing $SPADES.\n";
+print $LOGFILE "$current_runtime\tStarting initial assembly with SPAdes.\nUsing $SPADES.\n";
 mkdir("Spades_Assembly");
 chdir("Spades_Assembly");
 
 my $spades_exec = "python " . $SPADES . " -o spades_iter1 -1 ../Bowtie_Mapping/map_pair_hits.1.fq -2 ../Bowtie_Mapping/map_pair_hits.2.fq -s ../Bowtie_Mapping/map_hits.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
-system($spades_exec);
+#system($spades_exec);
 chdir("../");
 ########## Start Afin ##########
 $current_runtime = localtime();
-print "$current_runtime\tStarting improved assembly with afin.\n";
+print $LOGFILE "$current_runtime\tStarting improved assembly with afin.\n";
 
 mkdir("Afin_Assembly");
 chdir("Afin_Assembly");
@@ -320,9 +321,9 @@ for my $temp_seq (keys %temp_filtered){
 my $current_afin;
 my $extension = $maxsize*0.75;
 my ($total_afin_contigs, $max_afin, $min_afin) = &run_afin("150,50,50",100,"20,15,10","2,1,1","filtered_spades_contigs.fsa",$extension);
-print "After afin, there are $total_afin_contigs contigs with a maximum size of $max_afin and a minimum size of $min_afin.\n";
+print $LOGFILE "After afin, there are $total_afin_contigs contigs with a maximum size of $max_afin and a minimum size of $min_afin.\n";
 $current_runtime = localtime();
-print "$current_runtime\tRemoving nested contigs.\n";
+print $LOGFILE "$current_runtime\tRemoving nested contigs.\n";
 my $gotofinish;
 if( $total_afin_contigs > 1){
 	$current_afin = $name . "_afin_iter2.fa";
@@ -339,7 +340,7 @@ if( $total_afin_contigs > 1){
 		my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 		my %contigs_db_genes = %$contigs_db_genes;
 		$percent_recovered_genes=$percent_recovered_genes*100;
-		print "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in scaffolded contigs.\n";
+		print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in scaffolded contigs.\n";
 
 
 		$current_afin = &scaffolding($current_afin,$name);
@@ -370,7 +371,7 @@ if( $total_afin_contigs > 1){
 		my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 		my %contigs_db_genes = %$contigs_db_genes;
 		$percent_recovered_genes=$percent_recovered_genes*100;
-		print "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in retained contigs.\n";
+		print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in retained contigs.\n";
 		open my $cpcomposition, ">", "Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt";
 			for my $contig_name (sort keys %contigs_db_genes){
 				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
@@ -394,7 +395,7 @@ else{
 	my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 	my %contigs_db_genes = %$contigs_db_genes;
 	$percent_recovered_genes=$percent_recovered_genes*100;
-	print "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in retained contigs.\n";
+	print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in retained contigs.\n";
 	open my $cpcomposition, ">", "Chloroplast_gene_composition_of_afin_contigs.txt";
 			for my $contig_name (sort keys %contigs_db_genes){
 				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
@@ -409,7 +410,7 @@ chdir("../");
 ########## Start Plastome Finishing ##########
 
 $current_runtime = localtime(); 
-print "$current_runtime\tStarting plastome finishing.\nUsing $posgenes for LSC, SSC, and IR identification.\n";
+print $LOGFILE "$current_runtime\tStarting plastome finishing.\nUsing $posgenes for LSC, SSC, and IR identification.\n";
 
 mkdir("Plastome_Finishing");
 chdir("Plastome_Finishing");
@@ -435,31 +436,31 @@ if(!-d "Final_Assembly"){
 	}
 }
 $current_runtime = localtime();
-print "$current_runtime\tAssembly finished. Check Final_Assembly directory for chloroplast assembly and accessory files.\n";
+print $LOGFILE "$current_runtime\tAssembly finished. Check Final_Assembly directory for chloroplast assembly and accessory files.\n";
 
 ########## Start Coverage Analysis ##########
 if($coverage_check){
-$current_runtime = time;
-print "$current_runtime\tStarting coverage analyses.\n";
+$current_runtime = localtime();
+print $LOGFILE "$current_runtime\tStarting coverage analyses.\n";
 my $check_finish = "Final_Assembly/".$name."_FULLCP.fsa";
 unless(-e $check_finish){
 	die "Cannot complete coverage analysis. Full chloroplast genome not complete.";
 }
 mkdir("Coverage_Analysis");
 chdir("Coverage_Analysis");
-my $build_bowtie2_exec = $BOWTIE2 . "-build ../Final_Assembly/" . $name . "_FULLCP.fsa" . $name . "_bowtie";
+my $build_bowtie2_exec = $BOWTIE2 . "-build ../Final_Assembly/" . $name . "_FULLCP.fsa " . $name . "_bowtie";
 system($build_bowtie2_exec);
 
 my $cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . " -1 ../Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
 system($cov_bowtie2_exec);
 
-my $jellyfish_count_exec = $JELLYFISH . "count -m 25 -t ". $threads . " -C -s 1G map_*";
+my $jellyfish_count_exec = $JELLYFISH . " count -m 25 -t ". $threads . " -C -s 1G map_*";
 system($jellyfish_count_exec);
 
-my $jellyfish_dump_exec = $JELLYFISH . "dump mer_counts.jf . > " . $name . "_25dump";
+my $jellyfish_dump_exec = $JELLYFISH . " dump mer_counts.jf . > " . $name . "_25dump";
 system($jellyfish_dump_exec);
 
-my $window_cov_exec = "perl " . $COVERAGE_DIR . "/new_window_coverage.pl " . $name . "_25dump ../Plastome_Finishing/" . $name . "_FULLCP.fsa " . $name . " 25";
+my $window_cov_exec = "perl " . $COVERAGE_DIR . "/new_window_coverage.pl " . $name . "_25dump ../Final_Assembly/" . $name . "_FULLCP.fsa " . $name . " 25";
 system($window_cov_exec);
 
 my $rscript_exec = "Rscript " . $COVERAGE_DIR . "/plot_coverage.r " . $name . ".coverage_25kmer.txt ". $name;
@@ -470,10 +471,16 @@ system($check_cov_exec);
 
 chdir("../");
 $current_runtime = localtime(); 
-print "$current_runtime\tCoverage analysis finished.\n";
+print $LOGFILE "$current_runtime\tCoverage analysis finished.\n";
+if(-z "Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt"){
+	print $LOGFILE "No issues with assembly coverage were identified.\n";
 }
 else{
-	print "Coverage analysis was not selected.  We highly recommend this option to verify the assembly.\n";
+	print $LOGFILE "Problem areas identified for assembly coverage.  Check Coverage_Analysis/$name\_problem_regions_plastid_assembly.txt.\n";
+ }
+}
+else{
+	print $LOGFILE "Coverage analysis was not selected.  We highly recommend this option to verify the assembly.\n";
 }
 
 
@@ -481,7 +488,7 @@ else{
 ##########
 sub scaffolding {
 	$current_runtime = localtime();
-	print "$current_runtime\tStarting scaffolding with SSPACE.\n";
+	print $LOGFILE "$current_runtime\tStarting scaffolding with SSPACE.\n";
 	mkdir ("Scaffolding");
 	chdir("Scaffolding");
 	my @p1_temp = <../../Trimmed_Reads/*P1*>;
@@ -540,7 +547,7 @@ sub run_afin {
 	###Sub must be given number of iterations, trim length, and number of reads needed to fuse contigs.
 	my $extension = $_[5];
 	my $afin_exec = $AFIN_DIR . "/afin -c " . $_[4] . " -r ../Trimmed_Reads/" . $name .".trimmed* -l " . $_[0] . " -f .1 -d " . $_[1] . " -x " . $extension . " -p " . $_[2] . " -i " . $_[3] ." -o ". $name . "_afin";
-	print "Using command $afin_exec.\n";
+	print $LOGFILE "Using command $afin_exec.\n";
 	system($afin_exec);
 
 	my %contig_lengths;
@@ -572,7 +579,7 @@ sub run_afin {
 sub cpgene_recovery {
 	$current_runtime = localtime(); 
 	
-	print "$current_runtime\tChecking chloroplast gene recovery in contigs.\n";
+	print $LOGFILE "$current_runtime\tChecking chloroplast gene recovery in contigs.\n";
 	my $current_afin = $_[0];
 	my %chloroplast_db_genes;
 	open my $cpdbgenes, "<", $FPBIN . "/Angiosperm_Chloroplast_Genes.fsa";
@@ -792,8 +799,8 @@ sub orientate_plastome{
 					push(@range, $2);
 			}
 
-			my $temp_range1 = $range[3]-$range[0];
-			my $temp_range2 = $range[1]-$range[2];
+			my $temp_range1 = abs($range[3]-$range[0])-2;
+			my $temp_range2 = abs($range[2]-$range[1])-2;
 			unless($temp_range1 == $cp_piece_pos{"ir"}{"len"} || $temp_range2 == $cp_piece_pos{"ir"}{"len"}){
 				next;
 			}
@@ -822,7 +829,7 @@ sub orientate_plastome{
                     close ($cpcomposition);
 		    mkdir("../Final_Assembly");
                     rename($final_seq, "../Final_Assembly/".$final_seq);
-                    rename("Chloroplast_gene_composition_of_final_contigs.txt", "../Final_Assembly/Chloroplast_gene_composition_of_final_contigs.txt");
+                    rename("Chloroplast_gene_composition_of_final_chloroplast_sequence.txt", "../Final_Assembly/Chloroplast_gene_composition_of_final_contigs.txt");
                     rename($name."_CP_pieces.fsa", "../Final_Assembly/".$name."_CP_pieces.fsa");
 		    return; #bad form to have multiple exits but i haven't worked out the "correct" way yet
 			}
