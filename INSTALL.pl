@@ -14,7 +14,7 @@ BEGIN {
 
 my $FPROOT = "$FindBin::RealBin";
 
-my $prep_genbank = "gunzip ".$FPROOT."/GenBank_Plastomes.gz";
+my $prep_genbank = "gunzip ".$FPROOT."/bin/GenBank_Plastomes.gz";
 system($prep_genbank);
 print "Thank you for dowloading the Fast-Plast pipeline. If you have not looked at the dependencies for Fast-Plast, please visit https://github.com/mrmckain/Fast-Plast and download them.\n\n";
 
@@ -76,7 +76,7 @@ if($answer =~ /n/i){
 			}
 			else{
 				my $temp_trim = $trimmomatic;
-				$trimmomatic = glob ("$trimmomatic/*.jar");
+				$trimmomatic = glob ($trimmomatic."*.jar");
 				if(!$trimmomatic){
 					die "\nSorry. I cannot locate the Trimmomatic jar file in $temp_trim\. Please check again.\n";
 				}
@@ -358,7 +358,7 @@ if($answer =~ /n/i){
 				chdir($jellyfish);
 				system("./configure");
 				system("make");
-				$jellyfish = glob ($jellyfish."/bin/jellyfish");
+				$jellyfish = glob ($jellyfish."bin/jellyfish");
 				chdir("../");
 			}
 			else{
