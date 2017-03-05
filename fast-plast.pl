@@ -65,8 +65,10 @@ if ( !$name ) {
     pod2usage( { -message => "ERROR: Missing sample name." } );
 }
 
-if ( !glob($user_bowtie."*")) {
-    pod2usage( { -message => "ERROR: User supplied Bowtie2 indices do not exist. Check path." } );
+if($user_bowtie){
+	if ( !glob($user_bowtie."*")) {
+    	pod2usage( { -message => "ERROR: User supplied Bowtie2 indices do not exist. Check path." } );
+	}
 }
 
 ### Get full paths for files.  Glob would work for all of them, but it requires perl 5.6+.  Only using it for the ~ calls, just in case. ####
