@@ -14,6 +14,8 @@ BEGIN {
 
 my $FPROOT = "$FindBin::RealBin";
 
+my $prep_genbank = "gunzip ".$FPROOT."/GenBank_Plastomes.gz";
+system($prep_genbank);
 print "Thank you for dowloading the Fast-Plast pipeline. If you have not looked at the dependencies for Fast-Plast, please visit https://github.com/mrmckain/Fast-Plast and download them.\n\n";
 
 
