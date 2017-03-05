@@ -5,8 +5,6 @@ use Pod::Usage;
 use FindBin;
 use lib ("$FindBin::Bin/PerlLib");
 use File::Spec;
-#use File::Which;
-#use File::Which qw(which where);
 use Cwd;
 use Cwd 'abs_path';
 
@@ -35,15 +33,21 @@ my $paired_end1;
 my $paired_end2;
 my $single_end;
 my $name;
-my $bowtie_index=$FPBIN . "/Verdant";
+my $bowtie_index = "All";
 my $posgenes= $FPBIN . "/Angiosperm_Chloroplast_Genes.fsa";
 my $coverage_check;
 my $min_coverage = 0;
 my $threads = 4;
 my $adapters = $FPBIN . "/NEB-PE.fa";
+my $version;
+my $current_version = "Fast-Plast v.1.0.0";
+my $user_bowtie;
 
-GetOptions('help|?' => \$help, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "name=s" => \$name, 'coverage_analysis' => \$coverage_check,'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
+GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, 'coverage_analysis' => \$coverage_check,'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
 
+if($version) {
+	pod2usage( { -verbose => 99, -sections => "VERSION" } );
+}
 
 if ($help) {
     pod2usage( { -exitstatus => 0 } );
@@ -61,13 +65,17 @@ if ( !$name ) {
     pod2usage( { -message => "ERROR: Missing sample name." } );
 }
 
+if ( !glob($user_bowtie."*")) {
+    pod2usage( { -message => "ERROR: User supplied Bowtie2 indices do not exist. Check path." } );
+}
+
 ### Get full paths for files.  Glob would work for all of them, but it requires perl 5.6+.  Only using it for the ~ calls, just in case. ####
 my $datestring = localtime();
 my $start_time = time;
 open(STDERR, '>', $name.'_results_error.log') or die "Can't open log.\n";
 open(STDOUT, '>', $name.'_result_out.log') or die "Can't open log.\n";
 open my $LOGFILE, ">", $name."_Fast-Plast_Progress.log" or die "Can't open log.\n";
-print $LOGFILE "$datestring\tStarting Fast-Plast.\n";
+print $LOGFILE "$datestring\tStarting $current_version.\n";
 
 my @p1_array;
 if($paired_end1){
@@ -242,6 +250,14 @@ print $LOGFILE "$current_runtime\tStarting read mapping with bowtie2.\nUsing $BO
 
 mkdir("Bowtie_Mapping");
 chdir("Bowtie_Mapping");
+
+if($user_bowtie){
+
+	$bowtie_index = $user_bowtie;
+}
+else{
+	$bowtie_index= &build_bowtie2_indices($bowtie_index);
+}
 my $bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $bowtie_index . " -1 ../Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
 system($bowtie2_exec);
 chdir("../");
@@ -339,7 +355,7 @@ if( $total_afin_contigs > 1){
 		my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 		my %contigs_db_genes = %$contigs_db_genes;
 		$percent_recovered_genes=$percent_recovered_genes*100;
-		print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in scaffolded contigs.\n";
+		print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 
 
 		$current_afin = &scaffolding($current_afin,$name);
@@ -361,7 +377,7 @@ if( $total_afin_contigs > 1){
 				my $temppwd = `pwd`;
                                 chomp($temppwd);
                                 $temppwd .= "/". $current_afin;	
-				print $LOGFILE "Cannot scaffold contigs into a single piece.  Coverage is too low. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
+				print $LOGFILE "Cannot scaffold contigs into a single piece.  Coverage is too low or poorly distributed across plastome. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
 				die;
 		}
 	}	
@@ -371,7 +387,7 @@ if( $total_afin_contigs > 1){
 		my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 		my %contigs_db_genes = %$contigs_db_genes;
 		$percent_recovered_genes=$percent_recovered_genes*100;
-		print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in retained contigs.\n";
+		print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 		open my $cpcomposition, ">", "Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt";
 			for my $contig_name (sort keys %contigs_db_genes){
 				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
@@ -395,7 +411,7 @@ else{
 	my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 	my %contigs_db_genes = %$contigs_db_genes;
 	$percent_recovered_genes=$percent_recovered_genes*100;
-	print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in retained contigs.\n";
+	print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 	open my $cpcomposition, ">", "Chloroplast_gene_composition_of_afin_contigs.txt";
 			for my $contig_name (sort keys %contigs_db_genes){
 				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
@@ -517,6 +533,70 @@ sub scaffolding {
 
 
 ##########
+
+sub build_bowtie2_indices {
+	
+	my $bowtie_index = $_[0];
+	open my $bt2_seq, ">", $bowtie_index;
+	open my $default_gb, "<", $FPBIN."/GenBank_Plastomes";
+	my $gbid;
+	if($bowtie_index !~ /^all$/i || $bowtie_index !~ /genbank/i ){
+
+
+		while(<$default_gb>){
+			chomp;
+			if(/>/){
+				if(/$bowtie_index/){
+					$gbid=$_;
+				}
+				else{
+					$gbid=();
+				}
+			}
+			elsif($gbid){
+				print $bt2_seq "$gbid\n$_\n";
+			}
+		}
+		close $default_gb;
+	}
+	if(-z $bowtie_index || $bowtie_index =~ /^all$/i || $bowtie_index =~ /genbank/i ){
+		print $LOGFILE "Samples for $bowtie_index are not in current GenBank plastomes. Using one representative from each order to make bowtie2 indices.\n";
+
+		open my $bt2_seq, ">", $bowtie_index;
+		open my $default_gb, "<", $FPBIN."/GenBank_Plastomes";
+		$gbid=();
+		my %used;
+		while(<$default_gb>){
+			chomp;
+			if(/>/){
+				/_(.*?ales)_/;
+				my $temp_order = $1;
+				if(!exists $used{$temp_order}){
+					$gbid=$_;
+					$used{$temp_order}=1;
+				}
+				else{
+					$gbid=();
+				}
+			}
+			elsif($gbid){
+				print $bt2_seq "$gbid\n$_\n";
+			}
+		}
+		close $default_gb;
+	
+	}
+	else{
+		print $LOGFILE "Samples for $bowtie_index used to make bowtie2 indices.\n";
+	}
+
+	my $build_bowtie2_exec = $BOWTIE2 . "-build " . $bowtie_index . " " . $name . "_bowtie";
+	system($build_bowtie2_exec);
+	return($bowtie_index);
+}
+
+##########
+
 sub count_contigs {
 	my %contig_lengths;
 	my $afin_contig;
@@ -822,7 +902,7 @@ sub orientate_plastome{
         			($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($split_fullname);
         			%contigs_db_genes = %$contigs_db_genes;
         			$percent_recovered_genes=$percent_recovered_genes*100;
-
+					print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $final_seq.\n";
         			open my $cpcomposition, ">", "Chloroplast_gene_composition_of_final_chloroplast_sequence.txt";
                     for my $contig_name (sort keys %contigs_db_genes){
                         for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
@@ -855,6 +935,7 @@ fast-plast.pl
     fast-plast.pl [-1 <paired_end_file1> -2 <paired_end_file2> || -single <singe_end_file>] -name <sample_name> [options] 
 or
     fast-plast.pl -help
+	-1 <filenames> 			File with forward paired-end reads. Multiple files can be designated with a comma-delimited list. Read files should be in matching order with other paired end files.
 	-2 <filenames> 	 		File with reverse paired-end reads. Multiple files can be designated with a comma-delimited list. Read files should be in matching order with other paired end files.
 	-s <filenames>	 		File with unpaired reads. Multiple files can be designated with a comma-delimited list.
 
@@ -866,7 +947,8 @@ Advanced options:
 
 	--threads				Number of threads used by Fast-Plast.  [Default = 4]
 	--adapters				Files of adapters used in making sequencing library. [Default = NEB-PE]
-	--bowtie_index   		User defined bowtie2 index for mapping step. Useful for non-angiosperm or unrespesented taxa in the default index. [Default = Verdant]
+	--bowtie_index   		Order for sample to draw references for mapping. If order exists, then all available samples for that order will be used. If order does not exist in default set or the terms "all" or "GenBank" are given, one exemplar from each available order is used to build the Bowtie2 indicies. [default="All"]
+	--user_bowtie			User supplied bowtie2 indices. If this option is used, bowtie_index is ignored.
 	--posgenes  	 		User defined genes for identification of single copy/IR regions and orientation. Useful when major rearrangments are present in user plastomes.
 	--coverage_analysis     Flag to run the coverage analysis of a final chloroplast assembly.
 
@@ -898,6 +980,10 @@ To install afin:
 
 		cd afin
 		make
+
+=head1 VERSION
+
+Fast-Plast v.1.0.0
 
 
 
