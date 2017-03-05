@@ -437,7 +437,7 @@ if($answer =~ /n/i){
 			}
 			}
 			print "\njellyfish executable located: $jellyfish\n";
-			my $tempf = read_file($control_file);
+			$tempf = read_file($control_file);
 			$tempf =~ s/my \$JELLYFISH\;/my \$JELLYFISH=\"$jellyfish\"\;/;
 			write_file($control_file, $tempf);
 
