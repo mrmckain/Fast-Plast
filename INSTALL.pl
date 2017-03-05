@@ -358,7 +358,7 @@ if($answer =~ /n/i){
 				chdir($jellyfish);
 				system("./configure");
 				system("make");
-				$jellyfish = glob ("$jellyfish/bin/jellyfish");
+				$jellyfish = glob ($jellyfish."/bin/jellyfish");
 				chdir("../");
 			}
 			else{
