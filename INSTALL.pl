@@ -13,7 +13,7 @@ BEGIN {
 }
 
 my $FPROOT = "$FindBin::RealBin";
-
+my $all;
 my $prep_genbank = "gunzip ".$FPROOT."/bin/GenBank_Plastomes.gz";
 system($prep_genbank);
 print "Thank you for dowloading the Fast-Plast pipeline. If you have not looked at the dependencies for Fast-Plast, please visit https://github.com/mrmckain/Fast-Plast and download them.\n\n";
@@ -26,17 +26,26 @@ chomp ($answer);
 my $control_file =$FPROOT . "/fast-plast.pl";
 if($answer =~ /n/i){
 
-	print "\nDo you want me to try to install them? Yes/No: ";
+	print "\nDo you want me to try to install them? Yes/No/All: ";
 	$answer = <STDIN>;
 	chomp($answer);
 	if($answer =~ /n/i){
 		die "\nPlease install all dependencies prior to installing Fast-Plast.\n";
 	}
 	else{
+		if($answer =~ /all/i){
+				$all =1;
+		}
 		chdir("bin/");
+		if($all){
+			$answer="yes";
+		}
+		else{
 		print "\nOK. I am only going to try to install the Linux binaries. Let's do this one-by-one. Would you like me to install Trimmomatic? Yes/No: ";
-		$answer = <STDIN>;
-		chomp($answer);
+			$answer = <STDIN>;
+			chomp($answer);
+		}
+
 		my $trimmomatic;
 		if($answer =~ /y/i){
 		
@@ -89,9 +98,14 @@ if($answer =~ /n/i){
 		write_file($control_file, $tempf);
 		
 
+		if($all){
+			$answer="yes";
+		}
+		else{
 		print "\nWould you like me to install bowtie2? Yes/No: ";
 		$answer = <STDIN>;
 		chomp($answer);
+	}
 		my $bowtie2;
 		if($answer =~ /y/i){
 			system("wget https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.2.9/bowtie2-2.2.9-linux-x86_64.zip");
@@ -136,9 +150,14 @@ if($answer =~ /n/i){
 		$tempf = read_file($control_file);
 		$tempf =~ s/my \$BOWTIE2\;/my \$BOWTIE2=\"$bowtie2\"\;/;
 		write_file($control_file, $tempf);
-		print "\nWould you like me to install SPAdes? Yes/No: ";
+		if($all){
+			$answer="yes";
+		}
+		else{
+			print "\nWould you like me to install SPAdes? Yes/No: ";
 		$answer = <STDIN>;
 		chomp($answer);
+		}
 		my $spades;
 		if($answer =~ /y/i){	
 			system("wget http://spades.bioinf.spbau.ru/release3.9.0/SPAdes-3.9.0-Linux.tar.gz");
@@ -188,9 +207,14 @@ if($answer =~ /n/i){
 		$tempf =~ s/my \$SPADES\;/my \$SPADES=\"$spades\"\;/;
 		write_file($control_file, $tempf);
 
+		if($all){
+			$answer="yes";
+		}
+		else{
 		print "\nWould you like me to install bowtie1? Yes/No: ";
 		$answer = <STDIN>;
 		chomp($answer);
+	}
 		my $bowtie1;
 		if($answer =~ /y/i){
 			system("wget https://sourceforge.net/projects/bowtie-bio/files/bowtie/1.1.2/bowtie-1.1.2-linux-x86_64.zip");
@@ -234,10 +258,14 @@ if($answer =~ /n/i){
 		$tempf = read_file($control_file);
 		$tempf =~ s/my \$BOWTIE1\;/my \$BOWTIE1=\"$bowtie1\"\;/;
 		write_file($control_file, $tempf);
-
+		if($all){
+			$answer="yes";
+		}
+		else{
 		print "\nWould you like me to install SSPACE? Yes/No: ";
 		$answer = <STDIN>;
 		chomp($answer);
+	}
 		my $sspace;
 		if($answer =~ /y/i){	
 			system("wget https://github.com/nsoranzo/sspace_basic/archive/v2.1.1.zip");
@@ -287,9 +315,14 @@ if($answer =~ /n/i){
 		$tempf =~ s/my \$SSPACE\;/my \$SSPACE=\"$sspace\"\;/;
 		write_file($control_file, $tempf);
 
+		if($all){
+			$answer="yes";
+		}
+		else{
 		print "\nWould you like me to install BLAST+? Yes/No: ";
 		$answer = <STDIN>;
 		chomp($answer);
+	}
 		my $blastn;
 		if($answer =~ /y/i){
 			
@@ -343,10 +376,14 @@ if($answer =~ /n/i){
 		$tempf =~ s/my \$BLAST\;/my \$BLAST=\"$blastn\"\;/;
 		write_file($control_file, $tempf);
 		
-
+		if($all){
+			$answer="yes";
+		}
+		else{
 		print "\nWould you like me to install Jellyfish 2? Yes/No: ";
 		$answer = <STDIN>;
 		chomp($answer);
+	}
 		my $jellyfish;
 		if($answer =~ /y/i){
 			
@@ -405,11 +442,15 @@ if($answer =~ /n/i){
 			write_file($control_file, $tempf);
 
 	}
+	if($all){
+			$answer="yes";
+		}
+	else{
 	print "Would you like me to compile afin? Yes or No: ";
 
 $answer = <STDIN>;
 chomp($answer);
-
+}
 if($answer =~ /y/i){
 	chdir("$FPROOT/afin");
 	`make`;
