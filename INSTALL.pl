@@ -297,7 +297,7 @@ if($answer =~ /n/i){
 			
 			if(-e "ncbi-blast-2.6.0+-x64-linux.tar.gz"){
 				system("tar -xvzf ncbi-blast-2.6.0+-x64-linux.tar.gz");
-				$blastn = $FPROOT . "/bin/ncbi-blast-2.6.0+/";
+				$blastn = $FPROOT . "/bin/ncbi-blast-2.6.0+";
 				$blastn = glob ("$blastn/bin/");
 			}
 			else{
@@ -398,13 +398,12 @@ if($answer =~ /n/i){
 					}
 				}
 			}
-
+			}
 			print "\njellyfish executable located: $jellyfish\n";
 			my $tempf = read_file($control_file);
 			$tempf =~ s/my \$JELLYFISH\;/my \$JELLYFISH=\"$jellyfish\"\;/;
 			write_file($control_file, $tempf);
 
-		}
 	}
 	print "Would you like me to compile afin? Yes or No: ";
 
