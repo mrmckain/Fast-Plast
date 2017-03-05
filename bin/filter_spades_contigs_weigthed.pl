@@ -41,7 +41,7 @@ for my $tcov (keys %coverage_lengths){
 
 my $stdev = sqrt($variance/$std_count);
 
-my $min_cov = $weighted_average-$stdev;
+my $min_cov = $weighted_average-0.5*$stdev;
 my $max_cov	= $weighted_average+2.5*$stdev;
 
 open my $out, ">", "filtered_spades_contigs.fsa";
