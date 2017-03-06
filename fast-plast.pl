@@ -353,9 +353,7 @@ if( $total_afin_contigs > 1){
 	
 	$total_afin_contigs = &count_contigs($current_afin);
 
-	if ($total_afin_contigs > 1){
-		&remove_contamination($current_afin, \%)
-	}
+	
 	my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 	my %contigs_db_genes = %$contigs_db_genes;
 	if ($total_afin_contigs > 1){
@@ -853,7 +851,8 @@ sub remove_nested {
 sub remove_contamination{
 	
 	my $current_seq = $_[0];
-	my %contigs_cp_genes = %$_[1];
+	my $contigs_cp_genes = $_[1];
+	my %contigs_cp_genes = %$contigs_cp_genes;
 
 	open my $temp_seq, "<", $current_seq;
 	my $tsid;
@@ -873,9 +872,9 @@ sub remove_contamination{
 	my %delete_contigs;
 	my %all_contigs;
 	for my $contig_name (sort keys %contigs_cp_genes){
-		for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
+		for my $gene_name (sort keys %{$contigs_cp_genes{$contig_name}}){
 			$count_per_contig{$contig_name}++;
-			$genes_by_contig{$gene_names}{$contig_name}=1;
+			$genes_by_contig{$gene_name}{$contig_name}=1;
 			$all_contigs{$contig_name}=1;
 		}
 	}
@@ -900,7 +899,7 @@ sub remove_contamination{
 	}
 
 
-	 open my $afinout, ">", $temp_contigsfile . "_fixed";
+	 open my $afinout, ">", $current_seq . "_fixed";
         open my $oldafin, "<", $current_seq;
 
         my $tempsid;
@@ -921,7 +920,7 @@ sub remove_contamination{
                 }
         }
 
-        `mv $temp_contigsfile\_fixed $current_seq`;
+        `mv $current_seq\_fixed $current_seq`;
 }
 
 ##########
@@ -1034,22 +1033,27 @@ fast-plast.pl
     fast-plast.pl [-1 <paired_end_file1> -2 <paired_end_file2> || -single <singe_end_file>] -name <sample_name> [options] 
 or
     fast-plast.pl -help
-	-1 <filenames>		File with forward paired-end reads. Multiple files can be designated with a comma-delimited list. Read files should be in matching order with other paired end files.
-	-2 <filenames>		File with reverse paired-end reads. Multiple files can be designated with a comma-delimited list. Read files should be in matching order with other paired end files.
+	-1 <filenames>		File with forward paired-end reads. Multiple files can be designated with a comma-delimited list. 
+				Read files should be in matching order with other paired end files.
+	-2 <filenames>		File with reverse paired-end reads. Multiple files can be designated with a comma-delimited list. 
+				Read files should be in matching order with other paired end files.
 	-s <filenames>		File with unpaired reads. Multiple files can be designated with a comma-delimited list.
 
-	PAIRED END AND/OR SINGLE END FILES CAN BE PROVIDED SIMULTAENOUSLY.
+	PAIRED END AND SINGLE END FILES CAN BE PROVIDED SIMULTAENOUSLY.
 
-	-n <sample_name>	Name for current assembly. We suggest a species name/accession combination as Fast-Plast will use this name as the FASTA ID in the final assembly.
+	-n <sample_name>	Name for current assembly. We suggest a species name/accession combination as Fast-Plast will use 
+				this name as the FASTA ID in the final assembly.
 
 Advanced options:
 
-	--threads			Number of threads used by Fast-Plast.  [Default = 4]
-	--adapters			Files of adapters used in making sequencing library. [Default = NEB-PE]
-	--bowtie_index		Order for sample to draw references for mapping. If order exists, then all available samples for that order will be used. If order does not exist in default set or the terms "all" or "GenBank" are given, one exemplar from each available order is used to build the Bowtie2 indicies. [default="All"]
+	--threads		Number of threads used by Fast-Plast.  [Default = 4]
+	--adapters		Files of adapters used in making sequencing library. [Default = NEB-PE]
+	--bowtie_index		Order for sample to draw references for mapping. If order exists, then all available samples for that order will be used. 
+				If order does not exist in default set or the terms "all" or "GenBank" are given, one exemplar from each available order is used 
+				to build the Bowtie2 indicies. [default="All"]
 	--user_bowtie		User supplied bowtie2 indices. If this option is used, bowtie_index is ignored.
-	--posgenes			User defined genes for identification of single copy/IR regions and orientation. Useful when major rearrangments are present in user plastomes.
-	--coverage_analysis Flag to run the coverage analysis of a final chloroplast assembly.
+	--posgenes		User defined genes for identification of single copy/IR regions and orientation. Useful when major rearrangments are present in user plastomes.
+	--coverage_analysis 	Flag to run the coverage analysis of a final chloroplast assembly.
 
 =head1 DESCRIPTION
 
