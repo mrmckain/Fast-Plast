@@ -6,7 +6,7 @@ Version 1.0.0, March 6, 2017<br>
 </br>
 <b>Contact</b>: https://github.com/mrmckain
 
-![Fast-Plast Logo](https://github.com/mrmckain/Fast-Plast/blob/master/extras/Fast-Plast_Logo.png)
+<img src="https://github.com/mrmckain/Fast-Plast/blob/master/extras/Fast-Plast_Logo.png" width="48">
 
 <h3>Description</h3>
 
