@@ -235,6 +235,7 @@ if(@p1_array){
 	`cat $name\*trimmed_U*.fq > $name.trimmed_UP.fq`;
 }
 
+
 if(@s_array){
 	for (my $i=0; $i < $s_libs; $i++){
 		my $trim_exec = "java -classpath " . $TRIMMOMATIC . " org.usadellab.trimmomatic.TrimmomaticSE -threads " . $threads . " " . $s_array[$i] . " " . $name."_".$i.".trimmed_SE.fq " . "ILLUMINACLIP:".$adapters.":1:30:10 SLIDINGWINDOW:10:20 MINLEN:40";
@@ -260,7 +261,14 @@ if($user_bowtie){
 else{
 	$bowtie_index= &build_bowtie2_indices($bowtie_index);
 }
-my $bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $bowtie_index . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+my $bowtie2_exec;
+if(@p1_array){
+	$bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $bowtie_index . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+}
+else{
+	$bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq -p " . $threads . " -x " . $bowtie_index . " -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+
+}
 system($bowtie2_exec);
 chdir("../");
 
@@ -271,7 +279,13 @@ print $LOGFILE "$current_runtime\tStarting initial assembly with SPAdes.\nUsing 
 mkdir("3_Spades_Assembly");
 chdir("3_Spades_Assembly");
 
-my $spades_exec = "python " . $SPADES . " -o spades_iter1 -1 ../2_Bowtie_Mapping/map_pair_hits.1.fq -2 ../2_Bowtie_Mapping/map_pair_hits.2.fq -s ../2_Bowtie_Mapping/map_hits.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
+my $spades_exec;
+if(@p1_array){
+	$spades_exec = "python " . $SPADES . " -o spades_iter1 -1 ../2_Bowtie_Mapping/map_pair_hits.1.fq -2 ../2_Bowtie_Mapping/map_pair_hits.2.fq -s ../2_Bowtie_Mapping/map_hits.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
+}
+else{
+	$spades_exec = "python " . $SPADES . " -o spades_iter1 -s ../2_Bowtie_Mapping/map_hits.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
+}
 system($spades_exec);
 chdir("../");
 ########## Start Afin ##########
@@ -370,7 +384,7 @@ if( $total_afin_contigs > 1){
 		$percent_recovered_genes=$percent_recovered_genes*100;
 		print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 
-
+	if(@p1_array){
 		$current_afin = &scaffolding($current_afin,$name);
 		rename($current_afin, $name.".final.scaffolds.fasta");
 		$current_afin=$name.".final.scaffolds.fasta";
@@ -393,6 +407,25 @@ if( $total_afin_contigs > 1){
 				print $LOGFILE "Cannot scaffold contigs into a single piece.  Coverage is too low or poorly distributed across plastome. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
 				die;
 		}
+	}
+	else{
+		open my $cpcomposition, ">", "Chloroplast_gene_composition_of_final_contigs.txt";
+			for my $contig_name (sort keys %contigs_db_genes){
+				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
+						print $cpcomposition "$contig_name\t$gene_name\n";
+				}
+			}
+			close ($cpcomposition);
+				mkdir("../Final_Assembly");
+				rename($current_afin, "../Final_Assembly/".$current_afin);
+				rename("Chloroplast_gene_composition_of_final_contigs.txt", "../Final_Assembly/Chloroplast_gene_composition_of_final_contigs.txt");
+				chdir("../Final_Assembly");
+				my $temppwd = `pwd`;
+                                chomp($temppwd);
+                                $temppwd .= "/". $current_afin;	
+				print $LOGFILE "Cannot scaffold contigs into a single piece.  Coverage is too low or poorly distributed across plastome. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
+				die;
+	}
 	}	
 
 	else{
@@ -492,7 +525,14 @@ chdir("Coverage_Analysis");
 my $build_bowtie2_exec = $BOWTIE2 . "-build ../Final_Assembly/" . $name . "_FULLCP.fsa " . $name . "_bowtie";
 system($build_bowtie2_exec);
 
-my $cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+my $cov_bowtie2_exec;
+if(@p1_array){
+	$cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+}
+else{
+	$cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . "  -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+}
+
 system($cov_bowtie2_exec);
 
 my $jellyfish_count_exec = $JELLYFISH . " count -m 25 -t ". $threads . " -C -s 1G map_*";
