@@ -7,7 +7,6 @@ Version 1.1.0<br>
 <b>Contact</b>: https://github.com/mrmckain
 
 <img src="https://github.com/mrmckain/Fast-Plast/blob/master/extras/Fast-Plast_Logo.png" width="256" alt="fast-plast_logo" align="middle">
---------------
 
 <h1>Description</h1>
 =============
