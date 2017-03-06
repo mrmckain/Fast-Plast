@@ -36,6 +36,9 @@ while(<$file>){
 				$lsc_end = $2;
 			}
 		}
+		else{
+			$ssc_id = $sid;
+		}
 	}
 		if($sid =~ /ir_/){
 			$ir_id=$sid;
