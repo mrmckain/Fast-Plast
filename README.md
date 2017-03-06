@@ -17,13 +17,26 @@ Currently, Fast-Plast is written to accomodate Illumina data, though most data t
 Fast-Plast uses a de novo assembly approach by combining the de bruijn graph-based method of SPAdes with an iterative seed-based assembly implemented in afin to close gaps of contigs with low coverage. The pipeline then identifies regions from the quadripartite structure of the chloroplast genome, assigns identity, and orders them according to standard convention. A coverage analysis is then conducted to assess the quality of the final assembly. 
 
 
-<h4>Requirements</h4>
+<h1>Dependencies</h1>
 
-Fast-Plast requires <a href="http://www.usadellab.org/cms/?page=trimmomatic">Trimmomatic</a>, <a href="http://bowtie-bio.sourceforge.net/bowtie2/index.shtml">Bowtie2</a>, <a href="http://bioinf.spbau.ru/spades">SPAdes</a>, and <a href="https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download">BLAST+</a>.
+Fast-Plast requires a number of commonly used bioinformatics programs. We have included an installation script to help users properly prepare Fast-Plast for use.
 
-If you use the coverage analysis to verify the assembly, then <a href="http://www.genome.umd.edu/jellyfish.html#Release">Jellyfish 2</a> and R will be needed. We highly recommend the coverage analysis to check the Fast-Plast assembly. 
+* Perl 5+
+* <a href="http://www.usadellab.org/cms/?page=trimmomatic">Trimmomatic</a> 
+* <a href="http://bowtie-bio.sourceforge.net/bowtie2/index.shtml">Bowtie2</a> 
+* <a href="http://bioinf.spbau.ru/spades">SPAdes</a>
+* <a href="https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download">BLAST+</a>
+* <a href="https://github.com/nsoranzo/sspace_basic">SSPACE</a>
+* <a href="https://sourceforge.net/projects/bowtie-bio/">Bowtie1</a> (required for SSPACE)
 
-afin requires a c++ complier with c++11 support and zlib.h.  zlib.h is a standard base library for most *nix systems but can be obtained <a href="http://www.zlib.net/">here</a>.
+<br>
+**Afin**
+* afin requires a c++ complier with c++11 support and zlib.h.  zlib.h is a standard base library for most *nix systems but can be obtained <a href="http://www.zlib.net/">here</a>.
+<br>
+**Coverage Analysis**
+* <a href="http://www.genome.umd.edu/jellyfish.html#Release">Jellyfish 2</a>
+* R
+
 
 Fast-Plast is coded to use 4 threads during the Trimmomatic, bowtie2, SPAdes, and afin steps. This can simply be changed by the user if this number is not available.
 
