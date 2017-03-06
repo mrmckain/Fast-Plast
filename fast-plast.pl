@@ -352,10 +352,13 @@ if( $total_afin_contigs > 1){
 	&remove_nested($current_afin, $current_afin.".blastn");
 	
 	$total_afin_contigs = &count_contigs($current_afin);
+	my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
+	my %contigs_db_genes = %$contigs_db_genes;
+
 
 	if ($total_afin_contigs > 1){
-		my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
-		my %contigs_db_genes = %$contigs_db_genes;
+		($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
+		%contigs_db_genes = %$contigs_db_genes;
 		$percent_recovered_genes=$percent_recovered_genes*100;
 		print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 
@@ -438,8 +441,18 @@ chdir("../");
 if(!-d "Final_Assembly"){
 	mkdir("Final_Assembly");
         rename("Afin_Assembly/".$current_afin, "Final_Assembly/".$current_afin);
+        my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery("Final_Assembly/".$current_afin);
+		my %contigs_db_genes = %$contigs_db_genes;
+		$percent_recovered_genes=$percent_recovered_genes*100;
+		print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
+		open my $cpcomposition, ">", "Final_Assembly/Chloroplast_gene_composition_of_afin_contigs.txt";
+			for my $contig_name (sort keys %contigs_db_genes){
+				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
+						print $cpcomposition "$contig_name\t$gene_name\n";
+				}
+			}
+	close ($cpcomposition);
 	if( -e "Afin_Assembly/Chloroplast_gene_composition_of_afin_contigs.txt"){
-        	rename("Afin_Assembly/Chloroplast_gene_composition_of_afin_contigs.txt", "Final_Assembly/Chloroplast_gene_composition_of_final_contigs.txt");	  
 		my $temppwd = `pwd`;
                 chomp($temppwd);
                 $temppwd .= "/Final_Assembly/". $current_afin;
@@ -447,7 +460,6 @@ if(!-d "Final_Assembly"){
 				die;
 	}
 	if( -e "Afin_Assembly/Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt"){
-                rename("Afin_Assembly/Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt", "Final_Assembly/Chloroplast_gene_composition_of_final_contigs.txt");
                 my $temppwd = `pwd`;
                 chomp($temppwd);
                 $temppwd .= "/Final_Assembly/". $current_afin;
@@ -539,7 +551,7 @@ sub scaffolding {
 sub build_bowtie2_indices {
 	
 	my $bowtie_index = $_[0];
-	open my $bt2_seq, ">", $bowtie_index;
+	open my $bt2_seq, ">", $bowtie_index.".fsa";
 	open my $default_gb, "<", $FPBIN."/GenBank_Plastomes";
 	my $gbid;
 	if($bowtie_index !~ /^all$/i || $bowtie_index !~ /genbank/i ){
@@ -592,8 +604,9 @@ sub build_bowtie2_indices {
 		print $LOGFILE "Samples for $bowtie_index used to make bowtie2 indices.\n";
 	}
 
-	my $build_bowtie2_exec = $BOWTIE2 . "-build " . $bowtie_index . " " . $name . "_bowtie";
+	my $build_bowtie2_exec = $BOWTIE2 . "-build " . $bowtie_index.".fsa" . " " . $name . "_bowtie";
 	system($build_bowtie2_exec);
+	$bowtie_index=$name . "_bowtie";
 	return($bowtie_index);
 }
 
@@ -901,7 +914,7 @@ sub orientate_plastome{
         			my $final_seq = $name ."_FULLCP.fsa";
         			$blast_afin_exec = $BLAST . "blastn -query " . $final_seq . " -db " . $posgenes . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $current_afin . "_positional_genes" . ".blastn";
         			system($blast_afin_exec);
-        			($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($split_fullname);
+        			($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($final_seq);
         			%contigs_db_genes = %$contigs_db_genes;
         			$percent_recovered_genes=$percent_recovered_genes*100;
 					print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $final_seq.\n";
@@ -937,22 +950,22 @@ fast-plast.pl
     fast-plast.pl [-1 <paired_end_file1> -2 <paired_end_file2> || -single <singe_end_file>] -name <sample_name> [options] 
 or
     fast-plast.pl -help
-	-1 <filenames> 			File with forward paired-end reads. Multiple files can be designated with a comma-delimited list. Read files should be in matching order with other paired end files.
-	-2 <filenames> 	 		File with reverse paired-end reads. Multiple files can be designated with a comma-delimited list. Read files should be in matching order with other paired end files.
-	-s <filenames>	 		File with unpaired reads. Multiple files can be designated with a comma-delimited list.
+	-1 <filenames>		File with forward paired-end reads. Multiple files can be designated with a comma-delimited list. Read files should be in matching order with other paired end files.
+	-2 <filenames>		File with reverse paired-end reads. Multiple files can be designated with a comma-delimited list. Read files should be in matching order with other paired end files.
+	-s <filenames>		File with unpaired reads. Multiple files can be designated with a comma-delimited list.
 
 	PAIRED END AND/OR SINGLE END FILES CAN BE PROVIDED SIMULTAENOUSLY.
 
-	-n <sample_name> 		Name for current assembly. We suggest a species name/accession combination as Fast-Plast will use this name as the FASTA ID in the final assembly.
+	-n <sample_name>	Name for current assembly. We suggest a species name/accession combination as Fast-Plast will use this name as the FASTA ID in the final assembly.
 
 Advanced options:
 
-	--threads				Number of threads used by Fast-Plast.  [Default = 4]
-	--adapters				Files of adapters used in making sequencing library. [Default = NEB-PE]
-	--bowtie_index   		Order for sample to draw references for mapping. If order exists, then all available samples for that order will be used. If order does not exist in default set or the terms "all" or "GenBank" are given, one exemplar from each available order is used to build the Bowtie2 indicies. [default="All"]
-	--user_bowtie			User supplied bowtie2 indices. If this option is used, bowtie_index is ignored.
-	--posgenes  	 		User defined genes for identification of single copy/IR regions and orientation. Useful when major rearrangments are present in user plastomes.
-	--coverage_analysis     Flag to run the coverage analysis of a final chloroplast assembly.
+	--threads			Number of threads used by Fast-Plast.  [Default = 4]
+	--adapters			Files of adapters used in making sequencing library. [Default = NEB-PE]
+	--bowtie_index		Order for sample to draw references for mapping. If order exists, then all available samples for that order will be used. If order does not exist in default set or the terms "all" or "GenBank" are given, one exemplar from each available order is used to build the Bowtie2 indicies. [default="All"]
+	--user_bowtie		User supplied bowtie2 indices. If this option is used, bowtie_index is ignored.
+	--posgenes			User defined genes for identification of single copy/IR regions and orientation. Useful when major rearrangments are present in user plastomes.
+	--coverage_analysis Flag to run the coverage analysis of a final chloroplast assembly.
 
 =head1 DESCRIPTION
 
