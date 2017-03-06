@@ -441,8 +441,8 @@ chdir("../");
 $current_runtime = localtime(); 
 print $LOGFILE "$current_runtime\tStarting plastome finishing.\nUsing $posgenes for LSC, SSC, and IR identification.\n";
 
-mkdir("4_Plastome_Finishing");
-chdir("4_Plastome_Finishing");
+mkdir("5_Plastome_Finishing");
+chdir("5_Plastome_Finishing");
 
 &orientate_plastome("../4_Afin_Assembly/".$current_afin, $name); 
 chdir("../");
