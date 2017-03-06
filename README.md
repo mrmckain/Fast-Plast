@@ -9,7 +9,7 @@ Version 1.1.0<br>
 <img src="https://github.com/mrmckain/Fast-Plast/blob/master/extras/Fast-Plast_Logo.png" width="256" alt="fast-plast_logo" align="middle">
 
 <h1>Description</h1>
---------------
+
 Fast-Plast is a pipeline that leverages existing and novel programs to quickly assemble, orient, and verify whole chloroplast genome sequences. For most datasets with sufficient data, Fast-Plast is able to produce a full-length de novo chloroplast genome assembly in approximately 30 minutes with no user mediation. In addition to a chloroplast sequence, Fast-Plast provide the information on chloroplast genes present in the final assembly.
 
 Currently, Fast-Plast is written to accomodate Illumina data, though most data types could be used with a few changes.
@@ -32,6 +32,7 @@ Fast-Plast requires a number of commonly used bioinformatics programs. We have i
 <br>
 **Afin**
 * afin requires a c++ complier with c++11 support and zlib.h.  zlib.h is a standard base library for most Unix systems but can be obtained <a href="http://www.zlib.net/">here</a>.
+
 <br>
 **Coverage Analysis**
 * <a href="http://www.genome.umd.edu/jellyfish.html#Release">Jellyfish 2</a>
@@ -108,7 +109,7 @@ Definition:
 							Read files should be in matching order with other paired end files.
 		-s <filenames>		File with unpaired reads. Multiple files can be designated with a comma-delimited list.
 
-		<b>PAIRED END AND SINGLE END FILES CAN BE PROVIDED SIMULTAENOUSLY.</b>
+		**PAIRED END AND SINGLE END FILES CAN BE PROVIDED SIMULTAENOUSLY.**
 
 		-n <sample_name>	Name for current assembly. We suggest a species name/accession combination as Fast-Plast will use 
 							this name as the FASTA ID in the final assembly.
