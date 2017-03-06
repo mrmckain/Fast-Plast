@@ -40,7 +40,7 @@ my $min_coverage = 0;
 my $threads = 4;
 my $adapters = $FPBIN . "/NEB-PE.fa";
 my $version;
-my $current_version = "Fast-Plast v.1.0.0";
+my $current_version = "Fast-Plast v.1.1.0";
 my $user_bowtie;
 
 GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, 'coverage_analysis' => \$coverage_check,'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
