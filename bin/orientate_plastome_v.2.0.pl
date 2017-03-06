@@ -140,7 +140,7 @@ else{
 my $ira = reverse($irb);
 $ira =~ tr/ATCGatcg/TAGCtagc/;
 my $fullcp = $lsc . $irb . $ssc . $ira;
-open my $out, ">", $ARGV[2] ."_CP_pieces.txt";
+open my $out, ">", $ARGV[2] ."_CP_pieces.fsa";
 print $out ">lsc\n$lsc\n>irb\n$irb\n>ssc\n$ssc\n";
 
 open my $fullout, ">", "$ARGV[2]\_FULLCP.fsa";
