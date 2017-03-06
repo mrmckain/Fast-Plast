@@ -223,8 +223,8 @@ chdir("$name");
 $current_runtime = localtime();
 print $LOGFILE "$current_runtime\tStarting read trimming with Trimmomatic.\nUsing $TRIMMOMATIC.\n";
 
-mkdir("Trimmed_Reads");
-chdir("Trimmed_Reads");
+mkdir("1_Trimmed_Reads");
+chdir("1_Trimmed_Reads");
 if(@p1_array){
 	for (my $i=0; $i < $pe_libs; $i++){
 		my $trim_exec = "java -classpath " . $TRIMMOMATIC . " org.usadellab.trimmomatic.TrimmomaticPE -threads " . $threads . " " . $p1_array[$i] . " " . $p2_array[$i] . " " . $name."_".$i.".trimmed_P1.fq " . $name."_".$i.".trimmed_U1.fq " . $name."_".$i.".trimmed_P2.fq " . $name."_".$i.".trimmed_U2.fq " . "ILLUMINACLIP:".$adapters.":1:30:10 SLIDINGWINDOW:10:20 MINLEN:40";
@@ -250,8 +250,8 @@ $current_runtime = localtime();
 print $LOGFILE "$current_runtime\tStarting read mapping with bowtie2.\nUsing $BOWTIE2.\n";
 
 
-mkdir("Bowtie_Mapping");
-chdir("Bowtie_Mapping");
+mkdir("2_Bowtie_Mapping");
+chdir("2_Bowtie_Mapping");
 
 if($user_bowtie){
 
@@ -260,7 +260,7 @@ if($user_bowtie){
 else{
 	$bowtie_index= &build_bowtie2_indices($bowtie_index);
 }
-my $bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $bowtie_index . " -1 ../Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+my $bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $bowtie_index . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
 system($bowtie2_exec);
 chdir("../");
 
@@ -268,20 +268,20 @@ chdir("../");
 
 $current_runtime = localtime();
 print $LOGFILE "$current_runtime\tStarting initial assembly with SPAdes.\nUsing $SPADES.\n";
-mkdir("Spades_Assembly");
-chdir("Spades_Assembly");
+mkdir("3_Spades_Assembly");
+chdir("3_Spades_Assembly");
 
-my $spades_exec = "python " . $SPADES . " -o spades_iter1 -1 ../Bowtie_Mapping/map_pair_hits.1.fq -2 ../Bowtie_Mapping/map_pair_hits.2.fq -s ../Bowtie_Mapping/map_hits.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
+my $spades_exec = "python " . $SPADES . " -o spades_iter1 -1 ../2_Bowtie_Mapping/map_pair_hits.1.fq -2 ../2_Bowtie_Mapping/map_pair_hits.2.fq -s ../2_Bowtie_Mapping/map_hits.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
 system($spades_exec);
 chdir("../");
 ########## Start Afin ##########
 $current_runtime = localtime();
 print $LOGFILE "$current_runtime\tStarting improved assembly with afin.\n";
 
-mkdir("Afin_Assembly");
-chdir("Afin_Assembly");
+mkdir("4_Afin_Assembly");
+chdir("4_Afin_Assembly");
 
-`perl $FPBIN/filter_spades_contigs_weigthed.pl ../Spades_Assembly/spades_iter1/contigs.fasta`;
+`perl $FPBIN/filter_spades_contigs_weigthed.pl ../3_Spades_Assembly/spades_iter1/contigs.fasta`;
 
 my %temp_filtered;
 my $temp_filter_id;
@@ -441,14 +441,14 @@ chdir("../");
 $current_runtime = localtime(); 
 print $LOGFILE "$current_runtime\tStarting plastome finishing.\nUsing $posgenes for LSC, SSC, and IR identification.\n";
 
-mkdir("Plastome_Finishing");
-chdir("Plastome_Finishing");
+mkdir("4_Plastome_Finishing");
+chdir("4_Plastome_Finishing");
 
-&orientate_plastome("../Afin_Assembly/".$current_afin, $name); 
+&orientate_plastome("../4_Afin_Assembly/".$current_afin, $name); 
 chdir("../");
 if(!-d "Final_Assembly"){
 	mkdir("Final_Assembly");
-        rename("Afin_Assembly/".$current_afin, "Final_Assembly/".$current_afin);
+        rename("4_Afin_Assembly/".$current_afin, "Final_Assembly/".$current_afin);
         my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery("Final_Assembly/".$current_afin);
 		my %contigs_db_genes = %$contigs_db_genes;
 		$percent_recovered_genes=$percent_recovered_genes*100;
@@ -460,14 +460,14 @@ if(!-d "Final_Assembly"){
 				}
 			}
 	close ($cpcomposition);
-	if( -e "Afin_Assembly/Chloroplast_gene_composition_of_afin_contigs.txt"){
+	if( -e "4_Afin_Assembly/Chloroplast_gene_composition_of_afin_contigs.txt"){
 		my $temppwd = `pwd`;
                 chomp($temppwd);
                 $temppwd .= "/Final_Assembly/". $current_afin;
                 print $LOGFILE "Could not properly orientate the plastome. Either your plastome does not have an IR or there was an issue with the assembly. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
 				die;
 	}
-	if( -e "Afin_Assembly/Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt"){
+	if( -e "4_Afin_Assembly/Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt"){
                 my $temppwd = `pwd`;
                 chomp($temppwd);
                 $temppwd .= "/Final_Assembly/". $current_afin;
@@ -492,7 +492,7 @@ chdir("Coverage_Analysis");
 my $build_bowtie2_exec = $BOWTIE2 . "-build ../Final_Assembly/" . $name . "_FULLCP.fsa " . $name . "_bowtie";
 system($build_bowtie2_exec);
 
-my $cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . " -1 ../Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+my $cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
 system($cov_bowtie2_exec);
 
 my $jellyfish_count_exec = $JELLYFISH . " count -m 25 -t ". $threads . " -C -s 1G map_*";
@@ -532,7 +532,7 @@ sub scaffolding {
         print $LOGFILE "$current_runtime\tStarting scaffolding with SSPACE.\n";
         mkdir ("Scaffolding");
         chdir("Scaffolding");
-        my @p1_temp = <../../Trimmed_Reads/*P1*>;
+        my @p1_temp = <../../1_Trimmed_Reads/*P1*>;
         open my $lib_out, ">", $name . "_lib.txt";
         my $lib_counter=1;
         for my $p1file (@p1_temp){
@@ -652,7 +652,7 @@ sub count_contigs {
 sub run_afin {
 	###Sub must be given number of iterations, trim length, and number of reads needed to fuse contigs.
 	my $extension = $_[5];
-	my $afin_exec = $AFIN_DIR . "/afin -c " . $_[4] . " -r ../Trimmed_Reads/" . $name .".trimmed* -l " . $_[0] . " -f .1 -d " . $_[1] . " -x " . $extension . " -p " . $_[2] . " -i " . $_[3] ." -o ". $name . "_afin";
+	my $afin_exec = $AFIN_DIR . "/afin -c " . $_[4] . " -r ../1_Trimmed_Reads/" . $name .".trimmed* -l " . $_[0] . " -f .1 -d " . $_[1] . " -x " . $extension . " -p " . $_[2] . " -i " . $_[3] ." -o ". $name . "_afin";
 	print $LOGFILE "Using command $afin_exec.\n";
 	system($afin_exec);
 
@@ -933,7 +933,7 @@ sub orientate_plastome{
 
         for (my $i = 0; $i <=3; $i++){
 
-        	`perl $FPBIN/sequence_based_ir_id.pl ../Afin_Assembly/$current_afin $name $i`;
+        	`perl $FPBIN/sequence_based_ir_id.pl ../4_Afin_Assembly/$current_afin $name $i`;
         	my $split_fullname= $name ."_regions_split".$i.".fsa";
 
         	`$BLAST/makeblastdb -in $split_fullname -dbtype nucl`;
