@@ -2,12 +2,12 @@ Fast-Plast: Rapid de novo assembly and finishing for whole chloroplast genomes
 =============
 <b>Authors</b>: Michael R. McKain, <a href="https://github.com/afinit/afin">Mark Wilson</a><br>
 </br>
-Version 0.3 beta, August 12, 2016<br>
+Version 1.0.0, March 6, 2017<br>
 </br>
 <b>Contact</b>: https://github.com/mrmckain
 <h3>Description</h3>
 
-Fast-Plast is a pipeline that leverages existing and novel programs to quickly assemble, orient, and verify whole chloroplast genome sequences. For most datasets with sufficient data, Fast-Plast is able to produce a full-length de novo chloroplast genome assembly in approximately 30 minutes with no user mediation. 
+Fast-Plast is a pipeline that leverages existing and novel programs to quickly assemble, orient, and verify whole chloroplast genome sequences. For most datasets with sufficient data, Fast-Plast is able to produce a full-length de novo chloroplast genome assembly in approximately 30 minutes with no user mediation. In addition to a chloroplast sequence, Fast-Plast provide the information on chloroplast genes present in the final assembly.
 
 Currently, Fast-Plast is written to accomodate Illumina data, though most data types could be used with a few changes.
 
@@ -82,13 +82,29 @@ Fast-Plast was built for genome survey sequence (aka genome skimming or low-pass
 
 <h4>Usage</h4>
 
-<code> run_fast-plast.sh fastq-file1 fastq-file2 Taxon-ID </code>
+<code> fast-plast.pl [-1 <paired_end_file1> -2 <paired_end_file2> || -single <singe_end_file>] -name <sample_name> [options]  </code>
 
 Definition:
 
-          --fastq-file1        Fastq file for paired end read 1
-          --fastq-file2        Fastq file for paired end read 2
-          --Taxon-ID           Name for your sample
+        -1 <filenames>		File with forward paired-end reads. Multiple files can be designated with a comma-delimited list. 
+							Read files should be in matching order with other paired end files.
+		-2 <filenames>		File with reverse paired-end reads. Multiple files can be designated with a comma-delimited list. 
+							Read files should be in matching order with other paired end files.
+		-s <filenames>		File with unpaired reads. Multiple files can be designated with a comma-delimited list.
+
+		<b>PAIRED END AND SINGLE END FILES CAN BE PROVIDED SIMULTAENOUSLY.</b>
+
+		-n <sample_name>	Name for current assembly. We suggest a species name/accession combination as Fast-Plast will use 
+							this name as the FASTA ID in the final assembly.
+
+		Advanced options:
+
+		--threads			Number of threads used by Fast-Plast.  [Default = 4]
+		--adapters			Files of adapters used in making sequencing library. These should be in FASTA format. [Default = NEB-PE]
+		--bowtie_index		Order for sample to draw references for mapping. If order exists, then all available samples for that order 					will be used. If order does not exist in default set or the terms "all" or "GenBank" are given, one 							exemplar from each available order is used to build the Bowtie2 indicies. [default="All"]
+		--user_bowtie		User supplied bowtie2 indices. If this option is used, bowtie_index is ignored.
+		--posgenes			User defined genes for identification of single copy/IR regions and orientation. Useful when major 								rearrangments are present in user plastomes.
+		--coverage_analysis Flag to run the coverage analysis of a final chloroplast assembly.[Recommended]
 
 
 <h3>Coverage Analysis</h3>
