@@ -352,9 +352,19 @@ if( $total_afin_contigs > 1){
 	&remove_nested($current_afin, $current_afin.".blastn");
 	
 	$total_afin_contigs = &count_contigs($current_afin);
+
+	if ($total_afin_contigs > 1){
+		&remove_contamination($current_afin, \%)
+	}
 	my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 	my %contigs_db_genes = %$contigs_db_genes;
+	if ($total_afin_contigs > 1){
+		&remove_contamination($current_afin, \%contigs_db_genes);
+	}
 
+	$total_afin_contigs = &count_contigs($current_afin);
+	($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
+	%contigs_db_genes = %$contigs_db_genes;
 
 	if ($total_afin_contigs > 1){
 		($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
@@ -840,7 +850,81 @@ sub remove_nested {
 }
 
 ##########
+sub remove_contamination{
+	
+	my $current_seq = $_[0];
+	my %contigs_cp_genes = %$_[1];
 
+	open my $temp_seq, "<", $current_seq;
+	my $tsid;
+	my %seqlens;
+	while(<$temp_seq>){
+		chomp;
+		if(/>/){
+			$tsid = substr($_,1);
+		}
+		else{
+			$seqlens{$tsid}.=$_;
+		}
+	}
+
+	my %genes_by_contig;
+	my %count_per_contig;
+	my %delete_contigs;
+	my %all_contigs;
+	for my $contig_name (sort keys %contigs_cp_genes){
+		for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
+			$count_per_contig{$contig_name}++;
+			$genes_by_contig{$gene_names}{$contig_name}=1;
+			$all_contigs{$contig_name}=1;
+		}
+	}
+
+	for my $gene_name (keys %genes_by_contig){
+		if(keys %{$genes_by_contig{$gene_name}}>1){
+			my $max = 0;
+			my $maxid;
+			for my $contig_name (keys %{$genes_by_contig{$gene_name}}){
+				if($count_per_contig{$contig_name} > $max){
+					$max = $count_per_contig{$contig_name};
+					$maxid = $contig_name;
+				}
+			}
+			for my $contig_name (keys %{$genes_by_contig{$gene_name}}){
+				if($contig_name ne $maxid){
+					$delete_contigs{">".$contig_name}=0;
+				}
+			}
+
+		}
+	}
+
+
+	 open my $afinout, ">", $temp_contigsfile . "_fixed";
+        open my $oldafin, "<", $current_seq;
+
+        my $tempsid;
+        while(<$oldafin>){
+                chomp;
+                if(/>/){
+                        if(exists $delete_contigs{$_} || !exists $all_contigs{substr($_,1)}){ #removing contigs that do not have cp genes
+                                $tempsid=();
+                                next;
+                        }
+                        else{
+                                $tempsid=$_;
+                                print $afinout  "$tempsid\n";
+                        }
+                }
+                elsif($tempsid){
+                        print $afinout "$_\n";
+                }
+        }
+
+        `mv $temp_contigsfile\_fixed $current_seq`;
+}
+
+##########
 sub orientate_plastome{
         
         my $current_afin = $_[0];
