@@ -5,6 +5,10 @@ Fast-Plast: Rapid de novo assembly and finishing for whole chloroplast genomes
 Version 1.0.0, March 6, 2017<br>
 </br>
 <b>Contact</b>: https://github.com/mrmckain
+
+![Fast-Plast Logo](/mrmckain/Fast-Plast/extras/Fast-Plast_Logo.png)
+Format: ![Alt Text](url)
+
 <h3>Description</h3>
 
 Fast-Plast is a pipeline that leverages existing and novel programs to quickly assemble, orient, and verify whole chloroplast genome sequences. For most datasets with sufficient data, Fast-Plast is able to produce a full-length de novo chloroplast genome assembly in approximately 30 minutes with no user mediation. In addition to a chloroplast sequence, Fast-Plast provide the information on chloroplast genes present in the final assembly.
@@ -39,7 +43,7 @@ We are developing a different control file that will allow users to change param
 </ul>
 
 <h5>Control File</h5>
-The control file is run_fast-plast.sh and needs paths to the programs Trimmomatic, bowtie2, SPAdes, and the Fast-Plast repository.
+The control file is run_fast-plast.pl and needs paths to the programs Trimmomatic, bowtie2, SPAdes, and the Fast-Plast repository.
 
 The Trimmomatic command includes adapter trimming and needs a file.  We use the file included in the bin directory for adapters from the NEBNext DNA Ultra II library prep kit for Illumina. If this will not work for you data, it should be changed.
 
