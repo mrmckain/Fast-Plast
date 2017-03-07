@@ -29,11 +29,9 @@ Fast-Plast requires a number of commonly used bioinformatics programs. We have i
 * <a href="https://github.com/nsoranzo/sspace_basic">SSPACE</a> (scaffolding when single contig not obtainable)
 * <a href="https://sourceforge.net/projects/bowtie-bio/">Bowtie1</a> (required for SSPACE)
 
-<br>
 <h3>afin</h3>
 * c++ complier with c++11 support and zlib.h.  zlib.h is a standard base library for most Unix systems but can be obtained <a href="http://www.zlib.net/">here</a>.
 
-<br>
 <h3>Coverage Analysis</h3>
 * <a href="http://www.genome.umd.edu/jellyfish.html#Release">Jellyfish 2</a>
 * R
@@ -80,7 +78,13 @@ Fast-Plast was built for genome survey sequence (aka genome skimming or low-pass
 
 <h3>Bowtie Index</h3>
 
-Fast-Plast is packaged with 1,020 whole chloroplast genomes from GenBank. These cover a wide range of diversity including marine algae, angiosperms, ferns, etc. To access these, use the order of your species in the --bowtie_index option. Fast-Plast will pull all members of that order and create a bowtie index. If your order is not present, Fast-Plast will use a representative sequence from all orders present. This option can be selected using "All" or "GenBank".
+Fast-Plast is packaged with 1,020 whole chloroplast genomes from GenBank. These cover a wide range of diversity including marine algae, angiosperms, ferns, etc. To access these, use the order of your species in the --bowtie_index option. Fast-Plast will pull all members of that order and create a bowtie index. If your order is not present, Fast-Plast will use a representative sequence from all orders present. This option can be selected using "All" or "GenBank". "All" is the default.
+
+Example:
+
+    --bowtie_index Poales
+
+This will use all available Poales plastomes in data set (117).
 
 Orders currently available in Fast-Plast (68):
 
@@ -109,29 +113,66 @@ Orders currently available in Fast-Plast (68):
     Dipsacales			Mamiellales	
 
 
-<h4>Output</h4>
+<h3>User Provided Bowtie Index</h3>
 
-<b>Trimmed Reads</b>:
-	For paired-end data, four trimmed read files will be made. Files ending in *trimmed_P1.fq and *trimmed_P2.fq are still paired-end.  The files ending in *trimmed_U1.fq and *trimmed_U2.fq are single-end.
+A user-made bowtie index can be provided using the --user_bowtie option. The full path to the index should be given. If this option is used, the --bowtie_index option will be ignored.
 
-<b>Chloroplast Mapped Reads</b>:
-	Reads that mapped to the bowtie index are in the files map_pair_hits.1.fq, map_pair_hits.2.fq, and map_hits.fq for paired-end and single-end respectively. The file Taxon-ID.sam (see below) is the standard bowtie2 mapping output but is not used.
+<h3>Name</h3>
 
-<b>SPAdes Directory</b>:
-	The directory "spades_iter1" will contain the SPAdes assembly and standard SPAdes output files.
+The --name option must be used with each run. No default is set. This simply gives a prefix to all files.
 
-<b>Coverage Filtered SPAdes Assembly</b>:
-	The file "filtered_spades_contigs.fsa" contains contigs from the SPAdes assemblies that have low coverage, relative to the average coverage of all contigs, removed.  This is to remove mitochondrial contamination.
+<h1>Output</h1>
 
-<b>Afin Contigs</b>:
-	Output from afin is in the file "Taxon-ID_afin.fa".  Often, this will be a single contig, but if more than one is present, either the coverage of the plastome is not high enough or there may be regions of the plastome with more than a single, dominant sequence. A log file that shows the steps afin took in the extention and assembly process if found in "Taxon-ID_afin.log".
+Fast-Plast produces a number of files that allow the user to trace the steps of the pipeline. From the directory where Fast-Plast is called, three files and direcotry will be produced.  The directory will be named by the --name option. The three files include:
 
-<b>Regions Files</b>:
-	Files ending in *regions_split2.fsa and *regions_split3.fsa will be created that Fast-Plast's best guesses for the LSC, IR, and SSC regions of the plastome.  These use the same sequence from the afin assembly, but use a different pattern for collapsing and removed putative single copy regions.
+<b>name_Fast-Plast_Progress.log</b>
+Gives time and results for each step in the pipeline. Information regarding paramters chosen based on reads (such as kmer size) and chloroplast gene content will be found here. 
 
-<b>Complete Chloroplast Genome</b>:
-	Full chloroplast genomes for both 2 and 3 splits are completed and named  Taxon-ID_2_FULLCP.fsa and Taxon-ID_3_FULLCP.fsa. Users can check the size of these files to see which they think is correct for their plastome. Automation for this process is in development.
+<b>name_result_out.log</b>
+Contains the STDOUT from all programs.
 
+<b>name__results_error.log</b>
+Contains the STDERR from all programs.
+
+<h2>Directory Hierarchy</h2>
+<h3>1_Trimmed_Reads</h3>:
+For paired-end data, four trimmed read files will be made. Files ending in *trimmed_P1.fq and *trimmed_P2.fq are still paired-end.  The files ending in *trimmed_UP.fq is single-end. If only single end files are used, then only the *trimmed_UP.fq file will be found.
+
+<h3>2_Bowtie_Mapping</h3>
+Fast-Plast created bowtie index files will be found in this directory. Reads that mapped to the bowtie index are in the files map_pair_hits.1.fq, map_pair_hits.2.fq, and map_hits.fq for paired-end and single-end respectively. The file name.sam is the standard bowtie2 mapping output but is not used.
+
+<h3>3_Spades_Assembly</h3>:
+The directory "spades_iter1" will contain the SPAdes assembly and standard SPAdes output files.
+
+<h3>4_Afin_Assembly</h3>:
+The file "filtered_spades_contigs.fsa" contains contigs from the SPAdes assemblies that fall within the range of minus one standard deviation of the weigthed mean coverage to plus 2.5 standard deviations. 
+
+Output from afin is the files *_afin_iter0.fa, *_afin_iter1.fa, *_afin_iter2.fa, and *_afin.log.  The log file that shows the steps afin took in the extention and assembly process. 
+
+Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt contains information regarding the chloroplast gene content of the each contig found *_afin_iter2.fa.
+
+If only single end data were used and more than one contig is found, Fast-Plast will quit here. The final output will be available in Final_Assembly.
+
+<h4>Scaffolding</h4>
+If more than one contig is found in the file afin assembly and paired-end reads were used, SSPACE will be invoked to attempt scaffolding of contigs.  These results will be found here. If more than one contig/scaffold is present in the final output, this will be the last step of the pipeline and results will be found in Final_Assembly.
+
+<h3>5_Plastome_Finishing</h3>
+If a single contig was found through either contig assembly or scaffolding, this directory will be created to contain files associated with identification of the large single copy, small single copy, and inverted repeats. If these are not present, this will be the last step of the pipeline and results of the single (unorientated) contig from the assembly steps will be found in Final_Assembly.
+
+<h3>Final_Assembly</h3>
+The final assembly will be found in this directory. If the pipeline was able to full assemble and orientate the plastome, the files *_CP_pieces.fsa (plastome split into LSC, SSC, and IR), *_FULLCP.fsa (final assembly), and Chloroplast_gene_composition_of_final_contigs.txt (all chloroplast genes found in final assembly) will be present. The file Chloroplast_gene_composition_of_final_contigs.txt will always be made for the final assembly regardless of where Fast-Plast stops.
+
+<h3>Coverage_Analysis</h3>
+The coverage analysis option should also be used to ensure accurate assemble of the plastome. Multiple files associated with the coverage estimation process will be present in this directory. The three most important files are:
+
+<b>name.coverage_25kmer.txt</b>
+Contains 25-mer sequence, start position, and coverage across final assembly.
+
+<b>name_coverage.pdf</b>
+Graphical representation of name.coverage_25kmer.txt. Red circles indicate a coverage of 0 and potential assembly issue.
+
+<b>name_problem_regions_plastid_assembly.txt</b>
+Identified stretches of the assembly greater than 25 base pairs that have a coverage of 0. If this file is empty, the assembly is accepted.
 
 <h1>Usage</h1>
 
@@ -160,30 +201,6 @@ Definition:
 		--coverage_analysis Flag to run the coverage analysis of a final chloroplast assembly.[Recommended]
 
 
-<h3>Coverage Analysis</h3>
-
-The coverage analysis pipeline uses a 25 base pair sliding window to look at coverage across your assembly.  A graphical representation of the coverage is provided.
-
-<h4>Input</h4>
-
-The chloroplast assembly provided by Fast-Plast and the trimmed reads from the initial step of the Fast-Plast pipeline.
-
-<h4>Output</h4>
-
-<b>Chloroplast Mapped Reads</b>:
-	Reads that mapped to the bowtie index are in the files map_pair_hits.1.fq, map_pair_hits.2.fq, and map_hits.fq for paired-end and single-end respectively. The file plastid_coverage.sam (see below) is the standard bowtie2 mapping output but is not used.
-
-<b>Jellyfish Output</b>:
-	Binary output of kmer counts from Jellyfish is found in mer_counts.jf.  The FASTA format of counts for unique kmers is found in Accession_ID_dump.
-
-<b>Coverage for Plastome</b>:
-	Sliding window coverage for the chloroplast assembly is found in the file Accession_ID.coverage_25kmer.txt. This file is tab delimited with a sequence column, a position column, and a coverage column.
-
-<b>Graph of Coverage</b>:
-	Coverage is coveraged to a graph in R and presented as a pdf.  X-axis representes position across the chloroplast genome and the y-axis is the coverage.  If a dot in the graph is red, then this is a position with 0 coverage.
-
-<b>Poorly Assembled Regions</b>:
-	The coverage file is processed to identify all stretches of 25 or more that have a coverage of 0.  Users can alter this to any length or coverage they choose.  We default at 25 based on the 25-mer sliding window and a coverage of 0 showing no representation in the reads.  This file is Accession_ID_coverage_25kmer_problem_regions_plastid_assembly.txt
 
 
 ## Changelog
