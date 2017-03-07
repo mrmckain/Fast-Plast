@@ -195,7 +195,8 @@ Definition:
 
 		--threads			Number of threads used by Fast-Plast.  [Default = 4]
 		--adapters			Files of adapters used in making sequencing library. These should be in FASTA format. [Default = NEB-PE]
-		--bowtie_index		Order for sample to draw references for mapping. If order exists, then all available samples for that order will be used. If order does not exist in default set or the terms "all" or "GenBank" are given, one exemplar from each available order is used to build the Bowtie2 indicies. [default="All"]
+		--bowtie_index		Order for sample to draw references for mapping. If order exists, then all available samples for that 
+							order will be used. If order does not exist in default set or the terms "all" or "GenBank" are given, one exemplar from each available order is used to build the Bowtie2 indicies. [default="All"]
 		--user_bowtie		User supplied bowtie2 indices. If this option is used, bowtie_index is ignored.
 		--posgenes			User defined genes for identification of single copy/IR regions and orientation. Useful when major rearrangments are present in user plastomes.
 		--coverage_analysis Flag to run the coverage analysis of a final chloroplast assembly.[Recommended]
