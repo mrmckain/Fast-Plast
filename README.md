@@ -84,78 +84,29 @@ Fast-Plast is packaged with 1,020 whole chloroplast genomes from GenBank. These 
 
 Orders currently available in Fast-Plast:
 
-<ol
-	><li>Apiales</li
-	><li>Aquifoliales</li
-	><li>Araucariales
-	><li>Asparagales
-	><li>Asterales
-	><li>Austrobaileyales
-	><li>Brassicales
-	><li>Bryopsidales
-	><li>Buxales
-	><li>Caryophyllales
-	><li>Celastrales
-	><li>Chlamydomonadales
-	><li>Chloranthales
-	><li>Chlorellales
-	><li>Cornales
-	><li>Cucurbitales
-	><li>Cupressales
-	><li>Cyanidiales
-	><li>Cyatheales
-	><li>Cycadales
-	><li>Desmidiales
-	><li>Dioscoreales</li
-></ol> <ol
-	><li>Dipsacales</li
-	><li>Ericales</li
-	><li>Euglenales</li
-	><li>Eupodiscales</li
-	><li>Fabales</li
-	><li>Fagales</li
-	><li>Fragilariales</li
-	><li>Fucales</li
-	><li>Funariales</li
-	><li>Garryales</li
-	><li>Gentianales</li
-	><li>Geraniales</li
-	><li>Ginkgoales</li
-	><li>Gracilariales</li
-	><li>Hypnales</li
-	><li>Lamiales</li
-	><li>Laminariales</li
-	><li>Laurales</li
-	><li>Liliales</li
-	><li>Lycopodiales</li
-	><li>Magnoliales</li
-	><li>Malpighiales</li
-></ol> <ol
-	><li>Malvales</li
-	><li>Mamiellales</li
-	><li>Marchantiales</li
-	><li>Monomastigales</li
-	><li>Myrtales</li
-	><li>Nymphaeales</li
-	><li>Orthotrichales</li
-	><li>Pinales</li
-	><li>Poales</li
-	><li>Polypodiales</li
-	><li>Proteales</li
-	><li>Pyrenomonadales</li
-	><li>Ranunculales</li
-	><li>Rosales</li
-	><li>Sapindales</li
-	><li>Saxifragales</li
-	><li>Solanales</li
-	><li>Sphaeropleales</li
-	><li>Takakiales</li
-	><li>Ulvales</li
-	><li>Vaucheriales</li
-	><li>Vitales</li
-	><li>Zingiberales</li
-	><li>Zygnematales</li
-></ol>
+    Apiales	Ericales	Marchantiales
+    Aquifoliales	Euglenales	Monomastigales
+    Araucariales	Eupodiscales	Myrtales
+    Asparagales	Fabales	Nymphaeales
+    Asterales	Fagales	Orthotrichales
+    Austrobaileyales	Fragilariales	Pinales
+    Brassicales	Fucales	Poales
+    Bryopsidales	Funariales	Polypodiales
+    Buxales	Garryales	Proteales
+    Caryophyllales	Gentianales	Pyrenomonadales
+    Celastrales	Geraniales	Ranunculales
+    Chlamydomonadales	Ginkgoales	Rosales
+    Chloranthales	Gracilariales	Sapindales
+    Chlorellales	Hypnales	Saxifragales
+    Cornales	Lamiales	Solanales
+    Cucurbitales	Laminariales	Sphaeropleales
+    Cupressales	Laurales	Takakiales
+    Cyanidiales	Liliales	Ulvales
+    Cyatheales	Lycopodiales	Vaucheriales
+    Cycadales	Magnoliales	Vitales
+    Desmidiales	Malpighiales	Zingiberales
+    Dioscoreales	Malvales	Zygnematales
+    Dipsacales	Mamiellales	
 
 
 <h4>Output</h4>
