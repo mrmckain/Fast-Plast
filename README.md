@@ -10,9 +10,9 @@ Version 1.1.0<br>
 
 <h1>Description</h1>
 
-Fast-Plast is a pipeline that leverages existing and novel programs to quickly assemble, orient, and verify whole chloroplast genome sequences. For most datasets with sufficient data, Fast-Plast is able to produce a full-length de novo chloroplast genome assembly in approximately 30 minutes with no user mediation. In addition to a chloroplast sequence, Fast-Plast provide the information on chloroplast genes present in the final assembly.
+Fast-Plast is a pipeline that leverages existing and novel programs to quickly assemble, orient, and verify whole chloroplast genome sequences. For most datasets with sufficient data, Fast-Plast is able to produce a full-length de novo chloroplast genome assembly in approximately 30 minutes with no user mediation. In addition to a chloroplast sequence, Fast-Plast identifies chloroplast genes present in the final assembly.
 
-Currently, Fast-Plast is written to accomodate Illumina data, though most data types could be used with a few changes.
+Currently, Fast-Plast is written to accomodate Illumina data, though most data types could be used.
 
 Fast-Plast uses a de novo assembly approach by combining the de bruijn graph-based method of SPAdes with an iterative seed-based assembly implemented in afin to close gaps of contigs with low coverage. The pipeline then identifies regions from the quadripartite structure of the chloroplast genome, assigns identity, and orders them according to standard convention. A coverage analysis is then conducted to assess the quality of the final assembly. 
 
@@ -22,56 +22,141 @@ Fast-Plast uses a de novo assembly approach by combining the de bruijn graph-bas
 Fast-Plast requires a number of commonly used bioinformatics programs. We have included an installation script to help users properly prepare Fast-Plast for use.
 
 * Perl 5+
-* <a href="http://www.usadellab.org/cms/?page=trimmomatic">Trimmomatic</a> 
-* <a href="http://bowtie-bio.sourceforge.net/bowtie2/index.shtml">Bowtie2</a> 
-* <a href="http://bioinf.spbau.ru/spades">SPAdes</a>
-* <a href="https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download">BLAST+</a>
-* <a href="https://github.com/nsoranzo/sspace_basic">SSPACE</a>
+* <a href="http://www.usadellab.org/cms/?page=trimmomatic">Trimmomatic</a> (initial read cleaning)
+* <a href="http://bowtie-bio.sourceforge.net/bowtie2/index.shtml">Bowtie2</a> (read reduction to only chloroplast-like reads)
+* <a href="http://bioinf.spbau.ru/spades">SPAdes</a> (initial assembly)
+* <a href="https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download">BLAST+</a> (multiple checks for gene content)
+* <a href="https://github.com/nsoranzo/sspace_basic">SSPACE</a> (scaffolding when single contig not obtainable)
 * <a href="https://sourceforge.net/projects/bowtie-bio/">Bowtie1</a> (required for SSPACE)
 
 <br>
-**Afin**
-* afin requires a c++ complier with c++11 support and zlib.h.  zlib.h is a standard base library for most Unix systems but can be obtained <a href="http://www.zlib.net/">here</a>.
+<h3>afin</h3>
+* c++ complier with c++11 support and zlib.h.  zlib.h is a standard base library for most Unix systems but can be obtained <a href="http://www.zlib.net/">here</a>.
 
 <br>
-**Coverage Analysis**
+<h3>Coverage Analysis</h3>
 * <a href="http://www.genome.umd.edu/jellyfish.html#Release">Jellyfish 2</a>
 * R
 
-
-Fast-Plast is coded to use 4 threads during the Trimmomatic, bowtie2, SPAdes, and afin steps. This can simply be changed by the user if this number is not available.
-
 Memory requirements will vary based on the size of your data set. Expect to use 1.5-2x the memory for the size of your reads files. If your data set is exceptionally large, we have found success in reducing the dataset to 50 million reads and running them through Fast-Plast.
 
-<h4>Installation</h4>
+<h1>Installation</h1>
 
-Download or clone this repository. afin needs to be compiled and paths to the various required components should be set.
+Fast-Plast has been tested on Linux (CentOs 7), but should be compatible with any flavor that can handle dependencies. 
 
-We are developing a different control file that will allow users to change parameters throughout the pipeline and set the paths more easily.  Until then, follow these instructions.
+Clone the Github repository:
 
-<h5>afin</h5>
-<ul>
-	<li><code> cd afin </code></li>
-	<li><code> make </code></li>
-</ul>
+    git clone https://github.com/mrmckain/Fast-Plast.git
 
-<h5>Control File</h5>
-The control file is run_fast-plast.pl and needs paths to the programs Trimmomatic, bowtie2, SPAdes, and the Fast-Plast repository.
+To install, run the INSTALL.pl script found in the Fast-Plast repository.
 
-The Trimmomatic command includes adapter trimming and needs a file.  We use the file included in the bin directory for adapters from the NEBNext DNA Ultra II library prep kit for Illumina. If this will not work for you data, it should be changed.
+     perl INSTALL.pl
 
-The bowtie2 command uses the bowtie index "Verdant" packaged with Fast-Plast.  This is a collection 320 whole chloroplast genomes from GenBank and the Verdant chloroplast database. These are all angiosperm chloroplast genomes. If your taxa are not angiosperms, we suggest using a data set that is phylogenetically closer to your samples.
+The installation script will walk you through installation.  If you already have the dependencies installed, you will need to give the full path to the executables. The installation script can also install all dependencies for you.  To do this, select "All" when prompted.  Dependencies will be installed in Fast-Plast/bin/. This script will also change paths in the control script, compile afin and jellyfish2, and unzip the default chloroplast genomes for mapping.
 
-<h5>Plastome Finisher</h5>
-The plastome_finisher.sh scripts in the bin directory needs to be adjusted to add paths to blastn and the Fast-Plast repository.
+For advanced users, paths can be set directly in the fast-plast.pl file:
 
-The blastn search uses the "positional genes" database present in the Fast-Plast bin directory.  These include the genes psbA (assumed large single copy), rpl23 (assumed IR), and ndhF (assumed small single copy) all expected to be on the reverse strand.  If this does not follow with your samples, you can add a blast nucleotide database that includes genes from the LSC, IR, and SSC. The script orientate_plastome.pl expects the gene names psbA, rpl23, and ndhF to identify regions of the plastome. If you are not using these, then the names need to be changed in the script (or you can use these names in your blast database).  <b>We will update this for flexibility in the near future.</b>
+    ###directories
+    my $FPROOT = "$FindBin::RealBin";
+    my $AFIN_DIR = "$FPROOT/afin";
+    my $COVERAGE_DIR = "$FPROOT/Coverage_Analysis";
+    my $FPBIN = "$FPROOT/bin";
+    my $TRIMMOMATIC;
+    my $BOWTIE2;
+    my $SPADES;
+    my $BLAST;
+    my $SSPACE;
+    my $BOWTIE1;
+    my $JELLYFISH;
 
-<h4>Input</h4>
+Instructions for direct compilation of afin can be found <a href="https://github.com/mrmckain/Fast-Plast/tree/master/afin">here</a>. 
 
-Input files are in FASTQ format and expected to be paired-end. The data is not expected to be adapter trimmed or quality filtered, though this will not impede the assembly. If you data is not paired-end, contact Michael through this repository and I will provide you with a verision that handles single-end data.  We will have this as an option in an update soon.
+<h1>Input</h1>
 
-Fast-Plast was built for genome survey sequence (aka genome skimming or low-pass genome sequencing) data. Sequence capture data can be used, but need to be normalized first.  If your data is from a sequence capture experiment (aka target enrichments or anchored phylogenomics), contact Michael and I will be able to provide you with scripts for normalization.  We currently use the normalization method packaged with <a href="https://github.com/trinityrnaseq/trinityrnaseq/wiki">Trinity</a> but have not implemented this in the current version of Fast-Plast.
+<h3>Reads</h3>
+Input files are in FASTQ format. The data is not expected to be adapter trimmed or quality filtered, though this will not impede the assembly. 
+
+Fast-Plast was built for genome survey sequence (aka genome skimming or low-pass genome sequencing) data. Sequence capture data can be used but needs to be normalized first.  If your data is from a sequence capture experiment (aka target enrichments or anchored phylogenomics), we suggest using the normalization method packaged with <a href="https://github.com/trinityrnaseq/trinityrnaseq/wiki">Trinity</a>, <a href="http://ged.msu.edu/papers/2012-diginorm/">khmer</a>, or <a href="https://sourceforge.net/projects/bbmap/">bbnorm</a>. 
+
+<h3>Bowtie Index</h3>
+
+Fast-Plast is packaged with 1,020 whole chloroplast genomes from GenBank. These cover a wide range of diversity including marine algae, angiosperms, ferns, etc. To access these, use the order of your species in the --bowtie_index option. Fast-Plast will pull all members of that order and create a bowtie index. If your order is not present, Fast-Plast will use a representative sequence from all orders present. This option can be selected using "All" or "GenBank".
+
+Orders currently available in Fast-Plast:
+
+<ol
+	><li>Apiales</li
+	><li>Aquifoliales</li
+	><li>Araucariales
+	><li>Asparagales
+	><li>Asterales
+	><li>Austrobaileyales
+	><li>Brassicales
+	><li>Bryopsidales
+	><li>Buxales
+	><li>Caryophyllales
+	><li>Celastrales
+	><li>Chlamydomonadales
+	><li>Chloranthales
+	><li>Chlorellales
+	><li>Cornales
+	><li>Cucurbitales
+	><li>Cupressales
+	><li>Cyanidiales
+	><li>Cyatheales
+	><li>Cycadales
+	><li>Desmidiales
+	><li>Dioscoreales</li
+></ol> <ol
+	><li>Dipsacales</li
+	><li>Ericales</li
+	><li>Euglenales</li
+	><li>Eupodiscales</li
+	><li>Fabales</li
+	><li>Fagales</li
+	><li>Fragilariales</li
+	><li>Fucales</li
+	><li>Funariales</li
+	><li>Garryales</li
+	><li>Gentianales</li
+	><li>Geraniales</li
+	><li>Ginkgoales</li
+	><li>Gracilariales</li
+	><li>Hypnales</li
+	><li>Lamiales</li
+	><li>Laminariales</li
+	><li>Laurales</li
+	><li>Liliales</li
+	><li>Lycopodiales</li
+	><li>Magnoliales</li
+	><li>Malpighiales</li
+></ol> <ol
+	><li>Malvales</li
+	><li>Mamiellales</li
+	><li>Marchantiales</li
+	><li>Monomastigales</li
+	><li>Myrtales</li
+	><li>Nymphaeales</li
+	><li>Orthotrichales</li
+	><li>Pinales</li
+	><li>Poales</li
+	><li>Polypodiales</li
+	><li>Proteales</li
+	><li>Pyrenomonadales</li
+	><li>Ranunculales</li
+	><li>Rosales</li
+	><li>Sapindales</li
+	><li>Saxifragales</li
+	><li>Solanales</li
+	><li>Sphaeropleales</li
+	><li>Takakiales</li
+	><li>Ulvales</li
+	><li>Vaucheriales</li
+	><li>Vitales</li
+	><li>Zingiberales</li
+	><li>Zygnematales</li
+></ol>
+
 
 <h4>Output</h4>
 
@@ -97,7 +182,7 @@ Fast-Plast was built for genome survey sequence (aka genome skimming or low-pass
 	Full chloroplast genomes for both 2 and 3 splits are completed and named  Taxon-ID_2_FULLCP.fsa and Taxon-ID_3_FULLCP.fsa. Users can check the size of these files to see which they think is correct for their plastome. Automation for this process is in development.
 
 
-<h4>Usage</h4>
+<h1>Usage</h1>
 
 <code> fast-plast.pl [-1 <paired_end_file1> -2 <paired_end_file2> || -single <singe_end_file>] -name <sample_name> [options]  </code>
 
@@ -150,22 +235,10 @@ The chloroplast assembly provided by Fast-Plast and the trimmed reads from the i
 	The coverage file is processed to identify all stretches of 25 or more that have a coverage of 0.  Users can alter this to any length or coverage they choose.  We default at 25 based on the 25-mer sliding window and a coverage of 0 showing no representation in the reads.  This file is Accession_ID_coverage_25kmer_problem_regions_plastid_assembly.txt
 
 
-<h4>Usage</h4>
+## Changelog
+* 07-March-2017	First Release Fast-Plast v.1.1.0
 
-<code>Coverage_Analysis/plastome_coverage_paired-single.sh Chloroplast_Assembly Accession_ID Paired_End-1 Paired_End-2 Single_End</code>
-
-Definition:
-
-          --Chloroplast_Assembly        Assembly in fasta format
-          --Accession_ID                Name for your sample
-          --Paired_End-1                Fastq file for paired-end read 1
-          --Paired_End-2                Fastq file for paired-end read 2
-          --Single_End                  Comma delimited list of single-end fastq files of reads
-
-
-The current version needs Jellyfish (v2+) and bowtie2, expected to be in PATH.  We usually use Trimmomatic trimmed paired end reads, so we use the two trimmed paired end files and both unpaired files that trimmomatic outputs.
-
-<h3>References</h3>
+<h1>References</h1>
 
 Bankevich, A., S. Nurk, D. Antipov, A. A. Gurevich, M. Dvorkin, A. S. Kulikov, V. M. Lesin, S. I. Niklenko, S. Pham, A. D. Prjibelski, A. V. Pyshkin, A. V. Sirotkin, N. Vyahhi, G. Tesler, M.A. Alexkseyev, and P. A. Pevzner. 2012. SPAdes: a new genome assembly algorithm and its applications to single-cell sequencing. <i>J. Comp. Biol.</i>, 19(5):455-477.<br>
 Bolger, A. M., M. Lohse, and B. Usadel. 2014. Trimmomatic: A flexible trimmer for Illumina Sequence Data. <i>Bioinformatics</i>, btu170.<br>
