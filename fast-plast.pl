@@ -1033,7 +1033,7 @@ sub orientate_plastome{
 			$percent_recovered_genes=$percent_recovered_genes*100;
 
 			if($percent_recovered_genes > .9){
-					`perl $FPBIN/orientate_plastome_v.2.0.pl $split_fullname $current_afin\_positional_genes.blastn $name`;
+					`perl $FPBIN/orientate_plastome_v.2.0.pl $split_fullname $split_fullname\_positional_genes.blastn $name`;
         			my $final_seq = $name ."_FULLCP.fsa";
         			$blast_afin_exec = $BLAST . "blastn -query " . $final_seq . " -db " . $posgenes . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $current_afin . "_positional_genes" . ".blastn";
         			system($blast_afin_exec);
