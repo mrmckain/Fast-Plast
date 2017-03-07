@@ -538,7 +538,7 @@ system($cov_bowtie2_exec);
 my $jellyfish_count_exec = $JELLYFISH . " count -m 25 -t ". $threads . " -C -s 1G map_*";
 system($jellyfish_count_exec);
 
-my $jellyfish_dump_exec = $JELLYFISH . " dump mer_counts.jf . > " . $name . "_25dump";
+my $jellyfish_dump_exec = $JELLYFISH . " dump mer_counts.jf > " . $name . "_25dump";
 system($jellyfish_dump_exec);
 
 my $window_cov_exec = "perl " . $COVERAGE_DIR . "/new_window_coverage.pl " . $name . "_25dump ../Final_Assembly/" . $name . "_FULLCP.fsa " . $name . " 25";
