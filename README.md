@@ -125,26 +125,26 @@ The --name option must be used with each run. No default is set. This simply giv
 
 Fast-Plast produces a number of files that allow the user to trace the steps of the pipeline. From the directory where Fast-Plast is called, three files and direcotry will be produced.  The directory will be named by the --name option. The three files include:
 
-<b>name_Fast-Plast_Progress.log</b>
+<b>name_Fast-Plast_Progress.log</b><br>
 Gives time and results for each step in the pipeline. Information regarding paramters chosen based on reads (such as kmer size) and chloroplast gene content will be found here. 
 
-<b>name_result_out.log</b>
+<b>name_result_out.log</b><br>
 Contains the STDOUT from all programs.
 
-<b>name__results_error.log</b>
+<b>name__results_error.log</b><br>
 Contains the STDERR from all programs.
 
 <h2>Directory Hierarchy</h2>
-<h3>1_Trimmed_Reads</h3>:
+<h3>1_Trimmed_Reads</h3>
 For paired-end data, four trimmed read files will be made. Files ending in *trimmed_P1.fq and *trimmed_P2.fq are still paired-end.  The files ending in *trimmed_UP.fq is single-end. If only single end files are used, then only the *trimmed_UP.fq file will be found.
 
 <h3>2_Bowtie_Mapping</h3>
 Fast-Plast created bowtie index files will be found in this directory. Reads that mapped to the bowtie index are in the files map_pair_hits.1.fq, map_pair_hits.2.fq, and map_hits.fq for paired-end and single-end respectively. The file name.sam is the standard bowtie2 mapping output but is not used.
 
-<h3>3_Spades_Assembly</h3>:
+<h3>3_Spades_Assembly</h3>
 The directory "spades_iter1" will contain the SPAdes assembly and standard SPAdes output files.
 
-<h3>4_Afin_Assembly</h3>:
+<h3>4_Afin_Assembly</h3>
 The file "filtered_spades_contigs.fsa" contains contigs from the SPAdes assemblies that fall within the range of minus one standard deviation of the weigthed mean coverage to plus 2.5 standard deviations. 
 
 Output from afin is the files *_afin_iter0.fa, *_afin_iter1.fa, *_afin_iter2.fa, and *_afin.log.  The log file that shows the steps afin took in the extention and assembly process. 
@@ -165,13 +165,13 @@ The final assembly will be found in this directory. If the pipeline was able to 
 <h3>Coverage_Analysis</h3>
 The coverage analysis option should also be used to ensure accurate assemble of the plastome. Multiple files associated with the coverage estimation process will be present in this directory. The three most important files are:
 
-<b>name.coverage_25kmer.txt</b>
+<b>name.coverage_25kmer.txt</b><br>
 Contains 25-mer sequence, start position, and coverage across final assembly.
 
-<b>name_coverage.pdf</b>
+<b>name_coverage.pdf</b><br>
 Graphical representation of name.coverage_25kmer.txt. Red circles indicate a coverage of 0 and potential assembly issue.
 
-<b>name_problem_regions_plastid_assembly.txt</b>
+<b>name_problem_regions_plastid_assembly.txt</b><br>
 Identified stretches of the assembly greater than 25 base pairs that have a coverage of 0. If this file is empty, the assembly is accepted.
 
 <h1>Usage</h1>
