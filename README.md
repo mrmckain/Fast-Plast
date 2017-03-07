@@ -40,7 +40,7 @@ Memory requirements will vary based on the size of your data set. Expect to use 
 
 <h1>Installation</h1>
 
-Fast-Plast has been tested on Linux (CentOs 7), but should be compatible with any flavor that can handle dependencies. 
+Fast-Plast has been tested on Linux (CentOs 7) but should be compatible with any flavor that can handle dependencies. 
 
 Clone the Github repository:
 
