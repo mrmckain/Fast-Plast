@@ -82,31 +82,31 @@ Fast-Plast was built for genome survey sequence (aka genome skimming or low-pass
 
 Fast-Plast is packaged with 1,020 whole chloroplast genomes from GenBank. These cover a wide range of diversity including marine algae, angiosperms, ferns, etc. To access these, use the order of your species in the --bowtie_index option. Fast-Plast will pull all members of that order and create a bowtie index. If your order is not present, Fast-Plast will use a representative sequence from all orders present. This option can be selected using "All" or "GenBank".
 
-Orders currently available in Fast-Plast:
+Orders currently available in Fast-Plast (68):
 
-    Apiales	Ericales	Marchantiales
-    Aquifoliales	Euglenales	Monomastigales
-    Araucariales	Eupodiscales	Myrtales
-    Asparagales	Fabales	Nymphaeales
-    Asterales	Fagales	Orthotrichales
+    Apiales				Ericales		Marchantiales
+    Aquifoliales		Euglenales		Monomastigales
+    Araucariales		Eupodiscales	Myrtales
+    Asparagales			Fabales			Nymphaeales
+    Asterales			Fagales			Orthotrichales
     Austrobaileyales	Fragilariales	Pinales
-    Brassicales	Fucales	Poales
-    Bryopsidales	Funariales	Polypodiales
-    Buxales	Garryales	Proteales
-    Caryophyllales	Gentianales	Pyrenomonadales
-    Celastrales	Geraniales	Ranunculales
-    Chlamydomonadales	Ginkgoales	Rosales
-    Chloranthales	Gracilariales	Sapindales
-    Chlorellales	Hypnales	Saxifragales
-    Cornales	Lamiales	Solanales
-    Cucurbitales	Laminariales	Sphaeropleales
-    Cupressales	Laurales	Takakiales
-    Cyanidiales	Liliales	Ulvales
-    Cyatheales	Lycopodiales	Vaucheriales
-    Cycadales	Magnoliales	Vitales
-    Desmidiales	Malpighiales	Zingiberales
-    Dioscoreales	Malvales	Zygnematales
-    Dipsacales	Mamiellales	
+    Brassicales			Fucales			Poales
+    Bryopsidales		Funariales		Polypodiales
+    Buxales				Garryales		Proteales
+    Caryophyllales		Gentianales		Pyrenomonadales
+    Celastrales			Geraniales		Ranunculales
+    Chlamydomonadales	Ginkgoales		Rosales
+    Chloranthales		Gracilariales	Sapindales
+    Chlorellales		Hypnales		Saxifragales
+    Cornales			Lamiales		Solanales
+    Cucurbitales		Laminariales	Sphaeropleales
+    Cupressales			Laurales		Takakiales
+    Cyanidiales			Liliales		Ulvales
+    Cyatheales			Lycopodiales	Vaucheriales
+    Cycadales			Magnoliales		Vitales
+    Desmidiales			Malpighiales	Zingiberales
+    Dioscoreales		Malvales		Zygnematales
+    Dipsacales			Mamiellales	
 
 
 <h4>Output</h4>
