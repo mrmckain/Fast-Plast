@@ -541,7 +541,7 @@ system($jellyfish_count_exec);
 my $jellyfish_dump_exec = $JELLYFISH . " dump mer_counts.jf > " . $name . "_25dump";
 system($jellyfish_dump_exec);
 
-my $window_cov_exec = "perl " . $COVERAGE_DIR . "/new_window_coverage.pl " . $name . "_25dump ../Final_Assembly/" . $name . "_FULLCP.fsa " . $name . " 25";
+my $window_cov_exec = "perl " . $COVERAGE_DIR . "/new_window_coverage.pl " . $name . "_25dump ../Final_Assembly/" . $name . "_FULLCP.fsa 25";
 system($window_cov_exec);
 
 my $rscript_exec = "Rscript " . $COVERAGE_DIR . "/plot_coverage.r " . $name . ".coverage_25kmer.txt ". $name;
@@ -1032,7 +1032,7 @@ sub orientate_plastome{
 			my %contigs_db_genes = %$contigs_db_genes;
 			$percent_recovered_genes=$percent_recovered_genes*100;
 
-			if($percent_recovered_genes > .9){
+			if($percent_recovered_genes > 90){
 					`perl $FPBIN/orientate_plastome_v.2.0.pl $split_fullname $split_fullname\_positional_genes.blastn $name`;
         			my $final_seq = $name ."_FULLCP.fsa";
         			$blast_afin_exec = $BLAST . "blastn -query " . $final_seq . " -db " . $posgenes . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $current_afin . "_positional_genes" . ".blastn";
