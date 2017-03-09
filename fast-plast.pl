@@ -220,7 +220,7 @@ print $LOGFILE "K-mer sizes for SPAdes set at $spades_kmer.\n";
 mkdir("$name");
 chdir("$name");
 open my $SUMMARY, ">", $name."_Plastome_Summary.txt";
-print $SUMMARY "Sample:\t$name\nFast-Plast Version:\t$version\n";
+print $SUMMARY "Sample:\t$name\nFast-Plast Version:\t$current_version\n";
 
 ########## Start Trimmomatic ##########
 $current_runtime = localtime();
@@ -251,7 +251,7 @@ if(@s_array){
 if (-e $name.".trimmed_P1.fq"){
 	my $se_size =`wc -l $name.trimmed_P1.fq`;
 	chomp($se_size);
-	$se_size=$se_size/4;
+	$se_size=($se_size/4)*2;
 	print $SUMMARY "Total Cleaned Pair-End Reads:\t$se_size\n";
 }
 if (-e $name.".trimmed_UP.fq"){
@@ -287,6 +287,9 @@ else{
 
 }
 
+system($bowtie2_exec);
+
+
 if (-e "map_pair_hits.1.fq"){
 	my $se_size =`wc -l $name.trimmed_P1.fq`;
 	chomp($se_size);
@@ -299,7 +302,6 @@ if (-e "map_hits.fq"){
 	$se_size=$se_size/4;
 	print $SUMMARY "Total Non-concordantly Mapped Reads:\t$se_size\n";
 }
-system($bowtie2_exec);
 chdir("../");
 
 ########## Start SPAdes ##########
@@ -594,7 +596,7 @@ if(-z "Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt"){
 	while(<$cppieces>){
 		chomp;
 		if(/>/){
-			$cpsid=$_;
+			$cpsid=substring($_,1);
 		}
 		else{
 			$cplens{$cpsid}.=$_;
