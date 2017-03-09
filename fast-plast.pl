@@ -40,7 +40,7 @@ my $min_coverage = 0;
 my $threads = 4;
 my $adapters = $FPBIN . "/NEB-PE.fa";
 my $version;
-my $current_version = "Fast-Plast v.1.1.0";
+my $current_version = "Fast-Plast v.1.2.0";
 my $user_bowtie;
 
 GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, 'coverage_analysis' => \$coverage_check,'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
@@ -219,6 +219,9 @@ print $LOGFILE "K-mer sizes for SPAdes set at $spades_kmer.\n";
 
 mkdir("$name");
 chdir("$name");
+open my $SUMMARY, ">", $name."_Plastome_Summary.txt";
+print $SUMMARY "Sample:\t$name\nFast-Plast Version:\t$version\n";
+
 ########## Start Trimmomatic ##########
 $current_runtime = localtime();
 print $LOGFILE "$current_runtime\tStarting read trimming with Trimmomatic.\nUsing $TRIMMOMATIC.\n";
@@ -242,6 +245,20 @@ if(@s_array){
 		system($trim_exec);
 	}
 	`cat $name\*trimmed_SE.fq >> $name.trimmed_UP.fq`;
+}
+
+
+if (-e $name.".trimmed_P1.fq"){
+	my $se_size =`wc -l $name.trimmed_P1.fq`;
+	chomp($se_size);
+	$se_size=$se_size/4;
+	print $SUMMARY "Total Cleaned Pair-End Reads:\t$se_size\n";
+}
+if (-e $name.".trimmed_UP.fq"){
+	my $se_size =`wc -l $name.trimmed_UP.fq`;
+	chomp($se_size);
+	$se_size=$se_size/4;
+	print $SUMMARY "Total Cleaned Single End Reads:\t$se_size\n";
 }
 chdir("../");
 
@@ -268,6 +285,19 @@ if(@p1_array){
 else{
 	$bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq -p " . $threads . " -x " . $bowtie_index . " -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
 
+}
+
+if (-e "map_pair_hits.1.fq"){
+	my $se_size =`wc -l $name.trimmed_P1.fq`;
+	chomp($se_size);
+	$se_size=$se_size/4;
+	print $SUMMARY "Total Concordantly Mapped Reads:\t$se_size\n";
+}
+if (-e "map_hits.fq"){
+	my $se_size =`wc -l $name.trimmed_UP.fq`;
+	chomp($se_size);
+	$se_size=$se_size/4;
+	print $SUMMARY "Total Non-concordantly Mapped Reads:\t$se_size\n";
 }
 system($bowtie2_exec);
 chdir("../");
@@ -441,6 +471,7 @@ if( $total_afin_contigs > 1){
 				}
 			}
 		close ($cpcomposition);
+
 	
 	}	
 
@@ -477,8 +508,9 @@ print $LOGFILE "$current_runtime\tStarting plastome finishing.\nUsing $posgenes 
 mkdir("5_Plastome_Finishing");
 chdir("5_Plastome_Finishing");
 
-&orientate_plastome("../4_Afin_Assembly/".$current_afin, $name); 
+&orientate_plastome("../4_Afin_Assembly/".$current_afin, $name, "../Final_Assembly/"); 
 chdir("../");
+
 if(!-d "Final_Assembly"){
 	mkdir("Final_Assembly");
         rename("4_Afin_Assembly/".$current_afin, "Final_Assembly/".$current_afin);
@@ -555,10 +587,102 @@ $current_runtime = localtime();
 print $LOGFILE "$current_runtime\tCoverage analysis finished.\n";
 if(-z "Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt"){
 	print $LOGFILE "No issues with assembly coverage were identified.\n";
+
+	my %cplens;
+	my $cpsid;
+	open my $cppieces, "<", "Final_Assembly/".$name."_CP_pieces.fsa";
+	while(<$cppieces>){
+		chomp;
+		if(/>/){
+			$cpsid=$_;
+		}
+		else{
+			$cplens{$cpsid}.=$_;
+		}
+	}
+
+	my $end_lsc = length($cplens{lsc})-1;
+	my $end_ir = length($cplens{ir})+$end_lsc;
+	my $end_ssc = length($cplens{ssc})+$end_ir;
+
+	my $count_ir;
+	my $count_ssc;
+	my $count_lsc;
+
+	open my $covin, "<", "Coverage_Analysis/".$name.".coverage_25kmer.txt";
+	while(<$covin>){
+			chomp;
+			my @tarray = split/\s+/;
+			if($tarray[1] <= $end_lsc){
+				$count_lsc+=$tarray[2];
+			}
+			if($tarray[1] >$end_lsc && $tarray[1]<=$end_ir){
+				$count_ir+=$tarray[2];
+			}
+			if($tarray[1] >$end_ir && $tarray[1]<=$end_ssc){
+				$count_ssc+=$tarray[2];
+			}
+	}
+	my $avg_lsc = $count_lsc/length($cplens{lsc});
+	my $avg_ssc = $count_ssc/length($cplens{ssc});
+	my $avg_ir = $count_ir/length($cplens{ir});
+
+	print $SUMMARY "Average Large Single Copy Coverage:\t$avg_lsc\nAverage Inverted Repeat Coverage:\t$avg_ir\nAverage Small Single Copy Coverage:\t$avg_ssc\n";
+
+
+
 }
 else{
-	print $LOGFILE "Problem areas identified for assembly coverage.  Check Coverage_Analysis/$name\_problem_regions_plastid_assembly.txt.\n";
+
+	print $LOGFILE "Problem areas identified for assembly coverage. Attempting to repair assembly.\n";
+	mkdir("../4.5_Reassemble_Low_Coverage");
+	chdir("../4.5_Reassemble_Low_Coverage");
+
+	my $lc_remove_contigs = &reassemble_low_coverage("../Final_Assembly/" . $name . "_FULLCP.fsa", "../Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt");
+	$current_afin=&afin_wrap($lc_remove_contigs);
+
+	&orientate_plastome($current_afin, $name, "../Final_Assembly_Fixed_Low_Coverage"); 
+	my $build_bowtie2_exec = $BOWTIE2 . "-build .../Final_Assembly_Fixed_Low_Coverage/" . $name . "_FULLCP.fsa " . $name . "_bowtie";
+	system($build_bowtie2_exec);
+
+	my $cov_bowtie2_exec;
+	if(@p1_array){
+		$cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+	}
+	else{
+		$cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . "  -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+	}
+
+	system($cov_bowtie2_exec);
+
+	my $jellyfish_count_exec = $JELLYFISH . " count -m 25 -t ". $threads . " -C -s 1G map_*";
+	system($jellyfish_count_exec);
+
+	my $jellyfish_dump_exec = $JELLYFISH . " dump mer_counts.jf > " . $name . "_25dump";
+	system($jellyfish_dump_exec);
+
+	my $window_cov_exec = "perl " . $COVERAGE_DIR . "/new_window_coverage.pl " . $name . "_25dump ../Final_Assembly_Fixed_Low_Coverage/" . $name . "_FULLCP.fsa 25";
+	system($window_cov_exec);
+
+	my $rscript_exec = "Rscript " . $COVERAGE_DIR . "/plot_coverage.r " . $name . ".coverage_25kmer.txt ". $name;
+	system($rscript_exec);
+
+	my $check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25 " . $min_coverage;
+	system($check_cov_exec);
+
+	if(-z $name."_problem_regions_plastid_assembly.txt"){
+		print $LOGFILE "Assembly was successful! No issues with assembly coverage were identified.\n";
+		print $LOGFILE "New assembly can be found in Final_Assembly_Fixed_Low_Coverage.\n";
+
+	}	
+	else{
+
+
+
+
+	print $LOGFILE "Problem areas identified for assembly coverage.  Check $name\_problem_regions_plastid_assembly.txt in the 4.5_Reassemble_Low_Coverage directory.\n";
  }
+}
 }
 else{
 	print $LOGFILE "Coverage analysis was not selected.  We highly recommend this option to verify the assembly.\n";
@@ -687,6 +811,127 @@ sub count_contigs {
 	}
 	my $total_afin_contigs = keys %contig_lengths;
 	return ($total_afin_contigs);
+}
+#########
+sub afin_wrap {
+	my $current_afin;
+my $extension = $maxsize*0.75;
+my ($total_afin_contigs, $max_afin, $min_afin) = &run_afin("150,50,50",100,"20,15,10","2,1,1",$_[0],$extension);
+print $LOGFILE "After afin, there are $total_afin_contigs contigs with a maximum size of $max_afin and a minimum size of $min_afin.\n";
+$current_runtime = localtime();
+print $LOGFILE "$current_runtime\tRemoving nested contigs.\n";
+my $gotofinish;
+if( $total_afin_contigs > 1){
+	$current_afin = $name . "_afin_iter2.fa";
+
+	`$BLAST/makeblastdb -in $current_afin -dbtype nucl`;
+	my $blast_afin_exec = $BLAST . "blastn -query " . $current_afin . " -db " . $current_afin . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $current_afin . ".blastn";
+	`$blast_afin_exec`;
+
+	&remove_nested($current_afin, $current_afin.".blastn");
+	
+	$total_afin_contigs = &count_contigs($current_afin);
+
+	
+	my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
+	my %contigs_db_genes = %$contigs_db_genes;
+	if ($total_afin_contigs > 1){
+		&remove_contamination($current_afin, \%contigs_db_genes);
+	}
+
+	$total_afin_contigs = &count_contigs($current_afin);
+	($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
+	%contigs_db_genes = %$contigs_db_genes;
+
+	if ($total_afin_contigs > 1){
+		($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
+		%contigs_db_genes = %$contigs_db_genes;
+		$percent_recovered_genes=$percent_recovered_genes*100;
+		print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
+
+	if(@p1_array){
+		$current_afin = &scaffolding($current_afin,$name);
+		rename($current_afin, $name.".final.scaffolds.fasta");
+		$current_afin=$name.".final.scaffolds.fasta";
+		$total_afin_contigs = &count_contigs($current_afin);
+		if($total_afin_contigs > 1){
+				open my $cpcomposition, ">", "Chloroplast_gene_composition_of_final_contigs.txt";
+			for my $contig_name (sort keys %contigs_db_genes){
+				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
+						print $cpcomposition "$contig_name\t$gene_name\n";
+				}
+			}
+			close ($cpcomposition);
+				mkdir("../Final_Assembly");
+				rename($current_afin, "../Final_Assembly/".$current_afin);
+				rename("Chloroplast_gene_composition_of_final_contigs.txt", "../Final_Assembly/Chloroplast_gene_composition_of_final_contigs.txt");
+				chdir("../Final_Assembly");
+				my $temppwd = `pwd`;
+                                chomp($temppwd);
+                                $temppwd .= "/". $current_afin;	
+				print $LOGFILE "Cannot scaffold contigs into a single piece.  Coverage is too low or poorly distributed across plastome. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
+				die;
+		}
+	}
+	else{
+		open my $cpcomposition, ">", "Chloroplast_gene_composition_of_final_contigs.txt";
+			for my $contig_name (sort keys %contigs_db_genes){
+				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
+						print $cpcomposition "$contig_name\t$gene_name\n";
+				}
+			}
+			close ($cpcomposition);
+				mkdir("../Final_Assembly");
+				rename($current_afin, "../Final_Assembly/".$current_afin);
+				rename("Chloroplast_gene_composition_of_final_contigs.txt", "../Final_Assembly/Chloroplast_gene_composition_of_final_contigs.txt");
+				chdir("../Final_Assembly");
+				my $temppwd = `pwd`;
+                                chomp($temppwd);
+                                $temppwd .= "/". $current_afin;	
+				print $LOGFILE "Cannot scaffold contigs into a single piece.  Coverage is too low or poorly distributed across plastome. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
+				die;
+	}
+	}	
+
+	else{
+
+		my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
+		my %contigs_db_genes = %$contigs_db_genes;
+		$percent_recovered_genes=$percent_recovered_genes*100;
+		print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
+		open my $cpcomposition, ">", "Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt";
+			for my $contig_name (sort keys %contigs_db_genes){
+				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
+						print $cpcomposition "$contig_name\t$gene_name\n";
+				}
+			}
+		close ($cpcomposition);
+	
+	}	
+
+
+
+
+}
+    
+
+
+else{
+	$current_afin = $name . "_afin_iter2.fa";
+	
+	my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
+	my %contigs_db_genes = %$contigs_db_genes;
+	$percent_recovered_genes=$percent_recovered_genes*100;
+	print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
+	open my $cpcomposition, ">", "Chloroplast_gene_composition_of_afin_contigs.txt";
+			for my $contig_name (sort keys %contigs_db_genes){
+				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
+						print $cpcomposition "$contig_name\t$gene_name\n";
+				}
+			}
+	close ($cpcomposition);
+}
+return($current_afin);
 }
 #########
 sub run_afin {
@@ -968,12 +1213,13 @@ sub orientate_plastome{
         
         my $current_afin = $_[0];
         my $name = $_[1];
+        my $path_to_final = $_[2];
 
         `$BLAST/makeblastdb -in $posgenes -dbtype nucl`;
 
         for (my $i = 0; $i <=3; $i++){
 
-        	`perl $FPBIN/sequence_based_ir_id.pl ../4_Afin_Assembly/$current_afin $name $i`;
+        	`perl $FPBIN/sequence_based_ir_id.pl $current_afin $name $i`;
         	my $split_fullname= $name ."_regions_split".$i.".fsa";
 
         	`$BLAST/makeblastdb -in $split_fullname -dbtype nucl`;
@@ -1048,17 +1294,119 @@ sub orientate_plastome{
                         }
                     }
                     close ($cpcomposition);
-		    mkdir("../Final_Assembly");
-                    rename($final_seq, "../Final_Assembly/".$final_seq);
-                    rename("Chloroplast_gene_composition_of_final_chloroplast_sequence.txt", "../Final_Assembly/Chloroplast_gene_composition_of_final_contigs.txt");
-                    rename($name."_CP_pieces.fsa", "../Final_Assembly/".$name."_CP_pieces.fsa");
+                    my %pieces;
+                    my $pid;
+
+                    my $final_assembly_seq;
+                    open my $fin, "<", $final_seq;
+                    while(<$fin>){
+                    	if(/>/){
+                    		next;
+                    	}
+                    	else{
+                    		$final_assembly_seq.=$_;
+                    	}
+                    }
+                    close($fin);
+
+                    my $flen=length($final_assembly_seq);
+                    print $SUMMARY "Total Chloroplast Genome Length:\t$flen";
+
+                    open my $cppieces, "<", $name."_CP_pieces.fsa";
+                    while(<$cppieces>){
+                    	chomp;
+                    	if(/>/){
+
+                    		$pid=$_;
+                    	}
+                    	else{
+                    		$pieces{$pid}.=$_;
+                    	}
+                    }
+                    if($pieces{"lsc"}){
+                    	my $llen=length($pieces{lsc});
+                    	print $SUMMARY "Large Single Copy Size:\t$llen";
+                    }
+                    if($pieces{"ir"}){
+                    	my $llen=length($pieces{ir});
+                    	print $SUMMARY "Inverted Repeat Size:\t$llen";
+                    }
+                    if($pieces{"ssc"}){
+                    	my $llen=length($pieces{ssc});
+                    	print $SUMMARY "Small Single Copy Size:\t$llen";
+                    }
+                    %pieces=();
+                    close($cppieces);
+
+		    		mkdir("$path_to_final");
+                    rename($final_seq, $path_to_final.$final_seq);
+                    rename("Chloroplast_gene_composition_of_final_chloroplast_sequence.txt", $path_to_final."Chloroplast_gene_composition_of_final_contigs.txt");
+                    rename($name."_CP_pieces.fsa", $path_to_final.$name."_CP_pieces.fsa");
 		    return; #bad form to have multiple exits but i haven't worked out the "correct" way yet
 			}
 		}
 
 
 }
+##########
+sub reassemble_low_coverage{
+	my $final_seq = $_[0];
+	my $coverage_file = $_[1];
+	my %break_points;
+	open my $tcov, "<", $coverage_file;
+	while(<$tcov>){
+		chomp;
+		my @tarray = split/\s+/;
+		$break_points{$tarray[0]}=$tarray[1];
 
+	}
+
+	my %new_substrings;
+	my $cass_seq;
+	open my $cassembly, "<", $final_seq;
+	while(<$cassembly>){
+		chomp;
+		if(/>/){
+			next;
+		}
+		else{
+			$cass_seq = $_;
+		}
+	}
+	my $c_start;
+	my $c_stop;
+	for my $starts (sort {$a <=> $b} keys %break_points){
+		if(!$c_stop){
+			if ($starts != "0"){
+				my $temp_break = substr($cass_seq, 0, $starts);
+				$new_substrings{"0"}{$starts-1}=$temp_break;
+				$c_start = $break_points{$starts}+1;
+			}
+		}
+		else{
+			my $temp_break = substr($cass_seq, $c_start, $starts-$c_start);
+				$new_substrings{$c_start}{$starts-$c_start}=$temp_break;
+		}
+	}
+		my $temp_break = substr($cass_seq, $c_start);
+				$new_substrings{$c_start}{length($cass_seq)-1}=$temp_break;
+	
+	close($cassembly);
+	close($tcov);
+
+	open my $new_sub, ">", $name . "_removed_lowcoverage_contigs.fsa";
+	for my $new_pos (sort keys %new_substrings){
+		print $new_sub ">$new_pos\n$new_substrings{$new_pos}\n";
+	}
+
+	my $new_seqfile = $name . "_removed_lowcoverage_contigs.fsa";
+	return($new_seqfile)
+
+
+
+
+
+}
         
 
 ########## USAGE BELOW ##########
@@ -1126,7 +1474,7 @@ To install afin:
 
 =head1 VERSION
 
-Fast-Plast v.1.0.0
+Fast-Plast v.1.2.0
 
 
 
