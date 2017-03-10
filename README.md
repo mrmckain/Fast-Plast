@@ -2,7 +2,7 @@ Fast-Plast: Rapid de novo assembly and finishing for whole chloroplast genomes
 =============
 <b>Authors</b>: Michael R. McKain, <a href="https://github.com/afinit/afin">Mark Wilson</a><br>
 </br>
-Version 1.1.0<br>
+Version 1.2.0<br>
 </br>
 <b>Contact</b>: https://github.com/mrmckain
 
@@ -135,6 +135,9 @@ Contains the STDOUT from all programs.
 Contains the STDERR from all programs.
 
 <h2>Directory Hierarchy</h2>
+<b>name_Plastome_Summary.txt</b><br>
+Provides information on the number of reads, reads mapped, assembly size, chloroplast region size, and average coverage of each region.
+
 <h3>1_Trimmed_Reads</h3>
 For paired-end data, four trimmed read files will be made. Files ending in *trimmed_P1.fq and *trimmed_P2.fq are still paired-end.  The files ending in *trimmed_UP.fq is single-end. If only single end files are used, then only the *trimmed_UP.fq file will be found.
 
