@@ -291,13 +291,13 @@ system($bowtie2_exec);
 
 
 if (-e "map_pair_hits.1.fq"){
-	my $se_size =`wc -l $name.trimmed_P1.fq`;
+	my $se_size =`wc -l map_pair_hits.1.fq`;
 	chomp($se_size);
 	$se_size=$se_size/4;
 	print $SUMMARY "Total Concordantly Mapped Reads:\t$se_size\n";
 }
 if (-e "map_hits.fq"){
-	my $se_size =`wc -l $name.trimmed_UP.fq`;
+	my $se_size =`wc -l map_hits.fq`;
 	chomp($se_size);
 	$se_size=$se_size/4;
 	print $SUMMARY "Total Non-concordantly Mapped Reads:\t$se_size\n";
@@ -596,7 +596,7 @@ if(-z "Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt"){
 	while(<$cppieces>){
 		chomp;
 		if(/>/){
-			$cpsid=substring($_,1);
+			$cpsid=substr($_,1);
 		}
 		else{
 			$cplens{$cpsid}.=$_;
@@ -637,22 +637,22 @@ if(-z "Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt"){
 else{
 
 	print $LOGFILE "Problem areas identified for assembly coverage. Attempting to repair assembly.\n";
-	mkdir("../4.5_Reassemble_Low_Coverage");
-	chdir("../4.5_Reassemble_Low_Coverage");
+	mkdir("4.5_Reassemble_Low_Coverage");
+	chdir("4.5_Reassemble_Low_Coverage");
 
-	my $lc_remove_contigs = &reassemble_low_coverage("../Final_Assembly/" . $name . "_FULLCP.fsa", "../Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt");
+	my $lc_remove_contigs = &reassemble_low_coverage("Final_Assembly/" . $name . "_FULLCP.fsa", "Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt");
 	$current_afin=&afin_wrap($lc_remove_contigs);
 
-	&orientate_plastome($current_afin, $name, "../Final_Assembly_Fixed_Low_Coverage"); 
-	my $build_bowtie2_exec = $BOWTIE2 . "-build .../Final_Assembly_Fixed_Low_Coverage/" . $name . "_FULLCP.fsa " . $name . "_bowtie";
+	&orientate_plastome($current_afin, $name, "Final_Assembly_Fixed_Low_Coverage"); 
+	my $build_bowtie2_exec = $BOWTIE2 . "-build Final_Assembly_Fixed_Low_Coverage/" . $name . "_FULLCP.fsa " . $name . "_bowtie";
 	system($build_bowtie2_exec);
 
 	my $cov_bowtie2_exec;
 	if(@p1_array){
-		$cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+		$cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . " -1 1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -U 1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
 	}
 	else{
-		$cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . "  -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+		$cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . "  -U 1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
 	}
 
 	system($cov_bowtie2_exec);
@@ -663,7 +663,7 @@ else{
 	my $jellyfish_dump_exec = $JELLYFISH . " dump mer_counts.jf > " . $name . "_25dump";
 	system($jellyfish_dump_exec);
 
-	my $window_cov_exec = "perl " . $COVERAGE_DIR . "/new_window_coverage.pl " . $name . "_25dump ../Final_Assembly_Fixed_Low_Coverage/" . $name . "_FULLCP.fsa 25";
+	my $window_cov_exec = "perl " . $COVERAGE_DIR . "/new_window_coverage.pl " . $name . "_25dump Final_Assembly_Fixed_Low_Coverage/" . $name . "_FULLCP.fsa 25";
 	system($window_cov_exec);
 
 	my $rscript_exec = "Rscript " . $COVERAGE_DIR . "/plot_coverage.r " . $name . ".coverage_25kmer.txt ". $name;
