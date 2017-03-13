@@ -212,7 +212,7 @@ Definition:
 ## Changelog
 * 07-March-2017	First Release Fast-Plast v.1.1.0
 
-* 10-March-2017 Fast-Plast v.1.2.0
+* 10-March-2017 Fast-Plast v.1.2.0<br>
 	--Added orignal code to identify low coverage areas, split assembly, and reassemble. This portion of the pipeline is still in alpha.<br>
 	--Summary gives information on numbers of trimmed reads, reads mapped, size of plastome and its regions, and average coverage of regions.
 
