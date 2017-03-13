@@ -2,7 +2,7 @@ Fast-Plast: Rapid de novo assembly and finishing for whole chloroplast genomes
 =============
 <b>Authors</b>: Michael R. McKain, <a href="https://github.com/afinit/afin">Mark Wilson</a><br>
 </br>
-Version 1.2.0<br>
+Version 1.2.1<br>
 </br>
 <b>Contact</b>: https://github.com/mrmckain
 
@@ -211,6 +211,11 @@ Definition:
 
 ## Changelog
 * 07-March-2017	First Release Fast-Plast v.1.1.0
+
+* 10-March-2017 Fast-Plast v.1.2.0
+	--Added orignal code to identify low coverage areas, split assembly, and reassemble. This portion of the pipeline is still in alpha.<br>
+	--Summary gives information on numbers of trimmed reads, reads mapped, size of plastome and its regions, and average coverage of regions.
+
 
 <h1>References</h1>
 
