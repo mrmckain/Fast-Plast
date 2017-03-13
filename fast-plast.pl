@@ -40,7 +40,7 @@ my $min_coverage = 0;
 my $threads = 4;
 my $adapters = $FPBIN . "/NEB-PE.fa";
 my $version;
-my $current_version = "Fast-Plast v.1.2.0";
+my $current_version = "Fast-Plast v.1.2.1";
 my $user_bowtie;
 
 GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, 'coverage_analysis' => \$coverage_check,'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
@@ -1330,7 +1330,7 @@ sub orientate_plastome{
                     close($fin);
 
                     my $flen=length($final_assembly_seq);
-                    print $SUMMARY "Total Chloroplast Genome Length:\t$flen";
+                    print $SUMMARY "Total Chloroplast Genome Length:\t$flen\n";
 
                     open my $cppieces, "<", $name."_CP_pieces.fsa";
                     while(<$cppieces>){
@@ -1345,15 +1345,15 @@ sub orientate_plastome{
                     }
                     if($pieces{"lsc"}){
                     	my $llen=length($pieces{lsc});
-                    	print $SUMMARY "Large Single Copy Size:\t$llen";
+                    	print $SUMMARY "Large Single Copy Size:\t$llen\n";
                     }
-                    if($pieces{"ir"}){
+                    if($pieces{"irb"}){
                     	my $llen=length($pieces{ir});
-                    	print $SUMMARY "Inverted Repeat Size:\t$llen";
+                    	print $SUMMARY "Inverted Repeat Size:\t$llen\n";
                     }
                     if($pieces{"ssc"}){
                     	my $llen=length($pieces{ssc});
-                    	print $SUMMARY "Small Single Copy Size:\t$llen";
+                    	print $SUMMARY "Small Single Copy Size:\t$llen\n";
                     }
                     %pieces=();
                     close($cppieces);
