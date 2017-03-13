@@ -833,7 +833,7 @@ sub count_contigs {
 }
 #########
 sub afin_wrap {
-	my $current_afin;
+	my $current_afin=$_[0];
 my $extension = $maxsize*0.75;
 my ($total_afin_contigs, $max_afin, $min_afin) = &run_afin("150,50,50",100,"20,15,10","2,1,1",$_[0],$extension);
 print $LOGFILE "After afin, there are $total_afin_contigs contigs with a maximum size of $max_afin and a minimum size of $min_afin.\n";
