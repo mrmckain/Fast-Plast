@@ -20,13 +20,13 @@ my $FPROOT = "$FindBin::RealBin";
 my $AFIN_DIR = "$FPROOT/afin";
 my $COVERAGE_DIR = "$FPROOT/Coverage_Analysis";
 my $FPBIN = "$FPROOT/bin";
-my $TRIMMOMATIC;
-my $BOWTIE2;
-my $SPADES;
-my $BLAST;
-my $SSPACE;
-my $BOWTIE1;
-my $JELLYFISH;
+my $TRIMMOMATIC; #path to trimmomatic executable
+my $BOWTIE2; #path to bowtie2 executable
+my $SPADES; #path to spades executable
+my $BLAST; #path to blast executable
+my $SSPACE; #path to sspace exectuable
+my $BOWTIE1; #path to bowtie1 executable
+my $JELLYFISH; #path to jellyfish2 excecutable
 
 my $help;
 my $paired_end1;
@@ -1147,7 +1147,7 @@ sub remove_nested {
                 }
         }
 
-        `mv $temp_contigsfile\_fixed $temp_contigsfile`;
+        rename($temp_contigsfile."\_fixed" $temp_contigsfile);
 
 }
 
@@ -1336,7 +1336,7 @@ sub orientate_plastome{
                     	chomp;
                     	if(/>/){
 
-                    		$pid=$_;
+                    		$pid=substr($_,1);
                     	}
                     	else{
                     		$pieces{$pid}.=$_;
