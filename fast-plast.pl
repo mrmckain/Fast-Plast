@@ -1147,7 +1147,8 @@ sub remove_nested {
                 }
         }
 
-        rename($temp_contigsfile."\_fixed" $temp_contigsfile);
+         my $ftemp = $temp_contigsfile . "_fixed";
+        rename($ftemp, $temp_contigsfile);
 
 }
 
