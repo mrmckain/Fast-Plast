@@ -293,7 +293,7 @@ system($bowtie2_exec);
 if (-e "map_pair_hits.1.fq"){
 	my $se_size = &count_lines("map_pair_hits.1.fq");
 	chomp($se_size);
-	$se_size=$se_size/4;
+	$se_size=($se_size/4)*2;
 	print $SUMMARY "Total Concordantly Mapped Reads:\t$se_size\n";
 }
 if (-e "map_hits.fq"){
