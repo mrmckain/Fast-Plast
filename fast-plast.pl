@@ -414,6 +414,7 @@ if( $total_afin_contigs > 1){
 		($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 		%contigs_db_genes = %$contigs_db_genes;
 		$percent_recovered_genes=$percent_recovered_genes*100;
+		print $LOGFILE "Checking coverage of afin output with $total_afin_contigs contigs after contamination removal.\n";
 		print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 
 	if(@p1_array){
@@ -438,6 +439,20 @@ if( $total_afin_contigs > 1){
                                 $temppwd .= "/". $current_afin;	
 				print $LOGFILE "Cannot scaffold contigs into a single piece.  Coverage is too low or poorly distributed across plastome. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
 				die;
+		}
+		else{
+			my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
+			my %contigs_db_genes = %$contigs_db_genes;
+			$percent_recovered_genes=$percent_recovered_genes*100;
+			print $LOGFILE "Checking coverage of scaffolded contigs with $total_afin_contigs.\n";
+			print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
+			open my $cpcomposition, ">", "Chloroplast_gene_composition_of_afin_contigs.txt";
+			for my $contig_name (sort keys %contigs_db_genes){
+				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
+						print $cpcomposition "$contig_name\t$gene_name\n";
+				}
+			}
+	close ($cpcomposition);
 		}
 	}
 	else{
@@ -465,6 +480,7 @@ if( $total_afin_contigs > 1){
 		my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 		my %contigs_db_genes = %$contigs_db_genes;
 		$percent_recovered_genes=$percent_recovered_genes*100;
+		print $LOGFILE "Checking coverage of afin output with $total_afin_contigs contigs.\n";
 		print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 		open my $cpcomposition, ">", "Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt";
 			for my $contig_name (sort keys %contigs_db_genes){
@@ -490,6 +506,7 @@ else{
 	my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 	my %contigs_db_genes = %$contigs_db_genes;
 	$percent_recovered_genes=$percent_recovered_genes*100;
+	print $LOGFILE "Checking coverage of afin output with $total_afin_contigs contigs after contamination removal.\n";
 	print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 	open my $cpcomposition, ">", "Chloroplast_gene_composition_of_afin_contigs.txt";
 			for my $contig_name (sort keys %contigs_db_genes){
@@ -519,6 +536,7 @@ if(!-d "Final_Assembly"){
         my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery("Final_Assembly/".$current_afin);
 		my %contigs_db_genes = %$contigs_db_genes;
 		$percent_recovered_genes=$percent_recovered_genes*100;
+		print $LOGFILE "Checking coverage of final assembly. Final assembly is the last afin iteration.\n";
 		print $LOGFILE "$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 		open my $cpcomposition, ">", "Final_Assembly/Chloroplast_gene_composition_of_afin_contigs.txt";
 			for my $contig_name (sort keys %contigs_db_genes){
@@ -590,53 +608,13 @@ print $LOGFILE "$current_runtime\tCoverage analysis finished.\n";
 if(-z "Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt"){
 	print $LOGFILE "No issues with assembly coverage were identified.\n";
 
-	my %cplens;
-	my $cpsid;
-	open my $cppieces, "<", "Final_Assembly/".$name."_CP_pieces.fsa";
-	while(<$cppieces>){
-		chomp;
-		if(/>/){
-			$cpsid=substr($_,1);
-		}
-		else{
-			$cplens{$cpsid}.=$_;
-		}
-	}
-
-	my $end_lsc = length($cplens{lsc})-1;
-	my $end_ir = length($cplens{irb})+$end_lsc;
-	my $end_ssc = length($cplens{ssc})+$end_ir;
-
-	my $count_ir;
-	my $count_ssc;
-	my $count_lsc;
-
-	open my $covin, "<", "Coverage_Analysis/".$name.".coverage_25kmer.txt";
-	while(<$covin>){
-			chomp;
-			my @tarray = split/\s+/;
-			if($tarray[1] <= $end_lsc){
-				$count_lsc+=$tarray[2];
-			}
-			if($tarray[1] >$end_lsc && $tarray[1]<=$end_ir){
-				$count_ir+=$tarray[2];
-			}
-			if($tarray[1] >$end_ir && $tarray[1]<=$end_ssc){
-				$count_ssc+=$tarray[2];
-			}
-	}
-	my $avg_lsc = $count_lsc/length($cplens{lsc});
-	my $avg_ssc = $count_ssc/length($cplens{ssc});
-	my $avg_ir = $count_ir/length($cplens{irb});
-
-	print $SUMMARY "Average Large Single Copy Coverage:\t$avg_lsc\nAverage Inverted Repeat Coverage:\t$avg_ir\nAverage Small Single Copy Coverage:\t$avg_ssc\n";
-
-
+	coverage_summary("Final_Assembly/", "Coverage_Analysis/");
 
 }
 else{
 
 	print $LOGFILE "Problem areas identified for assembly coverage. Attempting to repair assembly.\n";
+	print $SUMMARY "\nVALUES BELOW FROM REASSEMBLED PLASTOME\n";
 	mkdir("4.5_Reassemble_Low_Coverage");
 	chdir("4.5_Reassemble_Low_Coverage");
 
@@ -644,7 +622,8 @@ else{
 	$current_afin=&afin_wrap($lc_remove_contigs);
 
 	&orientate_plastome($current_afin, $name, "../Final_Assembly_Fixed_Low_Coverage/"); 
-	chdir("../Final_Assembly_Fixed_Low_Coverage");
+	mkdir("../Coverage_Analysis_Reassembly");
+	chdir("Coverage_Analysis_Reassembly");	
 	my $build_bowtie2_exec = $BOWTIE2 . "-build ../Final_Assembly_Fixed_Low_Coverage/" . $name . "_FULLCP.fsa " . $name . "_bowtie";
 	system($build_bowtie2_exec);
 
@@ -676,6 +655,8 @@ else{
 	if(-z $name."_problem_regions_plastid_assembly.txt"){
 		print $LOGFILE "Assembly was successful! No issues with assembly coverage were identified.\n";
 		print $LOGFILE "New assembly can be found in Final_Assembly_Fixed_Low_Coverage.\n";
+
+		coverage_summary("../Final_Assembly_Fixed_Low_Coverage/", "../Coverage_Analysis_Reassembly/");
 
 	}	
 	else{
@@ -1366,6 +1347,52 @@ sub orientate_plastome{
 			}
 		}
 
+
+}
+##########
+sub coverage_summary{
+
+
+	my %cplens;
+	my $cpsid;
+	open my $cppieces, "<", $_[0].$name."_CP_pieces.fsa";
+	while(<$cppieces>){
+		chomp;
+		if(/>/){
+			$cpsid=substr($_,1);
+		}
+		else{
+			$cplens{$cpsid}.=$_;
+		}
+	}
+
+	my $end_lsc = length($cplens{lsc})-1;
+	my $end_ir = length($cplens{irb})+$end_lsc;
+	my $end_ssc = length($cplens{ssc})+$end_ir;
+
+	my $count_ir;
+	my $count_ssc;
+	my $count_lsc;
+
+	open my $covin, "<", $_[1].$name.".coverage_25kmer.txt";
+	while(<$covin>){
+			chomp;
+			my @tarray = split/\s+/;
+			if($tarray[1] <= $end_lsc){
+				$count_lsc+=$tarray[2];
+			}
+			if($tarray[1] >$end_lsc && $tarray[1]<=$end_ir){
+				$count_ir+=$tarray[2];
+			}
+			if($tarray[1] >$end_ir && $tarray[1]<=$end_ssc){
+				$count_ssc+=$tarray[2];
+			}
+	}
+	my $avg_lsc = $count_lsc/length($cplens{lsc});
+	my $avg_ssc = $count_ssc/length($cplens{ssc});
+	my $avg_ir = $count_ir/length($cplens{irb});
+
+	print $SUMMARY "Average Large Single Copy Coverage:\t$avg_lsc\nAverage Inverted Repeat Coverage:\t$avg_ir\nAverage Small Single Copy Coverage:\t$avg_ssc\n";
 
 }
 ##########
