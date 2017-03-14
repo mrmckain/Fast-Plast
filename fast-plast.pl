@@ -123,7 +123,7 @@ if(!$s_libs){
 	$s_libs = 0;
 }
 
-print $LOGFILE "\tAssemblying plastome with $s_libs single end libraries and $pe_libs paired end libraries.\n";
+print $LOGFILE "\t\t\t\tAssemblying plastome with $s_libs single end libraries and $pe_libs paired end libraries.\n";
 
 
 ###Get read size###
