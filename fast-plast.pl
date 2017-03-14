@@ -623,7 +623,7 @@ else{
 
 	&orientate_plastome($current_afin, $name, "../Final_Assembly_Fixed_Low_Coverage/"); 
 	mkdir("../Coverage_Analysis_Reassembly");
-	chdir("Coverage_Analysis_Reassembly");	
+	chdir("../Coverage_Analysis_Reassembly");	
 	my $build_bowtie2_exec = $BOWTIE2 . "-build ../Final_Assembly_Fixed_Low_Coverage/" . $name . "_FULLCP.fsa " . $name . "_bowtie";
 	system($build_bowtie2_exec);
 
@@ -643,7 +643,7 @@ else{
 	my $jellyfish_dump_exec = $JELLYFISH . " dump mer_counts.jf > " . $name . "_25dump";
 	system($jellyfish_dump_exec);
 
-	my $window_cov_exec = "perl " . $COVERAGE_DIR . "/new_window_coverage.pl " . $name . "_25dump " . $name . "_FULLCP.fsa 25";
+	my $window_cov_exec = "perl " . $COVERAGE_DIR . "/new_window_coverage.pl " . $name . "_25dump ../Final_Assembly_Fixed_Low_Coverage/" . $name . "_FULLCP.fsa 25";
 	system($window_cov_exec);
 
 	my $rscript_exec = "Rscript " . $COVERAGE_DIR . "/plot_coverage.r " . $name . ".coverage_25kmer.txt ". $name;
