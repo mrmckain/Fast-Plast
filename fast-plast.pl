@@ -604,7 +604,7 @@ if(-z "Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt"){
 	}
 
 	my $end_lsc = length($cplens{lsc})-1;
-	my $end_ir = length($cplens{ir})+$end_lsc;
+	my $end_ir = length($cplens{irb})+$end_lsc;
 	my $end_ssc = length($cplens{ssc})+$end_ir;
 
 	my $count_ir;
@@ -627,7 +627,7 @@ if(-z "Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt"){
 	}
 	my $avg_lsc = $count_lsc/length($cplens{lsc});
 	my $avg_ssc = $count_ssc/length($cplens{ssc});
-	my $avg_ir = $count_ir/length($cplens{ir});
+	my $avg_ir = $count_ir/length($cplens{irb});
 
 	print $SUMMARY "Average Large Single Copy Coverage:\t$avg_lsc\nAverage Inverted Repeat Coverage:\t$avg_ir\nAverage Small Single Copy Coverage:\t$avg_ssc\n";
 
@@ -643,7 +643,7 @@ else{
 	my $lc_remove_contigs = &reassemble_low_coverage("../Final_Assembly/" . $name . "_FULLCP.fsa", "../Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt");
 	$current_afin=&afin_wrap($lc_remove_contigs);
 
-	&orientate_plastome($current_afin, $name, "../Final_Assembly_Fixed_Low_Coverage"); 
+	&orientate_plastome($current_afin, $name, "../Final_Assembly_Fixed_Low_Coverage/"); 
 	chdir("../Final_Assembly_Fixed_Low_Coverage");
 	my $build_bowtie2_exec = $BOWTIE2 . "-build ../Final_Assembly_Fixed_Low_Coverage/" . $name . "_FULLCP.fsa " . $name . "_bowtie";
 	system($build_bowtie2_exec);
@@ -1348,7 +1348,7 @@ sub orientate_plastome{
                     	print $SUMMARY "Large Single Copy Size:\t$llen\n";
                     }
                     if($pieces{"irb"}){
-                    	my $llen=length($pieces{ir});
+                    	my $llen=length($pieces{irb});
                     	print $SUMMARY "Inverted Repeat Size:\t$llen\n";
                     }
                     if($pieces{"ssc"}){
@@ -1415,8 +1415,10 @@ sub reassemble_low_coverage{
 	close($tcov);
 
 	open my $new_sub, ">", $name . "_removed_lowcoverage_contigs.fsa";
-	for my $new_pos (sort keys %new_substrings){
-		print $new_sub ">$new_pos\n$new_substrings{$new_pos}\n";
+	for my $new_pos (sort {$a<=>$b} keys %new_substrings){
+		for my $new_end (keys %{$new_substrings{$new_pos}}){
+			print $new_sub ">$new_pos\-$new_end\n$new_substrings{$new_pos}{$new_end}\n";
+		}
 	}
 
 	my $new_seqfile = $name . "_removed_lowcoverage_contigs.fsa";
