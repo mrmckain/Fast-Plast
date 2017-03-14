@@ -119,7 +119,7 @@ A user-made bowtie index can be provided using the --user_bowtie option. The ful
 
 <h3>Name</h3>
 
-The --name option must be used with each run. No default is set. This simply gives a prefix to all files.
+The --name option should be used with each run. This simply gives a prefix to all files. The default is "Fast-Plast".
 
 <h1>Output</h1>
 
@@ -189,10 +189,10 @@ Definition:
 							Read files should be in matching order with other paired end files.
 		-s <filenames>		File with unpaired reads. Multiple files can be designated with a comma-delimited list.
 
-		**PAIRED END AND SINGLE END FILES CAN BE PROVIDED SIMULTAENOUSLY.**
+		**PAIRED END AND SINGLE END FILES CAN BE PROVIDED SIMULTANEOUSLY.**
 
 		-n <sample_name>	Name for current assembly. We suggest a species name/accession combination as Fast-Plast will use 
-							this name as the FASTA ID in the final assembly.
+							this name as the FASTA ID in the final assembly. [Default = Fast-Plast]
 
 		Advanced options:
 
