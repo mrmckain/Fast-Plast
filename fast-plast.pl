@@ -75,7 +75,7 @@ if($user_bowtie){
 my $datestring = localtime();
 my $start_time = time;
 open(STDERR, '>', $name.'_results_error.log') or die "Can't open log.\n";
-open(STDOUT, '>', $name.'_result_out.log') or die "Can't open log.\n";
+open(STDOUT, '>', $name.'_results_out.log') or die "Can't open log.\n";
 open my $LOGFILE, ">", $name."_Fast-Plast_Progress.log" or die "Can't open log.\n";
 print $LOGFILE "$datestring\tStarting $current_version.\n";
 
