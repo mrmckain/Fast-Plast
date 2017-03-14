@@ -90,25 +90,25 @@ Orders currently available in Fast-Plast (68):
 
     Apiales				Ericales		Marchantiales
     Aquifoliales			Euglenales		Monomastigales
-    Araucariales			Eupodiscales	Myrtales
+    Araucariales			Eupodiscales		Myrtales
     Asparagales			Fabales			Nymphaeales
     Asterales			Fagales			Orthotrichales
-    Austrobaileyales		Fragilariales	Pinales
+    Austrobaileyales		Fragilariales		Pinales
     Brassicales			Fucales			Poales
     Bryopsidales			Funariales		Polypodiales
     Buxales				Garryales		Proteales
     Caryophyllales			Gentianales		Pyrenomonadales
     Celastrales			Geraniales		Ranunculales
     Chlamydomonadales		Ginkgoales		Rosales
-    Chloranthales			Gracilariales	Sapindales
+    Chloranthales			Gracilariales		Sapindales
     Chlorellales			Hypnales		Saxifragales
     Cornales			Lamiales		Solanales
-    Cucurbitales			Laminariales	Sphaeropleales
+    Cucurbitales			Laminariales		Sphaeropleales
     Cupressales			Laurales		Takakiales
     Cyanidiales			Liliales		Ulvales
-    Cyatheales			Lycopodiales	Vaucheriales
+    Cyatheales			Lycopodiales		Vaucheriales
     Cycadales			Magnoliales		Vitales
-    Desmidiales			Malpighiales	Zingiberales
+    Desmidiales			Malpighiales		Zingiberales
     Dioscoreales			Malvales		Zygnematales
     Dipsacales			Mamiellales	
 
