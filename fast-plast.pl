@@ -32,7 +32,7 @@ my $help;
 my $paired_end1;
 my $paired_end2;
 my $single_end;
-my $name;
+my $name="Fast-Plast";
 my $bowtie_index = "All";
 my $posgenes= $FPBIN . "/Angiosperm_Chloroplast_Genes.fsa";
 my $coverage_check;
