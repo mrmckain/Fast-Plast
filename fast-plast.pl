@@ -212,7 +212,7 @@ else{
 	$spades_kmer = "23,27,31";
 }
 
-print $LOGFILE "\tK-mer sizes for SPAdes set at $spades_kmer.\n";
+print $LOGFILE "\t\t\t\tK-mer sizes for SPAdes set at $spades_kmer.\n";
 ##########
 
 ########## Create Directory ###########
@@ -384,7 +384,7 @@ rename("temp_filtered_spades_contigs.fsa", "filtered_spades_contigs.fsa");
 my $current_afin;
 my $extension = $maxsize*0.75;
 my ($total_afin_contigs, $max_afin, $min_afin) = &run_afin("150,50,50",100,"20,15,10","2,1,1","filtered_spades_contigs.fsa",$extension);
-print $LOGFILE "\tAfter afin, there are $total_afin_contigs contigs with a maximum size of $max_afin and a minimum size of $min_afin.\n";
+print $LOGFILE "\t\t\t\tAfter afin, there are $total_afin_contigs contigs with a maximum size of $max_afin and a minimum size of $min_afin.\n";
 $current_runtime = localtime();
 print $LOGFILE "$current_runtime\tRemoving nested contigs.\n";
 my $gotofinish;
@@ -414,8 +414,8 @@ if( $total_afin_contigs > 1){
 		($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 		%contigs_db_genes = %$contigs_db_genes;
 		$percent_recovered_genes=$percent_recovered_genes*100;
-		print $LOGFILE "\tChecking coverage of afin output with $total_afin_contigs contigs after contamination removal.\n";
-		print $LOGFILE "\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
+		print $LOGFILE "\t\t\t\tChecking coverage of afin output with $total_afin_contigs contigs after contamination removal.\n";
+		print $LOGFILE "\t\t\t\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 
 	if(@p1_array){
 		$current_afin = &scaffolding($current_afin,$name);
@@ -437,15 +437,15 @@ if( $total_afin_contigs > 1){
 				my $temppwd = `pwd`;
                                 chomp($temppwd);
                                 $temppwd .= "/". $current_afin;	
-				print $LOGFILE "\tCannot scaffold contigs into a single piece.  Coverage is too low or poorly distributed across plastome. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
+				print $LOGFILE "\t\t\t\tCannot scaffold contigs into a single piece.  Coverage is too low or poorly distributed across plastome. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
 				die;
 		}
 		else{
 			my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 			my %contigs_db_genes = %$contigs_db_genes;
 			$percent_recovered_genes=$percent_recovered_genes*100;
-			print $LOGFILE "\tChecking coverage of scaffolded contigs with $total_afin_contigs.\n";
-			print $LOGFILE "\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
+			print $LOGFILE "\t\t\t\tChecking coverage of scaffolded contigs with $total_afin_contigs.\n";
+			print $LOGFILE "\t\t\t\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 			open my $cpcomposition, ">", "Chloroplast_gene_composition_of_afin_contigs.txt";
 			for my $contig_name (sort keys %contigs_db_genes){
 				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
@@ -470,7 +470,7 @@ if( $total_afin_contigs > 1){
 				my $temppwd = `pwd`;
                                 chomp($temppwd);
                                 $temppwd .= "/". $current_afin;	
-				print $LOGFILE "\tCannot scaffold contigs into a single piece.  Coverage is too low or poorly distributed across plastome. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
+				print $LOGFILE "\t\t\t\tCannot scaffold contigs into a single piece.  Coverage is too low or poorly distributed across plastome. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
 				die;
 	}
 	}	
@@ -480,8 +480,8 @@ if( $total_afin_contigs > 1){
 		my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 		my %contigs_db_genes = %$contigs_db_genes;
 		$percent_recovered_genes=$percent_recovered_genes*100;
-		print $LOGFILE "\tChecking coverage of afin output with $total_afin_contigs contigs.\n";
-		print $LOGFILE "\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
+		print $LOGFILE "\t\t\t\tChecking coverage of afin output with $total_afin_contigs contigs.\n";
+		print $LOGFILE "\t\t\t\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 		open my $cpcomposition, ">", "Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt";
 			for my $contig_name (sort keys %contigs_db_genes){
 				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
@@ -506,8 +506,8 @@ else{
 	my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 	my %contigs_db_genes = %$contigs_db_genes;
 	$percent_recovered_genes=$percent_recovered_genes*100;
-	print $LOGFILE "\tChecking coverage of afin output with $total_afin_contigs contigs after contamination removal.\n";
-	print $LOGFILE "\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
+	print $LOGFILE "\t\t\t\tChecking coverage of afin output with $total_afin_contigs contigs after contamination removal.\n";
+	print $LOGFILE "\t\t\t\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 	open my $cpcomposition, ">", "Chloroplast_gene_composition_of_afin_contigs.txt";
 			for my $contig_name (sort keys %contigs_db_genes){
 				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
@@ -536,8 +536,8 @@ if(!-d "Final_Assembly"){
         my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery("Final_Assembly/".$current_afin);
 		my %contigs_db_genes = %$contigs_db_genes;
 		$percent_recovered_genes=$percent_recovered_genes*100;
-		print $LOGFILE "\tChecking coverage of final assembly. Final assembly is the last afin iteration.\n";
-		print $LOGFILE "\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
+		print $LOGFILE "\t\t\t\tChecking coverage of final assembly. Final assembly is the last afin iteration.\n";
+		print $LOGFILE "\t\t\t\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 		open my $cpcomposition, ">", "Final_Assembly/Chloroplast_gene_composition_of_afin_contigs.txt";
 			for my $contig_name (sort keys %contigs_db_genes){
 				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
@@ -549,14 +549,14 @@ if(!-d "Final_Assembly"){
 		my $temppwd = `pwd`;
                 chomp($temppwd);
                 $temppwd .= "/Final_Assembly/". $current_afin;
-                print $LOGFILE "\tCould not properly orientate the plastome. Either your plastome does not have an IR or there was an issue with the assembly. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
+                print $LOGFILE "\t\t\t\tCould not properly orientate the plastome. Either your plastome does not have an IR or there was an issue with the assembly. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
 				die;
 	}
 	if( -e "4_Afin_Assembly/Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt"){
                 my $temppwd = `pwd`;
                 chomp($temppwd);
                 $temppwd .= "/Final_Assembly/". $current_afin;
-                print $LOGFILE "\tCould not properly orientate the plastome. Either your plastome does not have an IR or there was an issue with the assembly. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
+                print $LOGFILE "\t\t\t\tCould not properly orientate the plastome. Either your plastome does not have an IR or there was an issue with the assembly. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
 				die;
 	}
 }
@@ -569,7 +569,7 @@ $current_runtime = localtime();
 print $LOGFILE "$current_runtime\tStarting coverage analyses.\n";
 my $check_finish = "Final_Assembly/".$name."_FULLCP.fsa";
 unless(-e $check_finish){
-	print $LOGFILE "\tCannot complete coverage analysis. Full chloroplast genome not complete.";
+	print $LOGFILE "\t\t\t\tCannot complete coverage analysis. Full chloroplast genome not complete.";
 	die;
 }
 mkdir("Coverage_Analysis");
@@ -606,14 +606,15 @@ chdir("../");
 $current_runtime = localtime(); 
 print $LOGFILE "$current_runtime\tCoverage analysis finished.\n";
 if(-z "Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt"){
-	print $LOGFILE "\tNo issues with assembly coverage were identified.\n";
+	print $LOGFILE "\t\t\t\tNo issues with assembly coverage were identified.\n";
 
 	coverage_summary("Final_Assembly/", "Coverage_Analysis/");
 
 }
 else{
 
-	print $LOGFILE "\tProblem areas identified for assembly coverage. Attempting to repair assembly.\n";
+	print $LOGFILE "\t\t\t\tProblem areas identified for assembly coverage. Attempting to repair assembly.\n";
+	print $LOGFILE "********************STARTING REASSEMBLY********************\n";
 	print $SUMMARY "\nVALUES BELOW FROM REASSEMBLED PLASTOME\n";
 	mkdir("4.5_Reassemble_Low_Coverage");
 	chdir("4.5_Reassemble_Low_Coverage");
@@ -653,8 +654,8 @@ else{
 	system($check_cov_exec);
 
 	if(-z $name."_problem_regions_plastid_assembly.txt"){
-		print $LOGFILE "\tAssembly was successful! No issues with assembly coverage were identified.\n";
-		print $LOGFILE "\tNew assembly can be found in Final_Assembly_Fixed_Low_Coverage.\n";
+		print $LOGFILE "\t\t\t\tAssembly was successful! No issues with assembly coverage were identified.\n";
+		print $LOGFILE "\t\t\t\tNew assembly can be found in Final_Assembly_Fixed_Low_Coverage.\n";
 
 		coverage_summary("../Final_Assembly_Fixed_Low_Coverage/", "../Coverage_Analysis_Reassembly/");
 
@@ -664,12 +665,12 @@ else{
 
 
 
-	print $LOGFILE "\tProblem areas identified for assembly coverage.  Check $name\_problem_regions_plastid_assembly.txt in the 4.5_Reassemble_Low_Coverage directory.\n";
+	print $LOGFILE "\t\t\t\tProblem areas identified for assembly coverage.  Check $name\_problem_regions_plastid_assembly.txt in the 4.5_Reassemble_Low_Coverage directory.\n";
  }
 }
 }
 else{
-	print $LOGFILE "\tCoverage analysis was not selected.  We highly recommend this option to verify the assembly.\n";
+	print $LOGFILE "\t\t\t\tCoverage analysis was not selected.  We highly recommend this option to verify the assembly.\n";
 }
 
 
@@ -730,7 +731,7 @@ sub build_bowtie2_indices {
 		close $default_gb;
 	}
 	if(-z $bowtie_index || $bowtie_index =~ /^all$/i || $bowtie_index =~ /genbank/i ){
-		print $LOGFILE "\tSamples for $bowtie_index are not in current GenBank plastomes. Using one representative from each order to make bowtie2 indices.\n";
+		print $LOGFILE "\t\t\t\tSamples for $bowtie_index are not in current GenBank plastomes. Using one representative from each order to make bowtie2 indices.\n";
 
 		open my $bt2_seq, ">", $bowtie_index;
 		open my $default_gb, "<", $FPBIN."/GenBank_Plastomes";
@@ -757,7 +758,7 @@ sub build_bowtie2_indices {
 	
 	}
 	else{
-		print $LOGFILE "\tSamples for $bowtie_index used to make bowtie2 indices.\n";
+		print $LOGFILE "\t\t\t\tSamples for $bowtie_index used to make bowtie2 indices.\n";
 	}
 
 	my $build_bowtie2_exec = $BOWTIE2 . "-build " . $bowtie_index.".fsa" . " " . $name . "_bowtie";
@@ -817,7 +818,7 @@ sub afin_wrap {
 	my $current_afin=$_[0];
 my $extension = $maxsize*0.75;
 my ($total_afin_contigs, $max_afin, $min_afin) = &run_afin("150,50,50",100,"20,15,10","2,1,1",$_[0],$extension);
-print $LOGFILE "\tAfter afin, there are $total_afin_contigs contigs with a maximum size of $max_afin and a minimum size of $min_afin.\n";
+print $LOGFILE "\t\t\t\tAfter afin, there are $total_afin_contigs contigs with a maximum size of $max_afin and a minimum size of $min_afin.\n";
 $current_runtime = localtime();
 print $LOGFILE "$current_runtime\tRemoving nested contigs.\n";
 my $gotofinish;
@@ -847,7 +848,7 @@ if( $total_afin_contigs > 1){
 		($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 		%contigs_db_genes = %$contigs_db_genes;
 		$percent_recovered_genes=$percent_recovered_genes*100;
-		print $LOGFILE "\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
+		print $LOGFILE "\t\t\t\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 
 	if(@p1_array){
 		$current_afin = &scaffolding($current_afin,$name);
@@ -869,7 +870,7 @@ if( $total_afin_contigs > 1){
 				my $temppwd = `pwd`;
                                 chomp($temppwd);
                                 $temppwd .= "/". $current_afin;	
-				print $LOGFILE "\tCannot scaffold contigs into a single piece.  Coverage is too low or poorly distributed across plastome. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
+				print $LOGFILE "\t\t\t\tCannot scaffold contigs into a single piece.  Coverage is too low or poorly distributed across plastome. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
 				die;
 		}
 	}
@@ -888,7 +889,7 @@ if( $total_afin_contigs > 1){
 				my $temppwd = `pwd`;
                                 chomp($temppwd);
                                 $temppwd .= "/". $current_afin;	
-				print $LOGFILE "\tCannot scaffold contigs into a single piece.  Coverage is too low or poorly distributed across plastome. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
+				print $LOGFILE "\t\t\t\tCannot scaffold contigs into a single piece.  Coverage is too low or poorly distributed across plastome. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
 				die;
 	}
 	}	
@@ -898,7 +899,7 @@ if( $total_afin_contigs > 1){
 		my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 		my %contigs_db_genes = %$contigs_db_genes;
 		$percent_recovered_genes=$percent_recovered_genes*100;
-		print $LOGFILE "\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
+		print $LOGFILE "\t\t\t\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 		open my $cpcomposition, ">", "Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt";
 			for my $contig_name (sort keys %contigs_db_genes){
 				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
@@ -922,7 +923,7 @@ else{
 	my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 	my %contigs_db_genes = %$contigs_db_genes;
 	$percent_recovered_genes=$percent_recovered_genes*100;
-	print $LOGFILE "\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
+	print $LOGFILE "\t\t\t\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 	open my $cpcomposition, ">", "Chloroplast_gene_composition_of_afin_contigs.txt";
 			for my $contig_name (sort keys %contigs_db_genes){
 				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
@@ -938,7 +939,7 @@ sub run_afin {
 	###Sub must be given number of iterations, trim length, and number of reads needed to fuse contigs.
 	my $extension = $_[5];
 	my $afin_exec = $AFIN_DIR . "/afin -c " . $_[4] . " -r ../1_Trimmed_Reads/" . $name .".trimmed* -l " . $_[0] . " -f .1 -d " . $_[1] . " -x " . $extension . " -p " . $_[2] . " -i " . $_[3] ." -o ". $name . "_afin";
-	print $LOGFILE "\tUsing command $afin_exec.\n";
+	print $LOGFILE "\t\t\t\tUsing command $afin_exec.\n";
 	system($afin_exec);
 
 	my %contig_lengths;
@@ -1287,7 +1288,7 @@ sub orientate_plastome{
         			($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($final_seq);
         			%contigs_db_genes = %$contigs_db_genes;
         			$percent_recovered_genes=$percent_recovered_genes*100;
-					print $LOGFILE "\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $final_seq.\n";
+					print $LOGFILE "\t\t\t\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $final_seq.\n";
         			open my $cpcomposition, ">", "Chloroplast_gene_composition_of_final_chloroplast_sequence.txt";
                     for my $contig_name (sort keys %contigs_db_genes){
                         for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
