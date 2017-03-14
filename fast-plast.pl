@@ -224,7 +224,7 @@ print $SUMMARY "Sample:\t$name\nFast-Plast Version:\t$current_version\n";
 
 ########## Start Trimmomatic ##########
 $current_runtime = localtime();
-print $LOGFILE "$current_runtime\tStarting read trimming with Trimmomatic.\nUsing $TRIMMOMATIC.\n";
+print $LOGFILE "$current_runtime\tStarting read trimming with Trimmomatic.\n\t\t\t\tUsing $TRIMMOMATIC.\n";
 
 mkdir("1_Trimmed_Reads");
 chdir("1_Trimmed_Reads");
@@ -265,7 +265,7 @@ chdir("../");
 ########## Start Bowtie2 ##########
 
 $current_runtime = localtime();
-print $LOGFILE "$current_runtime\tStarting read mapping with bowtie2.\nUsing $BOWTIE2.\n";
+print $LOGFILE "$current_runtime\tStarting read mapping with bowtie2.\n\t\t\t\tUsing $BOWTIE2.\n";
 
 
 mkdir("2_Bowtie_Mapping");
@@ -522,7 +522,7 @@ chdir("../");
 ########## Start Plastome Finishing ##########
 
 $current_runtime = localtime(); 
-print $LOGFILE "$current_runtime\tStarting plastome finishing.\nUsing $posgenes for LSC, SSC, and IR identification.\n";
+print $LOGFILE "$current_runtime\tStarting plastome finishing.\n\t\t\t\tUsing $posgenes for LSC, SSC, and IR identification.\n";
 
 mkdir("5_Plastome_Finishing");
 chdir("5_Plastome_Finishing");
