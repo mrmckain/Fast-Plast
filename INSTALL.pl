@@ -256,7 +256,7 @@ if($answer =~ /n/i){
 			print "\nbowtie1 executable located: $bowtie1\n";
 		}
 		$tempf = read_file($control_file);
-		$bowtie1 =~ s/(.*?\/)bowtie/$1/g;
+		$bowtie1 =~ s/(.*?1.1.2\/)bowtie/$1/g;
 		$tempf =~ s/my \$BOWTIE1\;/my \$BOWTIE1=\"$bowtie1\"\;/;
 		write_file($control_file, $tempf);
 		if($all){
@@ -606,7 +606,7 @@ if($bowtie1 =~ /path/i){
 		}
 	}
 	my $tempf = read_file($control_file);
-		$bowtie1 =~ s/(.*?\/)bowtie/$1/g;
+		$bowtie1 =~ s/(.*?1.1.2\/)bowtie/$1/g;
 
 		$tempf =~ s/my \$BOWTIE1\;/my \$BOWTIE1=\"$bowtie1\"\;/;
 		write_file($control_file, $tempf);
