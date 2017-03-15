@@ -14,7 +14,6 @@ BEGIN {
 
 }
 
-
 ###directories
 my $FPROOT = "$FindBin::RealBin";
 my $AFIN_DIR = "$FPROOT/afin";
@@ -27,6 +26,8 @@ my $BLAST; #path to blast executable
 my $SSPACE; #path to sspace exectuable
 my $BOWTIE1; #path to bowtie1 executable
 my $JELLYFISH; #path to jellyfish2 excecutable
+
+$ENV{'PATH'} = '$BOWTIE1';
 
 my $help;
 my $paired_end1;
