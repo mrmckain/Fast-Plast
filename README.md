@@ -2,7 +2,7 @@ Fast-Plast: Rapid de novo assembly and finishing for whole chloroplast genomes
 =============
 <b>Authors</b>: Michael R. McKain, <a href="https://github.com/afinit/afin">Mark Wilson</a><br>
 </br>
-Version 1.2.1<br>
+Version 1.2.2<br>
 </br>
 <b>Contact</b>: https://github.com/mrmckain
 
@@ -177,6 +177,15 @@ Graphical representation of name.coverage_25kmer.txt. Red circles indicate a cov
 <b>name_problem_regions_plastid_assembly.txt</b><br>
 Identified stretches of the assembly greater than 25 base pairs that have a coverage of 0. If this file is empty, the assembly is accepted.
 
+<h3>4.5_Reassemble_Low_Coverage</h3>
+If regions of low coverage are identified after the Coverage Analysis, then these regions are removed, the contig broken into pieces, and reassembled from the afin step. All of the reassembly steps (Afin Assembly and Plastome Finishing) will be conducted in this directory.
+
+<h3>Final_Assembly_Fixed_Low_Coverage</h3>
+The final reassembled plastome, chloroplast regions, and chloroplast gene recovery will be in this directory.
+
+<h3>Coverage_Analysis_Reassembly</h3>
+Coverage analysis and results of the reassembled plastome will be in this directory.
+
 <h1>Usage</h1>
 
 <code> fast-plast.pl [-1 <paired_end_file1> -2 <paired_end_file2> || -single <singe_end_file>] -name <sample_name> [options]  </code>
@@ -197,7 +206,7 @@ Definition:
 		Advanced options:
 
 		--threads			Number of threads used by Fast-Plast.  [Default = 4]
-		--adapters			Files of adapters used in making sequencing library. These should be in FASTA format. NEB, Nextera, and 						TruSeq options available. Use NEB, Nextera, or TruSeq for parameter. [Default = NEB]
+		--adapters			[NEB|Nextera|TruSeq] Files of adapters used in making sequencing library. NEB, Nextera, and TruSeq options 						available. Also accepts the path to a user created FASTA file of adapters.[Default = NEB]
 		--bowtie_index		Order for sample to draw references for mapping. If order exists, then all available samples for that 
 							order will be used. If order does not exist in default set or the terms "all" or "GenBank" are given, 
 							one exemplar from each available order is used to build the Bowtie2 indicies. [default="All"]
@@ -205,6 +214,7 @@ Definition:
 		--posgenes			User defined genes for identification of single copy/IR regions and orientation. Useful when major
 							rearrangments are present in user plastomes.
 		--coverage_analysis Flag to run the coverage analysis of a final chloroplast assembly.[Recommended]
+		--clean 			[light|deep]. The "light" option will remove all bowtie indices, BLAST databases, SAM files, 									Jellyfish dumps, and Jellyfish kmer files. The "deep" option will remove all directories except for the 						Final Assembly and Coverage Analysis directories. All files in the "light" option will also be removed. 
 
 
 
@@ -214,6 +224,7 @@ Definition:
 * 16-March-2017 Fast-Plast v.1.2.2 <br>
 	--Nextera and TruSeq adapter options added from Trimmomatic adapter set.
 	<br>
+	--Cleaning option added to remove large files.
 
 * 10-March-2017 Fast-Plast v.1.2.0<br>
 	--Added orignal code to identify low coverage areas, split assembly, and reassemble. This portion of the pipeline is still in alpha.<br>
