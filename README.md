@@ -206,11 +206,14 @@ Definition:
 		Advanced options:
 
 		--threads			Number of threads used by Fast-Plast.  [Default = 4]
-		--adapters			[NEB|Nextera|TruSeq] Files of adapters used in making sequencing library. NEB, Nextera, and TruSeq options 				available. Also accepts the path to a user created FASTA file of adapters.[Default = NEB]
-		--bowtie_index		Order for sample to draw references for mapping. If order exists, then all available samples for that order 					will be used. If order does not exist in default set or the terms "all" or "GenBank" are given, one 							exemplar from each available order is used to build the Bowtie2 indicies. [default="All"]
-		--user_bowtie		User supplied bowtie2 indices. If this option is used, bowtie_index is ignored.
-		--posgenes			User defined genes for identification of single copy/IR regions and orientation. Useful when major
-							rearrangments are present in user plastomes.
+		--adapters			[NEB|Nextera|TruSeq] Files of adapters used in making sequencing library. NEB, Nextera, and TruSeq options 
+						available. Also accepts the path to a user created FASTA file of adapters.[Default = NEB]
+		--bowtie_index			Order for sample to draw references for mapping. If order exists, then all available samples for that 
+						order will be used. If order does not exist in default set or the terms "all" or "GenBank" are given, one 
+						exemplar from each available order is used to build the Bowtie2 indicies. [default="All"]
+		--user_bowtie	User supplied bowtie2 indices. If this option is used, bowtie_index is ignored.
+		--posgenes		User defined genes for identification of single copy/IR regions and orientation. Useful when major 
+					rearrangments are present in user plastomes.
 		--coverage_analysis Flag to run the coverage analysis of a final chloroplast assembly.[Recommended]
 		--clean 			[light|deep]. The "light" option will remove all bowtie indices, BLAST databases, SAM files, 									Jellyfish dumps, and Jellyfish kmer files. The "deep" option will remove all directories except for the 						Final Assembly and Coverage Analysis directories. All files in the "light" option will also be removed. 						Clean will only be invoked if a fully successful assembly is made. 
 
