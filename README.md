@@ -192,6 +192,11 @@ Coverage analysis and results of the reassembled plastome will be in this direct
 
 <h1>Usage</h1>
 
+<h3>General Syntax</h3>
+
+<code>fast-plast.pl [-1 <paired_end_file1> -2 <paired_end_file2> || -single <singe_end_file>] -name <sample_name> [options]</code>
+
+
 <h3>Example with Paired-End Data</h3>
 
 	perl fast-plast.pl -1 /home/mmckain/Sequence_Vault/Washburn_Data/37_Urochloa_fusca_42940_RPGH_AGTCAA_L005_R1_001.fastq.gz -2 /home/mmckain/Sequence_Vault/Washburn_Data/37_Urochloa_fusca_42940_RPGH_AGTCAA_L005_R2_001.fastq.gz --name Urochloa_fusca-37 --bowtie_index Poales --coverage_analysis --clean light
@@ -206,11 +211,10 @@ In this example, one single end library is being used for assembly. The TruSeq a
 
 <h3>Example with Mixed Libraries</h3>
 
-	perl fast-plast.pl -1 /home/mmckain/Sequence_Vault/Andropogoneae_GSS/Monocymbium_ceresiiforme-TK203/TK203_GCTACGCT-AGAGTAGA_Both_R1.fastq.gz -2 /home/mmckain/Sequence_Vault/Andropogoneae_GSS/Monocymbium_ceresiiforme-TK203/TK203_GCTACGCT-AGAGTAGA_Both_R2.fastq.gz -s /home/mmckain/Sequence_Vault/Andropogoneae_GSS/Monocymbium_ceresiiforme-TK203/Monocymbium_ceresiiforme-TK203_GA_122949-34_S42_R1_001.fastq --name Monocymbium_ceresiiforme-TK203 --bowtie_index /home/mmckain/Andropogoneae_Plastomes/FINISHED/androplast --coverage_analysis --clean deep
+	perl fast-plast.pl -1 /home/mmckain/Sequence_Vault/Andropogoneae_GSS/Monocymbium_ceresiiforme-TK203/TK203_GCTACGCT-AGAGTAGA_Both_R1.fastq.gz -2 /home/mmckain/Sequence_Vault/Andropogoneae_GSS/Monocymbium_ceresiiforme-TK203/TK203_GCTACGCT-AGAGTAGA_Both_R2.fastq.gz -s /home/mmckain/Sequence_Vault/Andropogoneae_GSS/Monocymbium_ceresiiforme-TK203/Monocymbium_ceresiiforme-TK203_GA_122949-34_S42_R1_001.fastq --name Monocymbium_ceresiiforme-TK203 --user_bowtie /home/mmckain/Andropogoneae_Plastomes/FINISHED/androplast --coverage_analysis --clean deep
 
 In this example, one single end library and one paired-end library are being used for assembly. The default adapters (NEB) are used for trimming, a user-defined Bowtie2 index (base name given) is used for the Bowtie2 index, the coverage analysis is invoked, and a deep cleaning is done after completion.
 
-<code>fast-plast.pl [-1 <paired_end_file1> -2 <paired_end_file2> || -single <singe_end_file>] -name <sample_name> [options]</code>
 
 Definitions:
 
@@ -230,18 +234,18 @@ Definitions:
 		--threads		Number of threads used by Fast-Plast.  [Default = 4]
 		--adapters		[NEB|Nextera|TruSeq] Files of adapters used in making sequencing library. NEB, Nextera, and TruSeq options 
 					available. Also accepts the path to a user created FASTA file of adapters.[Default = NEB]
-		--bowtie_index		Order for sample to draw references for mapping. If order exists, then all available samples for that 
-					order will be used. If order does not exist in default set or the terms "all" or "GenBank" are given, one 
-					exemplar from each available order is used to build the Bowtie2 indicies. [default="All"]
+		--bowtie_index		Taxonomic order of the sequenced species to pick references for bowtie2 indices. If the order is in the database, 
+					then all available samples for that order will be used. If order does not exist in database or the terms "all" or "GenBank" are given, one 
+					exemplar from each available order is used to build the Bowtie2 indices. [default="All"]
 		--user_bowtie		User supplied bowtie2 indices. If this option is used, bowtie_index is ignored.
-		--posgenes		User defined genes for identification of single copy/IR regions and orientation. Useful when major 
-					rearrangments are present in user plastomes.
 		--coverage_analysis 	Flag to run the coverage analysis of a final chloroplast assembly.[Recommended]
 		--clean 		[light|deep] The "light" option will remove all bowtie indices, BLAST databases, SAM files,
 					Jellyfish dumps, and Jellyfish kmer files. The "deep" option will remove all directories except for the 
 					Final Assembly and Coverage Analysis directories. All files in the "light" option will also be removed. 
 					Clean will only be invoked if a fully successful assembly is made. 
-
+		--posgenes		User defined genes for identification of single copy/IR regions and orientation. Useful when major 
+					rearrangments are present in user plastomes. This is a fairly advanced option; please contact if you are interested
+					in using it.
 
 
 
