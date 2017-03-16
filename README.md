@@ -123,7 +123,7 @@ The --name option should be used with each run. This simply gives a prefix to al
 
 <h1>Output</h1>
 
-Fast-Plast produces a number of files that allow the user to trace the steps of the pipeline. From the directory where Fast-Plast is called, three files and direcotry will be produced.  The directory will be named by the --name option. The three files include:
+Fast-Plast produces a number of files that allow the user to trace the steps of the pipeline. From the directory where Fast-Plast is called, three files and a new directory will be produced.  The directory will be named by the --name option. The three files include:
 
 <b>name_Fast-Plast_Progress.log</b><br>
 Gives time and results for each step in the pipeline. Information regarding paramters chosen based on reads (such as kmer size) and chloroplast gene content will be found here. 
@@ -139,7 +139,7 @@ Contains the STDERR from all programs.
 Provides information on the number of reads, reads mapped, assembly size, chloroplast region size, and average coverage of each region.
 
 <h3>1_Trimmed_Reads</h3>
-For paired-end data, four trimmed read files will be made. Files ending in *trimmed_P1.fq and *trimmed_P2.fq are still paired-end.  The files ending in *trimmed_UP.fq is single-end. If only single end files are used, then only the *trimmed_UP.fq file will be found.
+For paired-end data, three trimmed read files will be made. Files ending in *trimmed_P1.fq and *trimmed_P2.fq are still paired-end.  The files ending in *trimmed_UP.fq is single-end. If only single end files are used, then only the *trimmed_UP.fq file will be found.
 
 <h3>2_Bowtie_Mapping</h3>
 Fast-Plast created bowtie index files will be found in this directory. Reads that mapped to the bowtie index are in the files map_pair_hits.1.fq, map_pair_hits.2.fq, and map_hits.fq for paired-end and single-end respectively. The file name.sam is the standard bowtie2 mapping output but is not used.
@@ -150,7 +150,7 @@ The directory "spades_iter1" will contain the SPAdes assembly and standard SPAde
 <h3>4_Afin_Assembly</h3>
 The file "filtered_spades_contigs.fsa" contains contigs from the SPAdes assemblies that fall within the range of minus one standard deviation of the weigthed mean coverage to plus 2.5 standard deviations. 
 
-Output from afin is the files *_afin_iter0.fa, *_afin_iter1.fa, *_afin_iter2.fa, and *_afin.log.  The log file that shows the steps afin took in the extention and assembly process. 
+Output from afin is the files *_afin_iter0.fa, *_afin_iter1.fa, *_afin_iter2.fa, and *_afin.log.  The log file demonstrates the steps afin took in the extension and assembly process. 
 
 Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt contains information regarding the chloroplast gene content of the each contig found *_afin_iter2.fa.
 
@@ -163,10 +163,10 @@ If more than one contig is found in the file afin assembly and paired-end reads 
 If a single contig was found through either contig assembly or scaffolding, this directory will be created to contain files associated with identification of the large single copy, small single copy, and inverted repeats. If these are not present, this will be the last step of the pipeline and results of the single (unorientated) contig from the assembly steps will be found in Final_Assembly.
 
 <h3>Final_Assembly</h3>
-The final assembly will be found in this directory. If the pipeline was able to full assemble and orientate the plastome, the files *_CP_pieces.fsa (plastome split into LSC, SSC, and IR), *_FULLCP.fsa (final assembly), and Chloroplast_gene_composition_of_final_contigs.txt (all chloroplast genes found in final assembly) will be present. The file Chloroplast_gene_composition_of_final_contigs.txt will always be made for the final assembly regardless of where Fast-Plast stops.
+The final assembly will be found in this directory. If the pipeline was able to fully assemble and orientate the plastome, the files *_CP_pieces.fsa (plastome split into LSC, SSC, and IR), *_FULLCP.fsa (final assembly), and Chloroplast_gene_composition_of_final_contigs.txt (all chloroplast genes found in final assembly) will be present. The file Chloroplast_gene_composition_of_final_contigs.txt will always be made for the final assembly regardless of where Fast-Plast stops.
 
 <h3>Coverage_Analysis</h3>
-The coverage analysis option should also be used to ensure accurate assemble of the plastome. Multiple files associated with the coverage estimation process will be present in this directory. The three most important files are:
+The coverage analysis option should also be used to ensure accurate assembly of the plastome. Multiple files associated with the coverage estimation process will be present in this directory. The three most important files are:
 
 <b>name.coverage_25kmer.txt</b><br>
 Contains 25-mer sequence, start position, and coverage across final assembly.
@@ -176,6 +176,8 @@ Graphical representation of name.coverage_25kmer.txt. Red circles indicate a cov
 
 <b>name_problem_regions_plastid_assembly.txt</b><br>
 Identified stretches of the assembly greater than 25 base pairs that have a coverage of 0. If this file is empty, the assembly is accepted.
+
+Other files include the mapped reads from the Bowtie2 run (map_hits*) and others associated with Bowtie2 and Jellyfish.
 
 <h3>4.5_Reassemble_Low_Coverage</h3>
 If regions of low coverage are identified after the Coverage Analysis, then these regions are removed, the contig broken into pieces, and reassembled from the afin step. All of the reassembly steps (Afin Assembly and Plastome Finishing) will be conducted in this directory.
