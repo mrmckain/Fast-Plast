@@ -236,6 +236,9 @@ if($adapters =~ /nextera/i){
 if($adapters =~ /truseq/i){
 	$adapters=$FPBIN."/adapters/TruSeq3-PE.fa";
 }
+if($adapters =~ /NEB/i){
+	$adapters=$FPBIN."/adapters/NEB-PE.fa";
+}
 if(@p1_array){
 	for (my $i=0; $i < $pe_libs; $i++){
 		my $trim_exec = "java -classpath " . $TRIMMOMATIC . " org.usadellab.trimmomatic.TrimmomaticPE -threads " . $threads . " " . $p1_array[$i] . " " . $p2_array[$i] . " " . $name."_".$i.".trimmed_P1.fq " . $name."_".$i.".trimmed_U1.fq " . $name."_".$i.".trimmed_P2.fq " . $name."_".$i.".trimmed_U2.fq " . "ILLUMINACLIP:".$adapters.":1:30:10 SLIDINGWINDOW:10:20 MINLEN:40";
