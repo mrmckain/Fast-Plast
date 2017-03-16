@@ -443,7 +443,19 @@ if( $total_afin_contigs > 1){
 		$current_afin = &scaffolding($current_afin,$name);
 		rename($current_afin, $name.".final.scaffolds.fasta");
 		$current_afin=$name.".final.scaffolds.fasta";
-		$total_afin_contigs = &count_contigs($current_afin);
+		
+
+		`$BLAST/makeblastdb -in $current_afin -dbtype nucl`;
+		 $blast_afin_exec = $BLAST . "blastn -query " . $current_afin . " -db " . $current_afin . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $current_afin . ".blastn";
+		`$blast_afin_exec`;
+
+		&remove_nested($current_afin, $current_afin.".blastn");
+		 ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
+		 %contigs_db_genes = %$contigs_db_genes;
+		 &remove_contamination($current_afin, \%contigs_db_genes);
+
+		 $total_afin_contigs = &count_contigs($current_afin);
+
 		if($total_afin_contigs > 1){
 				open my $cpcomposition, ">", "Chloroplast_gene_composition_of_final_contigs.txt";
 			for my $contig_name (sort keys %contigs_db_genes){
@@ -468,7 +480,7 @@ if( $total_afin_contigs > 1){
 			$percent_recovered_genes=$percent_recovered_genes*100;
 			print $LOGFILE "\t\t\t\tChecking coverage of scaffolded contigs with $total_afin_contigs.\n";
 			print $LOGFILE "\t\t\t\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
-			open my $cpcomposition, ">", "Chloroplast_gene_composition_of_afin_contigs.txt";
+			open my $cpcomposition, ">", "Chloroplast_gene_composition_of_scaffolded_contigs.txt";
 			for my $contig_name (sort keys %contigs_db_genes){
 				for my $gene_name (sort keys %{$contigs_db_genes{$contig_name}}){
 						print $cpcomposition "$contig_name\t$gene_name\n";
