@@ -44,8 +44,9 @@ my $adapters = $FPBIN . "/adapters/NEB-PE.fa";
 my $version;
 my $current_version = "Fast-Plast v.1.2.2";
 my $user_bowtie;
+my $clean;
 
-GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, 'coverage_analysis' => \$coverage_check,'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
+GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check,'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
 
 if($version) {
 	pod2usage( { -verbose => 99, -sections => "VERSION" } );
@@ -274,6 +275,7 @@ if (-s $name.".trimmed_UP.fq"){
 	$se_size=$se_size/4;
 	print $SUMMARY "Total Cleaned Single End Reads:\t$se_size\n";
 }
+unlink(glob("$name\_\d*"));
 chdir("../");
 
 ########## Start Bowtie2 ##########
@@ -629,6 +631,26 @@ if(-z "Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt"){
 	print $LOGFILE "\t\t\t\tNo issues with assembly coverage were identified.\n";
 
 	coverage_summary("Final_Assembly/", "Coverage_Analysis/");
+	if($clean){
+			if ($clean eq "light"){
+				unlink(glob("5_Plastome_Finishing/*fsa.n*"));
+				unlink(glob("*/*bt2"));
+				unlink(glob("Coverage_Analysis/*25dump"));
+				unlink(glob("Coverage_Analysis/mer_counts.jf"));
+				unlink(glob("*/*.sam"));
+			}
+			if ($clean eq "deep"){
+				rmdir("1_Trimmed_Reads");
+				rmdir("2_Bowtie_Mapping");
+				rmdir("3_Spades_Assembly");
+				rmdir("4_Afin_Assembly");
+				rmdir("5_Plastome_Finishing");
+				unlink(glob("Coverage_Analysis/*25dump"));
+				unlink(glob("Coverage_Analysis/mer_counts.jf"));
+				unlink(glob("*/*bt2"));
+
+			}
+	}
 
 }
 else{
@@ -678,6 +700,34 @@ else{
 		print $LOGFILE "\t\t\t\tNew assembly can be found in Final_Assembly_Fixed_Low_Coverage.\n";
 
 		coverage_summary("../Final_Assembly_Fixed_Low_Coverage/", "../Coverage_Analysis_Reassembly/");
+		chdir("../");
+		if($clean){
+			if ($clean eq "light"){
+				unlink(glob("5_Plastome_Finishing/*fsa.n*"));
+				unlink(glob("4.5_Reassemble_Low_Coverage/*fsa.n*"));
+				unlink(glob("*/*bt2"));
+				unlink(glob("Coverage_Analysis/*25dump"));
+				unlink(glob("Coverage_Analysis/mer_counts.jf"));
+				unlink(glob("*/*.sam"));
+				unlink(glob("Coverage_Analysis_Reassembly/mer_counts.jf"));
+				unlink(glob("Coverage_Analysis_Reassembly/*25dump"));
+
+			}
+			if ($clean eq "deep"){
+				rmdir("1_Trimmed_Reads");
+				rmdir("2_Bowtie_Mapping");
+				rmdir("3_Spades_Assembly");
+				rmdir("4_Afin_Assembly");
+				rmdir("5_Plastome_Finishing");
+				unlink(glob("Coverage_Analysis/*25dump"));
+				unlink(glob("Coverage_Analysis/mer_counts.jf"));
+				unlink(glob("*/*bt2"));
+				unlink(glob("Coverage_Analysis_Reassembly/mer_counts.jf"));
+				unlink(glob("Coverage_Analysis_Reassembly/*25dump"));
+				rmdir("4.5_Reassemble_Low_Coverage");
+
+			}
+	}
 
 	}	
 	else{
