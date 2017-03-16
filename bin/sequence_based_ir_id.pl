@@ -73,7 +73,7 @@ else{
 }
 for my $start (sort {$a<=>$b} keys %regions){
         for my $end (keys %{$regions{$start}}){
-                if ($end-$start < 300){
+                if ($end-$start < 600){
                         delete $regions{$start};
 		
                 }
