@@ -12,9 +12,9 @@ Version 1.2.2<br>
 
 Fast-Plast is a pipeline that leverages existing and novel programs to quickly assemble, orient, and verify whole chloroplast genome sequences. For most datasets with sufficient data, Fast-Plast is able to produce a full-length de novo chloroplast genome assembly in approximately 30 minutes with no user mediation. In addition to a chloroplast sequence, Fast-Plast identifies chloroplast genes present in the final assembly.
 
-Currently, Fast-Plast is written to accomodate Illumina data, though most data types could be used.
+Currently, Fast-Plast is written to accomodate Illumina data, although most data types could be used.
 
-Fast-Plast uses a de novo assembly approach by combining the de bruijn graph-based method of SPAdes with an iterative seed-based assembly implemented in afin to close gaps of contigs with low coverage. The pipeline then identifies regions from the quadripartite structure of the chloroplast genome, assigns identity, and orders them according to standard convention. A coverage analysis is then conducted to assess the quality of the final assembly. 
+Fast-Plast uses a de novo assembly approach by combining the De Bruijn graph-based method of SPAdes with an iterative seed-based assembly implemented in afin to close gaps of contigs with low coverage. The pipeline then identifies regions from the quadripartite structure of the chloroplast genome, assigns identity, and orders them according to standard convention. A coverage analysis is then conducted to assess the quality of the final assembly. 
 
 
 <h1>Dependencies</h1>
@@ -33,7 +33,7 @@ Fast-Plast requires a number of commonly used bioinformatics programs. We have i
 * c++ complier with c++11 support and zlib.h.  zlib.h is a standard base library for most Unix systems but can be obtained <a href="http://www.zlib.net/">here</a>.
 
 <h3>Coverage Analysis</h3>
-* <a href="http://www.genome.umd.edu/jellyfish.html#Release">Jellyfish 2</a>
+* <a href="http://www.genome.umd.edu/jellyfish.html#Release">Jellyfish 2</a><br>
 * R
 
 Memory requirements will vary based on the size of your data set. Expect to use 1.5-2x the memory for the size of your reads files. If your data set is exceptionally large, we have found success in reducing the dataset to 50 million reads and running them through Fast-Plast.
@@ -72,9 +72,9 @@ Instructions for direct compilation of afin can be found <a href="https://github
 <h1>Input</h1>
 
 <h3>Reads</h3>
-Input files are in FASTQ format. The data is not expected to be adapter trimmed or quality filtered, though this will not impede the assembly. 
+Input files are in FASTQ format. The data are not expected to be adapter trimmed or quality filtered, though this will not impede the assembly. 
 
-Fast-Plast was built for genome survey sequence (aka genome skimming or low-pass genome sequencing) data. Sequence capture data can be used but needs to be normalized first.  If your data is from a sequence capture experiment (aka target enrichments or anchored phylogenomics), we suggest using the normalization method packaged with <a href="https://github.com/trinityrnaseq/trinityrnaseq/wiki">Trinity</a>, <a href="http://ged.msu.edu/papers/2012-diginorm/">khmer</a>, or <a href="https://sourceforge.net/projects/bbmap/">bbnorm</a>. 
+Fast-Plast was built for genome survey sequence (aka genome skimming or low-pass genome sequencing) data. Sequence capture data can be used but needs to be normalized first.  If your data are from a sequence capture experiment (aka target enrichments or anchored phylogenomics), we suggest using the normalization method packaged with <a href="https://github.com/trinityrnaseq/trinityrnaseq/wiki">Trinity</a>, <a href="http://ged.msu.edu/papers/2012-diginorm/">khmer</a>, or <a href="https://sourceforge.net/projects/bbmap/">bbnorm</a>. 
 
 <h3>Bowtie Index</h3>
 
@@ -84,7 +84,7 @@ Example:
 
     --bowtie_index Poales
 
-This will use all available Poales plastomes in data set (117).
+This will use all available Poales plastomes in the data set (117).
 
 Orders currently available in Fast-Plast (68):
 
@@ -188,9 +188,27 @@ Coverage analysis and results of the reassembled plastome will be in this direct
 
 <h1>Usage</h1>
 
+<h3>Example with Paired-End Data</h3>
+
+<code>perl fast-plast.pl -1 /home/mmckain/Sequence_Vault/Washburn_Data/37_Urochloa_fusca_42940_RPGH_AGTCAA_L005_R1_001.fastq.gz -2 /home/mmckain/Sequence_Vault/Washburn_Data/37_Urochloa_fusca_42940_RPGH_AGTCAA_L005_R2_001.fastq.gz --name Urochloa_fusca-37 --bowtie_index Poales --coverage_analysis --clean light</code>
+
+In this example, one pair-end library is being used for assembly. The default adapters (NEB) are used for trimming, Poales species are used for the Bowtie2 index, the coverage analysis is invoked, and a light cleaning is done after completition.
+
+<h3>Example with Single End Data</h3>
+
+<code>perl fast-plast.pl -s /home/mmckain/Sequence_Vault/Andropogoneae_GSS/Chionachne_koenigii-TK057/K17_GTCCGC_L006_R1_001.fastq.gz --name Chionachne_koenigii-TK057 --adapters TruSeq --bowtie_index All --coverage_analysis </code>
+
+In this example, one single end library is being used for assembly. The TruSeq adapters are used for trimming, a representative from each order is used for the Bowtie2 index, the coverage analysis is invoked, and no cleaning is done.
+
+<h3>Example with Mixed Libraries</h3>
+
+<code>perl fast-plast.pl -1 /home/mmckain/Sequence_Vault/Andropogoneae_GSS/Monocymbium_ceresiiforme-TK203/TK203_GCTACGCT-AGAGTAGA_Both_R1.fastq.gz -2 /home/mmckain/Sequence_Vault/Andropogoneae_GSS/Monocymbium_ceresiiforme-TK203/TK203_GCTACGCT-AGAGTAGA_Both_R2.fastq.gz -s /home/mmckain/Sequence_Vault/Andropogoneae_GSS/Monocymbium_ceresiiforme-TK203/Monocymbium_ceresiiforme-TK203_GA_122949-34_S42_R1_001.fastq --name Monocymbium_ceresiiforme-TK203 --bowtie_index /home/mmckain/Andropogoneae_Plastomes/FINISHED/androplast --coverage_analysis --clean deep </code>
+
+In this example, one single end library and one paired-end library are being used for assembly. The default adapters (NEB) are used for trimming, a user-defined Bowtie2 index (base name given) is used for the Bowtie2 index, the coverage analysis is invoked, and a deep cleaning is done after completion.
+
 <code> fast-plast.pl [-1 <paired_end_file1> -2 <paired_end_file2> || -single <singe_end_file>] -name <sample_name> [options]  </code>
 
-Definition:
+Definitions:
 
 		-1 <filenames>		File with forward paired-end reads. Multiple files can be designated with a comma-delimited list.
 					Read files should be in matching order with other paired end files.
@@ -229,6 +247,8 @@ Definition:
 	--Nextera and TruSeq adapter options added from Trimmomatic adapter set.
 	<br>
 	--Cleaning option added to remove large files.
+	<br>
+	--More genes added to angiosperm chloroplast gene list.
 
 * 10-March-2017 Fast-Plast v.1.2.0<br>
 	--Added orignal code to identify low coverage areas, split assembly, and reassemble. This portion of the pipeline is still in alpha.<br>
