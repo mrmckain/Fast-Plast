@@ -197,7 +197,7 @@ Definition:
 		Advanced options:
 
 		--threads			Number of threads used by Fast-Plast.  [Default = 4]
-		--adapters			Files of adapters used in making sequencing library. These should be in FASTA format. [Default = NEB-PE]
+		--adapters			Files of adapters used in making sequencing library. These should be in FASTA format. NEB, Nextera, and 						TruSeq options available. Use NEB, Nextera, or TruSeq for parameter. [Default = NEB]
 		--bowtie_index		Order for sample to draw references for mapping. If order exists, then all available samples for that 
 							order will be used. If order does not exist in default set or the terms "all" or "GenBank" are given, 
 							one exemplar from each available order is used to build the Bowtie2 indicies. [default="All"]
