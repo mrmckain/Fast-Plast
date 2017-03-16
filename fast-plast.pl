@@ -7,6 +7,7 @@ use lib ("$FindBin::Bin/PerlLib");
 use File::Spec;
 use Cwd;
 use Cwd 'abs_path';
+use Env qw (PATH);
 
 BEGIN {
 
@@ -27,7 +28,7 @@ my $SSPACE; #path to sspace exectuable
 my $BOWTIE1; #path to bowtie1 executable
 my $JELLYFISH; #path to jellyfish2 excecutable
 
-$ENV{'PATH'} = '$BOWTIE1';
+$ENV{'PATH'} = $PATH.':'.$BOWTIE1;
 
 my $help;
 my $paired_end1;
@@ -39,9 +40,9 @@ my $posgenes= $FPBIN . "/Angiosperm_Chloroplast_Genes.fsa";
 my $coverage_check;
 my $min_coverage = 0;
 my $threads = 4;
-my $adapters = $FPBIN . "/NEB-PE.fa";
+my $adapters = $FPBIN . "/adapters/NEB-PE.fa";
 my $version;
-my $current_version = "Fast-Plast v.1.2.1";
+my $current_version = "Fast-Plast v.1.2.2";
 my $user_bowtie;
 
 GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, 'coverage_analysis' => \$coverage_check,'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
@@ -229,6 +230,12 @@ print $LOGFILE "$current_runtime\tStarting read trimming with Trimmomatic.\n\t\t
 
 mkdir("1_Trimmed_Reads");
 chdir("1_Trimmed_Reads");
+if($adapters =~ /nextera/i){
+	$adapters=$FPBIN"/adapters/NexteraPE-PE.fa";
+}
+if($adapters =~ /truseq/i){
+	$adapters=$FPBIN."/adapters/TruSeq3-PE.fa";
+}
 if(@p1_array){
 	for (my $i=0; $i < $pe_libs; $i++){
 		my $trim_exec = "java -classpath " . $TRIMMOMATIC . " org.usadellab.trimmomatic.TrimmomaticPE -threads " . $threads . " " . $p1_array[$i] . " " . $p2_array[$i] . " " . $name."_".$i.".trimmed_P1.fq " . $name."_".$i.".trimmed_U1.fq " . $name."_".$i.".trimmed_P2.fq " . $name."_".$i.".trimmed_U2.fq " . "ILLUMINACLIP:".$adapters.":1:30:10 SLIDINGWINDOW:10:20 MINLEN:40";
@@ -236,7 +243,10 @@ if(@p1_array){
 	}
 	`cat $name\*trimmed_P1.fq > $name.trimmed_P1.fq`;
 	`cat $name\*trimmed_P2.fq > $name.trimmed_P2.fq`;
-	`cat $name\*trimmed_U*.fq > $name.trimmed_UP.fq`;
+	if(glob("$name*trimmed_U*.fq")){
+		`cat $name\*trimmed_U*.fq > $name.trimmed_UP.fq`;
+	}
+	
 }
 
 
@@ -249,13 +259,13 @@ if(@s_array){
 }
 
 
-if (-e $name.".trimmed_P1.fq"){
+if (-s $name.".trimmed_P1.fq"){
 	my $se_size = &count_lines($name.".trimmed_P1.fq");
 	chomp($se_size);
 	$se_size=($se_size/4)*2;
 	print $SUMMARY "Total Cleaned Pair-End Reads:\t$se_size\n";
 }
-if (-e $name.".trimmed_UP.fq"){
+if (-s $name.".trimmed_UP.fq"){
 	my $se_size = &count_lines($name.".trimmed_UP.fq");
 	chomp($se_size);
 	$se_size=$se_size/4;
@@ -281,7 +291,13 @@ else{
 }
 my $bowtie2_exec;
 if(@p1_array){
-	$bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $bowtie_index . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+	if(-s "../1_Trimmed_Reads/".$name.".trimmed_UP.fq"){
+		$bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $bowtie_index . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+	}
+	else{
+		$bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $bowtie_index . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -S " . $name . ".sam";
+	}
+
 }
 else{
 	$bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq -p " . $threads . " -x " . $bowtie_index . " -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
@@ -291,13 +307,13 @@ else{
 system($bowtie2_exec);
 
 
-if (-e "map_pair_hits.1.fq"){
+if (-s "map_pair_hits.1.fq"){
 	my $se_size = &count_lines("map_pair_hits.1.fq");
 	chomp($se_size);
 	$se_size=($se_size/4)*2;
 	print $SUMMARY "Total Concordantly Mapped Reads:\t$se_size\n";
 }
-if (-e "map_hits.fq"){
+if (-s "map_hits.fq"){
 	my $se_size = &count_lines("map_hits.fq");
 	chomp($se_size);
 	$se_size=$se_size/4;
@@ -1486,7 +1502,7 @@ or
 Advanced options:
 
 	--threads		Number of threads used by Fast-Plast.  [Default = 4]
-	--adapters		Files of adapters used in making sequencing library. [Default = NEB-PE]
+	--adapters		Files of adapters used in making sequencing library. Users can select "Nextera" for Nextera adapters, "TruSeq" for TruSeq adapters, leave the default (NEB), or provide their own. [Default = NEB-PE]
 	--bowtie_index		Order for sample to draw references for mapping. If order exists, then all available samples for that order will be used. 
 				If order does not exist in default set or the terms "all" or "GenBank" are given, one exemplar from each available order is used 
 				to build the Bowtie2 indicies. [default="All"]
