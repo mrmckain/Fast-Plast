@@ -200,8 +200,7 @@ Definition:
 
 		**PAIRED END AND SINGLE END FILES CAN BE PROVIDED SIMULTANEOUSLY.**
 
-		-n <sample_name>	Name for current assembly. We suggest a species name/accession combination as Fast-Plast will use 
-							this name as the FASTA ID in the final assembly. [Default = Fast-Plast]
+		-n <sample_name>	Name for current assembly. We suggest a species name/accession combination as Fast-Plast will use this name as the FASTA ID in the final assembly. [Default = Fast-Plast]
 
 		Advanced options:
 
