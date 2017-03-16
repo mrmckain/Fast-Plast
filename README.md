@@ -214,7 +214,7 @@ Definition:
 		--posgenes			User defined genes for identification of single copy/IR regions and orientation. Useful when major
 							rearrangments are present in user plastomes.
 		--coverage_analysis Flag to run the coverage analysis of a final chloroplast assembly.[Recommended]
-		--clean 			[light|deep]. The "light" option will remove all bowtie indices, BLAST databases, SAM files, 									Jellyfish dumps, and Jellyfish kmer files. The "deep" option will remove all directories except for the 						Final Assembly and Coverage Analysis directories. All files in the "light" option will also be removed. 
+		--clean 			[light|deep]. The "light" option will remove all bowtie indices, BLAST databases, SAM files, 									Jellyfish dumps, and Jellyfish kmer files. The "deep" option will remove all directories except for the 						Final Assembly and Coverage Analysis directories. All files in the "light" option will also be removed. 						Clean will only be invoked if a fully successful assembly is made. 
 
 
 
