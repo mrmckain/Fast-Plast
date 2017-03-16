@@ -106,9 +106,6 @@ while(<$blast>){
 	}
 	else{
 		if($tarray[1] =~ /rrn/){
-			if($tarray[9]-$tarray[8] > 0) {
-
-		}
 		if($tarray[9]-$tarray[8] > 0) {
 				$gene_orientations{ir}{"-"}++;
 			}
