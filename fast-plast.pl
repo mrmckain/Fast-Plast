@@ -232,7 +232,7 @@ print $LOGFILE "$current_runtime\tStarting read trimming with Trimmomatic.\n\t\t
 mkdir("1_Trimmed_Reads");
 chdir("1_Trimmed_Reads");
 if($adapters =~ /nextera/i){
-	$adapters=$FPBIN"/adapters/NexteraPE-PE.fa";
+	$adapters=$FPBIN."/adapters/NexteraPE-PE.fa";
 }
 if($adapters =~ /truseq/i){
 	$adapters=$FPBIN."/adapters/TruSeq3-PE.fa";
@@ -275,7 +275,7 @@ if (-s $name.".trimmed_UP.fq"){
 	$se_size=$se_size/4;
 	print $SUMMARY "Total Cleaned Single End Reads:\t$se_size\n";
 }
-unlink(glob("$name\_\d*"));
+unlink(glob("$name\_*"));
 chdir("../");
 
 ########## Start Bowtie2 ##########
@@ -329,7 +329,7 @@ chdir("../");
 ########## Start SPAdes ##########
 
 $current_runtime = localtime();
-print $LOGFILE "$current_runtime\tStarting initial assembly with SPAdes.\nUsing $SPADES.\n";
+print $LOGFILE "$current_runtime\tStarting initial assembly with SPAdes.\n\t\t\t\tUsing $SPADES.\n";
 mkdir("3_Spades_Assembly");
 chdir("3_Spades_Assembly");
 
