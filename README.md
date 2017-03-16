@@ -194,7 +194,7 @@ Definition:
 
         -1 <filenames>		File with forward paired-end reads. Multiple files can be designated with a comma-delimited list. 
 						Read files should be in matching order with other paired end files.
-	-2 <filenames>			File with reverse paired-end reads. Multiple files can be designated with a comma-delimited list. 
+		-2 <filenames>			File with reverse paired-end reads. Multiple files can be designated with a comma-delimited list. 
 							Read files should be in matching order with other paired end files.
 		-s <filenames>		File with unpaired reads. Multiple files can be designated with a comma-delimited list.
 
