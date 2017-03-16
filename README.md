@@ -30,9 +30,11 @@ Fast-Plast requires a number of commonly used bioinformatics programs. We have i
 * <a href="https://sourceforge.net/projects/bowtie-bio/">Bowtie1</a> (required for SSPACE)
 
 <h3>afin</h3>
+
 * c++ complier with c++11 support and zlib.h.  zlib.h is a standard base library for most Unix systems but can be obtained <a href="http://www.zlib.net/">here</a>.
 
 <h3>Coverage Analysis</h3>
+
 * <a href="http://www.genome.umd.edu/jellyfish.html#Release">Jellyfish 2</a><br>
 * R
 
