@@ -192,10 +192,8 @@ Coverage analysis and results of the reassembled plastome will be in this direct
 
 Definition:
 
-		-1 <filenames>		File with forward paired-end reads. Multiple files can be designated with a comma-delimited list. 
-							Read files should be in matching order with other paired end files.
-		-2 <filenames>		File with reverse paired-end reads. Multiple files can be designated with a comma-delimited list. 
-							Read files should be in matching order with other paired end files.
+		-1 <filenames>		File with forward paired-end reads. Multiple files can be designated with a comma-delimited list. 								Read files should be in matching order with other paired end files.
+		-2 <filenames>		File with reverse paired-end reads. Multiple files can be designated with a comma-delimited list. 								Read files should be in matching order with other paired end files.
 		-s <filenames>		File with unpaired reads. Multiple files can be designated with a comma-delimited list.
 
 		**PAIRED END AND SINGLE END FILES CAN BE PROVIDED SIMULTANEOUSLY.**
@@ -206,9 +204,7 @@ Definition:
 
 		--threads		Number of threads used by Fast-Plast.  [Default = 4]
 		--adapters		[NEB|Nextera|TruSeq] Files of adapters used in making sequencing library. NEB, Nextera, and TruSeq options 						available. Also accepts the path to a user created FASTA file of adapters.[Default = NEB]
-		--bowtie_index		Order for sample to draw references for mapping. If order exists, then all available samples for that 
-							order will be used. If order does not exist in default set or the terms "all" or "GenBank" are given, 
-							one exemplar from each available order is used to build the Bowtie2 indicies. [default="All"]
+		--bowtie_index		Order for sample to draw references for mapping. If order exists, then all available samples for that order 					will be used. If order does not exist in default set or the terms "all" or "GenBank" are given, one 							exemplar from each available order is used to build the Bowtie2 indicies. [default="All"]
 		--user_bowtie		User supplied bowtie2 indices. If this option is used, bowtie_index is ignored.
 		--posgenes			User defined genes for identification of single copy/IR regions and orientation. Useful when major
 							rearrangments are present in user plastomes.
