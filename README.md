@@ -38,7 +38,7 @@ Fast-Plast requires a number of commonly used bioinformatics programs. We have i
 * <a href="http://www.genome.umd.edu/jellyfish.html#Release">Jellyfish 2</a><br>
 * R
 
-Memory requirements will vary based on the size of your data set. Expect to use 1.5-2x the memory for the size of your reads files. If your data set is exceptionally large, we have found success in reducing the dataset to 50 million reads and running them through Fast-Plast.
+Memory requirements will vary based on the size of your data set. Expect to use 1.5-2x the memory for the size of your reads files. If your data set is exceptionally large, we have found success in reducing the dataset to 5-10 million reads and running them through Fast-Plast.
 
 <h1>Installation</h1>
 
