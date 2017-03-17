@@ -1132,7 +1132,7 @@ sub remove_nested {
                        $min =  $len1;
                 }
 
-                if($max == $len1){
+                if($max == $len1 && $len1 != $len2){
                         next;
                 }
 
@@ -1338,10 +1338,13 @@ sub orientate_plastome{
 				}
 			}
 
-			if($exists_ssc != 2 || $exists_ir != 1){
+			if($exists_ssc != 2){
 				next;
 			}
 			
+			if($exists_ir >1){
+
+			}
 			my @range;
 			
 			for my $sc_range (keys %{$cp_piece_pos{"sc"}}){		
