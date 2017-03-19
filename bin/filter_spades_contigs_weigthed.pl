@@ -46,7 +46,12 @@ my $max_cov	= $weighted_average+2.5*$stdev;
 
 open my $out, ">", "filtered_spades_contigs.fsa";
 for my $tcov (sort keys %cov_seqid){
-	if($tcov <= $max_cov && $tcov >= $min_cov){
-		print $out "$cov_seqid{$tcov}\n$sequences{$cov_seqid{$tcov}}\n";
-	}
+    if(scalar keys %sequences >=4){
+        if($tcov <= $max_cov && $tcov >= $min_cov){
+            print $out "$cov_seqid{$tcov}\n$sequences{$cov_seqid{$tcov}}\n";
+        }
+    }
+    else{
+        print $out "$cov_seqid{$tcov}\n$sequences{$cov_seqid{$tcov}}\n";
+    }
 }
