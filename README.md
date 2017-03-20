@@ -232,7 +232,7 @@ Definitions:
 		Advanced options:
 
 		--threads		Number of threads used by Fast-Plast.  [Default = 4]
-		--min_coverage	Lowest acceptable coverage for 25-mer sliding window during coverage analysis. [Default = 0]
+		--min_coverage		Lowest acceptable coverage for 25-mer sliding window during coverage analysis. [Default = 0]
 		--adapters		[NEB|Nextera|TruSeq] Files of adapters used in making sequencing library. NEB, Nextera, and TruSeq options 
 					available. Also accepts the path to a user created FASTA file of adapters.[Default = NEB]
 		--bowtie_index		Taxonomic order of the sequenced species to pick references for bowtie2 indices. If the order is in the database, 
