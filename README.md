@@ -2,7 +2,7 @@ Fast-Plast: Rapid de novo assembly and finishing for whole chloroplast genomes
 =============
 <b>Authors</b>: Michael R. McKain, <a href="https://github.com/afinit/afin">Mark Wilson</a><br>
 </br>
-Version 1.2.2<br>
+Version 1.2.3<br>
 </br>
 <b>Contact</b>: https://github.com/mrmckain
 
@@ -231,6 +231,7 @@ Definitions:
 
 		Advanced options:
 
+		--subsampling 	Number of reads to subsample. Reads will be evenly pulled from all files. 
 		--threads		Number of threads used by Fast-Plast.  [Default = 4]
 		--min_coverage		Lowest acceptable coverage for 25-mer sliding window during coverage analysis. [Default = 0]
 		--adapters		[NEB|Nextera|TruSeq] Files of adapters used in making sequencing library. NEB, Nextera, and TruSeq options 
@@ -251,6 +252,9 @@ Definitions:
 
 
 ## Changelog
+
+* 31-March-2017 Fast-Plast v.1.2.3 <br>
+	--Subsampling option added to allow for faster completion.
 
 * 16-March-2017 Fast-Plast v.1.2.2 <br>
 	--Nextera and TruSeq adapter options added from Trimmomatic adapter set.
