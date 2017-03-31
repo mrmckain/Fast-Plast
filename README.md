@@ -231,7 +231,7 @@ Definitions:
 
 		Advanced options:
 
-		--subsampling 		Number of reads to subsample. Reads will be evenly pulled from all files. 
+		--subsample		Number of reads to subsample. Reads will be evenly pulled from all files. 
 		--threads		Number of threads used by Fast-Plast.  [Default = 4]
 		--min_coverage		Lowest acceptable coverage for 25-mer sliding window during coverage analysis. [Default = 0]
 		--adapters		[NEB|Nextera|TruSeq] Files of adapters used in making sequencing library. NEB, Nextera, and TruSeq options 
