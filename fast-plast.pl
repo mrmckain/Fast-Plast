@@ -42,11 +42,12 @@ my $min_coverage = 0;
 my $threads = 4;
 my $adapters = $FPBIN . "/adapters/NEB-PE.fa";
 my $version;
-my $current_version = "Fast-Plast v.1.2.2";
+my $current_version = "Fast-Plast v.1.2.3";
 my $user_bowtie;
 my $clean;
+my $subsample;
 
-GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check,'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
+GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check,'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters, "subsample=i" => \$subsample)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
 
 if($version) {
 	pod2usage( { -verbose => 99, -sections => "VERSION" } );
@@ -135,6 +136,8 @@ print $LOGFILE "$current_runtime\tDetermining best kmer sizes.\n";
 
 my $maxsize=0;
 
+
+
 if(@p1_array){
 	for my $file (@p1_array){
 		open my $tfile, "<", $file;
@@ -197,6 +200,8 @@ if(@s_array){
 }
 ##########
 
+
+
 ###Set K-mer Size###
 my $spades_kmer;
 if($maxsize >= 140){
@@ -225,12 +230,81 @@ chdir("$name");
 open my $SUMMARY, ">", $name."_Plastome_Summary.txt";
 print $SUMMARY "Sample:\t$name\nFast-Plast Version:\t$current_version\n";
 
+
+
 ########## Start Trimmomatic ##########
 $current_runtime = localtime();
 print $LOGFILE "$current_runtime\tStarting read trimming with Trimmomatic.\n\t\t\t\tUsing $TRIMMOMATIC.\n";
 
 mkdir("1_Trimmed_Reads");
 chdir("1_Trimmed_Reads");
+
+###Subsample Data###
+
+my $total_input_files;
+if(@p1_array){
+	$total_input_files+=scalar @p1_array;
+}
+if(@p2_array){
+	$total_input_files+=scalar @p2_array;
+}
+if(@s_array){
+	$total_input_files+=scalar @s_array;
+}
+
+
+if($subsample){
+	my $readsperfile = $subsample/$total_input_files;
+	if(@p1_array){
+		open my $sub_p1, "<", "subset_file1.fq";
+		for my $p1f (@p1_array){
+			my $count = 0;
+			open my $tfile, "<", $p1f;
+			while(<$tfile>){
+					chomp;
+					if($count < $readsperfile*4){
+						print $sub_p1 "$_\n";
+					}
+			}
+		}
+	}
+	if(@p2_array){
+		open my $sub_p2, "<", "subset_file2.fq";
+		for my $p2f (@p2_array){
+			my $count = 0;
+			open my $tfile, "<", $p2f;
+			while(<$tfile>){
+					chomp;
+					if($count < $readsperfile*4){
+						print $sub_p2 "$_\n";
+					}
+			}
+		}
+	}
+	if(@s_array){
+		open my $sub_s, "<", "subset_files.fq";
+		for my $psf (@s_array){
+			my $count = 0;
+			open my $tfile, "<", $psf;
+			while(<$tfile>){
+					chomp;
+					if($count < $readsperfile*4){
+						print $sub_s "$_\n";
+					}
+			}
+		}
+	}
+
+	@p1_array=();
+	push(@p1_array, "subset_file1.fq");
+	@p2_array=();
+	push(@p2_array, "subset_file2.fq");
+	@s_array=();
+	push(@s_array, "subset_files.fq");
+
+
+}
+
 if($adapters =~ /nextera/i){
 	$adapters=$FPBIN."/adapters/NexteraPE-PE.fa";
 }
