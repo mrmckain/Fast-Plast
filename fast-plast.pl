@@ -255,7 +255,7 @@ if(@s_array){
 
 if($subsample){
 	my $readsperfile = $subsample/$total_input_files;
-	$readsperlfile = int($readsperfile);
+	$readsperfile = int($readsperfile);
 	if(@p1_array){
 		open my $sub_p1, "<", "subset_file1.fq";
 		for my $p1f (@p1_array){
