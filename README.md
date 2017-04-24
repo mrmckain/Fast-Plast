@@ -233,7 +233,7 @@ Definitions:
 
 		--subsample		Number of reads to subsample. Reads will be evenly pulled from all files. 
 		--threads		Number of threads used by Fast-Plast.  [Default = 4]
-		--min_coverage		Lowest acceptable coverage for 25-mer sliding window during coverage analysis. [Default = 0]
+		--min_coverage		Lowest acceptable coverage for 25-mer sliding window during coverage analysis. [Default = 0.25 * Average coverage]
 		--adapters		[NEB|Nextera|TruSeq] Files of adapters used in making sequencing library. NEB, Nextera, and TruSeq options 
 					available. Also accepts the path to a user created FASTA file of adapters.[Default = NEB]
 		--bowtie_index		Taxonomic order of the sequenced species to pick references for bowtie2 indices. If the order is in the database, 
@@ -257,6 +257,8 @@ Definitions:
     --N's allowed in coverage and IR/SC identification from scaffolding. 
     <br>
     --Faster runs of afin after initial coverage analysis. 
+    <br>
+    --Minimum coverage for coverage analysis no longer defaulted as 0.  Now estimated as 0.25 of average coverage across plastome.
     <br>
     --General bug fixes accuracy.
 
