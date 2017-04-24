@@ -222,7 +222,7 @@ Definitions:
 					Read files should be in matching order with other paired end files.
 		-2 <filenames>		File with reverse paired-end reads. Multiple files can be designated with a comma-delimited list.
 					Read files should be in matching order with other paired end files.
-		-s <filenames>		File with unpaired reads. Multiple files can be designated with a comma-delimited list.
+		--single <filenames>		File with unpaired reads. Multiple files can be designated with a comma-delimited list.
 
 		**PAIRED END AND SINGLE END FILES CAN BE PROVIDED SIMULTANEOUSLY.**
 
