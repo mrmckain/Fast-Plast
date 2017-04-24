@@ -2,7 +2,7 @@ Fast-Plast: Rapid de novo assembly and finishing for whole chloroplast genomes
 =============
 <b>Authors</b>: Michael R. McKain, <a href="https://github.com/afinit/afin">Mark Wilson</a><br>
 </br>
-Version 1.2.3<br>
+Version 1.2.4<br>
 </br>
 <b>Contact</b>: https://github.com/mrmckain
 
@@ -252,6 +252,11 @@ Definitions:
 
 
 ## Changelog
+
+* 24-April-2017 Fast-Plast v.1.2.4 <br>
+    --N's allowed in coverage and IR/SC identification from scaffolding. 
+    --Faster runs of afin after initial coverage analysis. 
+    --General bug fixes accuracy.
 
 * 31-March-2017 Fast-Plast v.1.2.3 <br>
 	--Subsampling option added to allow for faster completion.
