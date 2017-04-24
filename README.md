@@ -255,7 +255,9 @@ Definitions:
 
 * 24-April-2017 Fast-Plast v.1.2.4 <br>
     --N's allowed in coverage and IR/SC identification from scaffolding. 
+    <br>
     --Faster runs of afin after initial coverage analysis. 
+    <br>
     --General bug fixes accuracy.
 
 * 31-March-2017 Fast-Plast v.1.2.3 <br>
