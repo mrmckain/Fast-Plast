@@ -8,6 +8,7 @@ use File::Spec;
 use Cwd;
 use Cwd 'abs_path';
 use Env qw (PATH);
+use IO::Uncompress::Gunzip qw(gunzip $GunzipError) ;
 
 BEGIN {
 
@@ -27,7 +28,6 @@ my $BLAST; #path to blast executable
 my $SSPACE; #path to sspace exectuable
 my $BOWTIE1; #path to bowtie1 executable
 my $JELLYFISH; #path to jellyfish2 excecutable
-
 $ENV{'PATH'} = $PATH.':'.$BOWTIE1;
 
 my $help;
@@ -38,11 +38,11 @@ my $name="Fast-Plast";
 my $bowtie_index = "All";
 my $posgenes= $FPBIN . "/Angiosperm_Chloroplast_Genes.fsa";
 my $coverage_check;
-my $min_coverage = 0;
+my $min_coverage;
 my $threads = 4;
 my $adapters = $FPBIN . "/adapters/NEB-PE.fa";
 my $version;
-my $current_version = "Fast-Plast v.1.2.3";
+my $current_version = "Fast-Plast v.1.2.4";
 my $user_bowtie;
 my $clean;
 my $subsample;
@@ -257,41 +257,71 @@ if($subsample){
 	my $readsperfile = $subsample/$total_input_files;
 	$readsperfile = int($readsperfile);
 	if(@p1_array){
-		open my $sub_p1, "<", "subset_file1.fq";
+		open my $sub_p1, ">", "subset_file1.fq";
 		for my $p1f (@p1_array){
 			my $count = 0;
-			open my $tfile, "<", $p1f;
-			while(<$tfile>){
+			my $tfile;
+			if($p1f =~ /\.gz/){
+				$tfile = IO::Uncompress::Gunzip->new($p1f) or die "Problem found with $p1f: $GunzipError";
+			}
+			else{
+				open $tfile, "<", $p1f;
+			}
+			SUB: while(<$tfile>){
 					chomp;
-					if($count < $readsperfile*4){
+					if($count <= $readsperfile*4){
 						print $sub_p1 "$_\n";
+						$count++;
+					}
+					else{
+						last SUB;
 					}
 			}
 		}
 	}
 	if(@p2_array){
-		open my $sub_p2, "<", "subset_file2.fq";
+		open my $sub_p2, ">", "subset_file2.fq";
 		for my $p2f (@p2_array){
 			my $count = 0;
-			open my $tfile, "<", $p2f;
-			while(<$tfile>){
+			my $tfile;
+                        if($p2f =~ /\.gz/){
+                                $tfile = IO::Uncompress::Gunzip->new($p2f) or die "Problem found with $p2f: $GunzipError";
+                        }
+                        else{
+                                open $tfile, "<", $p2f;
+                        }
+			SUB: while(<$tfile>){
 					chomp;
-					if($count < $readsperfile*4){
+					if($count <= $readsperfile*4){
 						print $sub_p2 "$_\n";
+						$count++;
 					}
+					 else{
+                                               last SUB;
+                                        }
 			}
 		}
 	}
 	if(@s_array){
-		open my $sub_s, "<", "subset_files.fq";
+		open my $sub_s, ">", "subset_files.fq";
 		for my $psf (@s_array){
 			my $count = 0;
-			open my $tfile, "<", $psf;
-			while(<$tfile>){
+			my $tfile;
+                        if($psf =~ /\.gz/){
+                                $tfile = IO::Uncompress::Gunzip->new($psf) or die "Problem found with $psf: $GunzipError";
+                        }
+                        else{
+                                open $tfile, "<", $psf;
+                        }
+			SUB: while(<$tfile>){
 					chomp;
-					if($count < $readsperfile*4){
+					if($count <= $readsperfile*4){
 						print $sub_s "$_\n";
+						$count++;
 					}
+					 else{
+                                                last SUB;
+                                        }
 			}
 		}
 	}
@@ -351,6 +381,12 @@ if (-s $name.".trimmed_UP.fq"){
 	print $SUMMARY "Total Cleaned Single End Reads:\t$se_size\n";
 }
 unlink(glob("$name\_*"));
+my @tfile_read = glob("$name.trimmed*");
+for my $check_tfile (@tfile_read){
+	if(-z $check_tfile){
+		unlink($check_tfile);
+	}
+}
 chdir("../");
 
 ########## Start Bowtie2 ##########
@@ -370,18 +406,20 @@ else{
 	$bowtie_index= &build_bowtie2_indices($bowtie_index);
 }
 my $bowtie2_exec;
-if(@p1_array){
-	if(-s "../1_Trimmed_Reads/".$name.".trimmed_UP.fq"){
-		$bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $bowtie_index . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
-	}
-	else{
+if(glob("../1_Trimmed_Reads/$name*trimmed_U*.fq") && glob("../1_Trimmed_Reads/$name*trimmed_P*.fq")){
+	$bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $bowtie_index . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+}
+elsif(!glob("../1_Trimmed_Reads/$name*trimmed_U*.fq") && glob("../1_Trimmed_Reads/$name*trimmed_P*.fq")){
 		$bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $bowtie_index . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -S " . $name . ".sam";
-	}
+}
+
+elsif(glob("../1_Trimmed_Reads/$name*trimmed_U*.fq")){
+	$bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq -p " . $threads . " -x " . $bowtie_index . " -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
 
 }
 else{
-	$bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq -p " . $threads . " -x " . $bowtie_index . " -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
-
+        print $LOGFILE "\t\t******************ERROR: No trimmed read files were identified to run SPAdes.  Please check 1_Trimmed_Reads.******************\n";
+        die ("No trimmed read files were identified to run SPAdes.  Please check 1_Trimmed_Reads.\n");
 }
 
 system($bowtie2_exec);
@@ -409,11 +447,18 @@ mkdir("3_Spades_Assembly");
 chdir("3_Spades_Assembly");
 
 my $spades_exec;
-if(@p1_array){
+if(-s "../2_Bowtie_Mapping/map_pair_hits.1.fq" && -s "../2_Bowtie_Mapping/map_pair_hits.2.fq" && -s "../2_Bowtie_Mapping/map_hits.fq"){
 	$spades_exec = "python " . $SPADES . " -o spades_iter1 -1 ../2_Bowtie_Mapping/map_pair_hits.1.fq -2 ../2_Bowtie_Mapping/map_pair_hits.2.fq -s ../2_Bowtie_Mapping/map_hits.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
 }
-else{
+elsif(-s "../2_Bowtie_Mapping/map_pair_hits.1.fq" && -s "../2_Bowtie_Mapping/map_pair_hits.2.fq" && -z ("../2_Bowtie_Mapping/map_hits.fq" || ! -e "../2_Bowtie_Mapping/map_hits.fq")){
+	$spades_exec = "python " . $SPADES . " -o spades_iter1 -1 ../2_Bowtie_Mapping/map_pair_hits.1.fq -2 ../2_Bowtie_Mapping/map_pair_hits.2.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
+}
+elsif (-s "../2_Bowtie_Mapping/map_hits.fq"){
 	$spades_exec = "python " . $SPADES . " -o spades_iter1 -s ../2_Bowtie_Mapping/map_hits.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
+}
+else{
+	print $LOGFILE "\t\t******************ERROR: No mapped reads files were identified to run SPAdes.  Please check 2_Bowtie_Mapping.******************\n";
+	die ("No mapped reads files were identified to run SPAdes.  Please check 2_Bowtie_Mapping.\n");
 }
 system($spades_exec);
 chdir("../");
@@ -489,7 +534,7 @@ if( $total_afin_contigs > 1){
 	$current_afin = $name . "_afin_iter2.fa";
 
 	`$BLAST/makeblastdb -in $current_afin -dbtype nucl`;
-	my $blast_afin_exec = $BLAST . "blastn -query " . $current_afin . " -db " . $current_afin . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $current_afin . ".blastn";
+	my $blast_afin_exec = $BLAST . "blastn -query " . $current_afin . " -db " . $current_afin . " -evalue 1e-40 -outfmt 6 -max_target_seqs 100000000 > " . $current_afin . ".blastn";
 	`$blast_afin_exec`;
 
 	&remove_nested($current_afin, $current_afin.".blastn");
@@ -517,11 +562,12 @@ if( $total_afin_contigs > 1){
 	if(@p1_array){
 		$current_afin = &scaffolding($current_afin,$name);
 		rename($current_afin, $name.".final.scaffolds.fasta");
-		$current_afin=$name.".final.scaffolds.fasta";
 		
+		$current_afin=$name.".final.scaffolds.fasta";
+		$current_afin=&afin_wrap($current_afin, "extend");		
 
 		`$BLAST/makeblastdb -in $current_afin -dbtype nucl`;
-		 $blast_afin_exec = $BLAST . "blastn -query " . $current_afin . " -db " . $current_afin . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $current_afin . ".blastn";
+		 $blast_afin_exec = $BLAST . "blastn -query " . $current_afin . " -db " . $current_afin . " -evalue 1e-40 -outfmt 6 -max_target_seqs 100000000 > " . $current_afin . ".blastn";
 		`$blast_afin_exec`;
 
 		&remove_nested($current_afin, $current_afin.".blastn");
@@ -687,11 +733,18 @@ my $build_bowtie2_exec = $BOWTIE2 . "-build ../Final_Assembly/" . $name . "_FULL
 system($build_bowtie2_exec);
 
 my $cov_bowtie2_exec;
-if(@p1_array){
+if(glob("../1_Trimmed_Reads/$name*trimmed_U*.fq") && glob("../1_Trimmed_Reads/$name*trimmed_P*.fq")){
 	$cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
 }
-else{
+elsif(glob("../1_Trimmed_Reads/$name*trimmed_U*.fq") && !glob("../1_Trimmed_Reads/$name*trimmed_P*.fq")){
 	$cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . "  -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+}
+elsif(!glob("../1_Trimmed_Reads/$name*trimmed_U*.fq") && glob("../1_Trimmed_Reads/$name*trimmed_P*.fq")){
+	$cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -S " . $name . ".sam";
+}
+else{
+	print $LOGFILE "Could not find reads to complete Coverage Analysis.  Check 1_Trimmed_Reads.\n";
+	die "Could not find reads to complete Coverage Analysis.  Check 1_Trimmed_Reads.\n";
 }
 
 system($cov_bowtie2_exec);
@@ -708,7 +761,13 @@ system($window_cov_exec);
 my $rscript_exec = "Rscript " . $COVERAGE_DIR . "/plot_coverage.r " . $name . ".coverage_25kmer.txt ". $name;
 system($rscript_exec);
 
-my $check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25 " . $min_coverage;
+my $check_cov_exec;
+if($min_coverage){
+	$check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25 ".$min_coverage;
+}
+else{
+	$check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25";
+}
 system($check_cov_exec);
 
 chdir("../");
@@ -973,14 +1032,22 @@ sub count_contigs {
 #########
 sub afin_wrap {
 	my $current_afin=$_[0];
+	
 my $extension = $maxsize*0.75;
-my ($total_afin_contigs, $max_afin, $min_afin) = &run_afin("150,50,50",100,"20,15,10","2,1,1",$_[0],$extension);
+my ($total_afin_contigs, $max_afin, $min_afin);
+
+if($_[1]){
+	($total_afin_contigs, $max_afin, $min_afin)  = &run_afin(50,100,15,2,$_[0],$extension, "extend");
+}
+else{
+	($total_afin_contigs, $max_afin, $min_afin)  = &run_afin(50,100,15,2,$_[0],$extension);
+}
 print $LOGFILE "\t\t\t\tAfter afin, there are $total_afin_contigs contigs with a maximum size of $max_afin and a minimum size of $min_afin.\n";
 $current_runtime = localtime();
 print $LOGFILE "$current_runtime\tRemoving nested contigs.\n";
 my $gotofinish;
 if( $total_afin_contigs > 1){
-	$current_afin = $name . "_afin_iter2.fa";
+	$current_afin = $name . "_afin_iter0.fa";
 
 	`$BLAST/makeblastdb -in $current_afin -dbtype nucl`;
 	my $blast_afin_exec = $BLAST . "blastn -query " . $current_afin . " -db " . $current_afin . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $current_afin . ".blastn";
@@ -1075,7 +1142,7 @@ if( $total_afin_contigs > 1){
 
 
 else{
-	$current_afin = $name . "_afin_iter2.fa";
+	$current_afin = $name . "_afin_iter0.fa";
 	
 	my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 	my %contigs_db_genes = %$contigs_db_genes;
@@ -1095,7 +1162,13 @@ return($current_afin);
 sub run_afin {
 	###Sub must be given number of iterations, trim length, and number of reads needed to fuse contigs.
 	my $extension = $_[5];
-	my $afin_exec = $AFIN_DIR . "/afin -c " . $_[4] . " -r ../1_Trimmed_Reads/" . $name .".trimmed* -l " . $_[0] . " -f .1 -d " . $_[1] . " -x " . $extension . " -p " . $_[2] . " -i " . $_[3] ." -o ". $name . "_afin";
+	my $afin_exec;
+	if($_[6]){
+		 $afin_exec = $AFIN_DIR . "/afin -c " . $_[4] . " -r ../1_Trimmed_Reads/" . $name .".trimmed* -l " . $_[0] . " -f .1 -d " . $_[1] . " -x " . $extension . " -p " . $_[2] . " -i " . $_[3] ." -o ". $name . "_afin --no_fusion";
+	}
+	else{	
+		 $afin_exec = $AFIN_DIR . "/afin -c " . $_[4] . " -r ../1_Trimmed_Reads/" . $name .".trimmed* -l " . $_[0] . " -f .1 -d " . $_[1] . " -x " . $extension . " -p " . $_[2] . " -i " . $_[3] ." -o ". $name . "_afin";
+	}
 	print $LOGFILE "\t\t\t\tUsing command $afin_exec.\n";
 	system($afin_exec);
 
@@ -1103,8 +1176,14 @@ sub run_afin {
 	my $afin_contig;
 	my $max_afin=0;
 	my $min_afin=100000000;
-
-	open my $afin_file, "<", $name . "_afin_iter2.fa";
+	my $iter_num=0;
+	for my $input (@_){
+		my $temp_count = ($input =~ tr/,//);
+		if ($temp_count > $iter_num){
+			$iter_num = $temp_count;
+		}	
+	}
+	open my $afin_file, "<", $name . "_afin_iter".$iter_num.".fa";
 	while(<$afin_file>){
 		chomp;
 		if(/>/){
@@ -1228,20 +1307,20 @@ sub remove_nested {
                 my $shit = $tarray[9]-$tarray[8];
                 if(exists $blast_scores{$tarray[0]}{$tarray[1]}){
                         for (my $i=$qstart-1; $i <= ($qstop-1); $i++){
-                                @{$blast_scores{$tarray[0]}{$tarray[1]}}[$i]++;
+                                $blast_scores{$tarray[0]}{$tarray[1]}{$i}++;
                         }
                 }
                 elsif(exists $blast_scores{$tarray[1]}{$tarray[0]}){
                         for (my $i=$qstart-1; $i <= ($qstop-1); $i++){
-                                @{$blast_scores{$tarray[0]}{$tarray[1]}}[$i]++;
+                                $blast_scores{$tarray[0]}{$tarray[1]}{$i}++;
                         }
                 }
                 else{
                         for (my $j=0; $j<$min; $j++){
-                                @{$blast_scores{$tarray[0]}{$tarray[1]}}[$j]=0;
+                                $blast_scores{$tarray[0]}{$tarray[1]}{$j}=0;
                         }
                         for (my $i=$qstart-1; $i <= ($qstop-1); $i++){
-                                @{$blast_scores{$tarray[0]}{$tarray[1]}}[$i]++;
+                                $blast_scores{$tarray[0]}{$tarray[1]}{$i}++;
                         }
                 }
         }
@@ -1249,16 +1328,28 @@ sub remove_nested {
         for my $blastid1 (keys %blast_scores){
                 for my $blastid2 (keys %{$blast_scores{$blastid1}}){
                         my $overlap=0;
-                        for my $i (@{$blast_scores{$blastid1}{$blastid2}}){
-                                if($blast_scores{$blastid1}{$blastid2}[$i] > 0){
+                        for my $i (keys %{$blast_scores{$blastid1}{$blastid2}}){
+                                if($blast_scores{$blastid1}{$blastid2}{$i} > 0){
                                         $overlap ++;
                                 }
                         }
                         
 
-                        my $len_min = length($temp_seqs{$blastid1});
-                        if ($overlap/$len_min >= 0.9){
-                                $delete_contigs{">".$blastid1}=0;
+                        my $len_min1 = length($temp_seqs{$blastid1});
+			my $len_min2 = length($temp_seqs{$blastid2});
+			my $true_min=1000000000;
+			my $remove_seq;
+			if($len_min1 < $len_min2){
+				$true_min = $len_min1;
+				$remove_seq=$blastid1;
+			}
+			else{
+				$true_min = $len_min2;
+				$remove_seq=$blastid2;
+			}
+				
+                        if ($overlap/$true_min >= 0.9){
+                                $delete_contigs{">".$remove_seq}=0;
                         }
 
                 }
@@ -1322,25 +1413,54 @@ sub remove_contamination{
 			$all_contigs{$contig_name}=1;
 		}
 	}
-
-	for my $gene_name (keys %genes_by_contig){
-		if(keys %{$genes_by_contig{$gene_name}}>1){
-			my $max = 0;
-			my $maxid;
-			for my $contig_name (keys %{$genes_by_contig{$gene_name}}){
-				if($count_per_contig{$contig_name} > $max){
-					$max = $count_per_contig{$contig_name};
-					$maxid = $contig_name;
+	for my $contig_name (keys %contigs_cp_genes){
+		for my $contig_name2 (keys %contigs_cp_genes){
+			if ($contig_name eq $contig_name2){
+				next;
+			}
+			my $overlap=0;
+			for my $gene_name (sort keys %{$contigs_cp_genes{$contig_name}}){
+				if(exists $contigs_cp_genes{$contig_name2}{$gene_name}){
+					$overlap++;
 				}
 			}
-			for my $contig_name (keys %{$genes_by_contig{$gene_name}}){
-				if($contig_name ne $maxid){
+			my $genes1 = scalar keys %{$contigs_cp_genes{$contig_name}};
+			my $genes2 = scalar keys %{$contigs_cp_genes{$contig_name2}};
+                        if ($overlap/$genes1 >= 0.9 && $overlap/$genes2 <= 0.9){
+				$delete_contigs{">".$contig_name}=0;
+			}
+			if ($overlap/$genes1 <= 0.9 && $overlap/$genes2 >= 0.9){
+                                $delete_contigs{">".$contig_name2}=0;
+                        }
+			if ($overlap/$genes1 >= 0.9 && $overlap/$genes2 >= 0.9){
+                                if(length($seqlens{$contig_name}) > length($seqlens{$contig_name2})){
+					$delete_contigs{">".$contig_name2}=0;
+				}
+				else{
 					$delete_contigs{">".$contig_name}=0;
 				}
-			}
-
+                        }
 		}
 	}
+
+#	for my $gene_name (keys %genes_by_contig){
+#		if(keys %{$genes_by_contig{$gene_name}}>1){
+#			my $max = 0;
+#			my $maxid;
+			#for my $contig_name (keys %{$genes_by_contig{$gene_name}}){
+			#	if($count_per_contig{$contig_name} > $max){
+		#			$max = $count_per_contig{$contig_name};
+			#		$maxid = $contig_name;
+			#	}
+			#}
+#			for my $contig_name (keys %{$genes_by_contig{$gene_name}}){
+#				if($contig_name ne $maxid){
+#					$delete_contigs{">".$contig_name}=0;
+#				}
+#			}
+#
+#		}
+#	}
 
 
 	 open my $afinout, ">", $current_seq . "_fixed";
@@ -1430,7 +1550,7 @@ sub orientate_plastome{
 
 			my $temp_range1 = abs($range[3]-$range[0])-2;
 			my $temp_range2 = abs($range[2]-$range[1])-2;
-			unless($temp_range1 == $cp_piece_pos{"ir"}{"len"} || $temp_range2 == $cp_piece_pos{"ir"}{"len"}){
+			unless($temp_range1 && $temp_range2 && exists $cp_piece_pos{"ir"} && ($temp_range1 == $cp_piece_pos{"ir"}{"len"} || $temp_range2 == $cp_piece_pos{"ir"}{"len"})){
 				next;
 			}
 					
@@ -1440,7 +1560,7 @@ sub orientate_plastome{
 			my %contigs_db_genes = %$contigs_db_genes;
 			$percent_recovered_genes=$percent_recovered_genes*100;
 
-			if($percent_recovered_genes > 90){
+			if($percent_recovered_genes > 45){
 					`perl $FPBIN/orientate_plastome_v.2.0.pl $split_fullname $split_fullname\_positional_genes.blastn $name`;
         			my $final_seq = $name ."_FULLCP.fsa";
         			$blast_afin_exec = $BLAST . "blastn -query " . $final_seq . " -db " . $posgenes . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $current_afin . "_positional_genes" . ".blastn";
@@ -1584,16 +1704,18 @@ sub reassemble_low_coverage{
 	my $c_start;
 	my $c_stop;
 	for my $starts (sort {$a <=> $b} keys %break_points){
-		if(!$c_stop){
+		if(!$c_start){
 			if ($starts != "0"){
 				my $temp_break = substr($cass_seq, 0, $starts);
 				$new_substrings{"0"}{$starts-1}=$temp_break;
 				$c_start = $break_points{$starts}+1;
+				
 			}
 		}
 		else{
 			my $temp_break = substr($cass_seq, $c_start, $starts-$c_start);
 				$new_substrings{$c_start}{$starts-$c_start}=$temp_break;
+			$c_start=$break_points{$starts}+1;
 		}
 	}
 		my $temp_break = substr($cass_seq, $c_start);
@@ -1684,7 +1806,7 @@ To install afin:
 
 =head1 VERSION
 
-Fast-Plast v.1.2.0
+Fast-Plast v.1.2.4
 
 
 
