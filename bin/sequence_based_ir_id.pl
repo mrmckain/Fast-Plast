@@ -23,7 +23,7 @@ my $count=0;
 for (my $i=0; $i<$seqlen-151; $i++){
 	my $tempseq = substr($sequence, $i, 151);
 	my $rcseq = reverse($tempseq);
-	$rcseq =~ tr/ATCGatcg/TAGCtagc/;
+	$rcseq =~ tr/ATCGNatcgn/TAGCNtagcn/;
 	if($sequence =~ /$rcseq/){
 		if($ir){
 			$current_end = $i;
@@ -73,7 +73,7 @@ else{
 }
 for my $start (sort {$a<=>$b} keys %regions){
         for my $end (keys %{$regions{$start}}){
-                if ($end-$start < 600){
+                if ($end-$start < 300){
                         delete $regions{$start};
 		
                 }
