@@ -469,6 +469,12 @@ print $LOGFILE "$current_runtime\tStarting improved assembly with afin.\n";
 mkdir("4_Afin_Assembly");
 chdir("4_Afin_Assembly");
 
+if(! -e "../3_Spades_Assembly/spades_iter1/contigs.fasta"){
+	print $LOGFILE "\t\t\t\tSPAdes did not finish. Check 3_Spades_Assembly directory.\n";
+	die "SPAdes did not finish properly.\n";
+
+}
+
 `perl $FPBIN/filter_spades_contigs_weigthed.pl ../3_Spades_Assembly/spades_iter1/contigs.fasta`;
 
 my %temp_filtered;
