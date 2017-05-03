@@ -580,7 +580,7 @@ if( $total_afin_contigs > 1){
 		 ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 		 %contigs_db_genes = %$contigs_db_genes;
 		 &remove_contamination($current_afin, \%contigs_db_genes);
-
+		 print $LOGFILE "\t\t\t\tRemoved mitochondrial-like sequences.\n";
 		 $total_afin_contigs = &count_contigs($current_afin);
 
 		if($total_afin_contigs > 1){
