@@ -1588,6 +1588,7 @@ sub orientate_plastome{
                     my $final_assembly_seq;
                     open my $fin, "<", $final_seq;
                     while(<$fin>){
+                    	chomp;
                     	if(/>/){
                     		next;
                     	}
