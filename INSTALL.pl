@@ -494,7 +494,7 @@ else{
 		
 	}	
 	my $tempf = read_file($control_file);
-		$tempf =~ s/my \$TRIMMOMATIC\;/my \$TRMIMMOMATIC=\"$trimmomatic\"\;/;
+		$tempf =~ s/my \$TRIMMOMATIC\;/my \$TRIMMOMATIC=\"$trimmomatic\"\;/;
 		write_file($control_file, $tempf);
 
 }
