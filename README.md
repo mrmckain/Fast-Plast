@@ -80,13 +80,13 @@ Fast-Plast was built for genome survey sequence (aka genome skimming or low-pass
 
 <h3>Bowtie Index</h3>
 
-Fast-Plast is packaged with 1,020 whole chloroplast genomes from GenBank. These cover a wide range of diversity including marine algae, angiosperms, ferns, etc. To access these, use the order of your species in the --bowtie_index option. Fast-Plast will pull all members of that order and create a bowtie index. If your order is not present, Fast-Plast will use a representative sequence from all orders present. This option can be selected using "All" or "GenBank". "All" is the default.
+Fast-Plast is packaged with 1,021 whole chloroplast genomes from GenBank. These cover a wide range of diversity including marine algae, angiosperms, ferns, etc. To access these, use the order of your species in the --bowtie_index option. Fast-Plast will pull all members of that order and create a bowtie index. If your order is not present, Fast-Plast will use a representative sequence from all orders present. This option can be selected using "All" or "GenBank". "All" is the default.
 
 Example:
 
     --bowtie_index Poales
 
-This will use all available Poales plastomes in the data set (117).
+This will use all available Poales plastomes in the data set (118).
 
 Orders currently available in Fast-Plast (68):
 
