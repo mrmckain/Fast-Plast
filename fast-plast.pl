@@ -42,7 +42,7 @@ my $min_coverage;
 my $threads = 4;
 my $adapters = $FPBIN . "/adapters/NEB-PE.fa";
 my $version;
-my $current_version = "Fast-Plast v.1.2.3";
+my $current_version = "Fast-Plast v.1.2.5";
 my $user_bowtie;
 my $clean;
 my $subsample;
@@ -1965,7 +1965,7 @@ To install afin:
 
 =head1 VERSION
 
-Fast-Plast v.1.2.3
+Fast-Plast v.1.2.5
 
 
 
