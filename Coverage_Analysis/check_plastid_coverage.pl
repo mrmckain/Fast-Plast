@@ -7,7 +7,7 @@ use strict;
 
 my $kmer=$ARGV[1];
 my $mincov;
-if($ARGV[2]){
+if(defined $ARGV[2]){
 	$mincov=$ARGV[2];
 }
 my $exp_id;
@@ -25,7 +25,7 @@ while(<$file>){
 }
 
 my $avg_cov = $total_cov/$total_windows;
-unless($mincov){
+unless(defined $mincov){
 	$mincov = $avg_cov*0.25;
 }
 print "$mincov\n";
