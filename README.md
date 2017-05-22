@@ -215,6 +215,13 @@ In this example, one single end library is being used for assembly. The TruSeq a
 
 In this example, one single end library and one paired-end library are being used for assembly. The default adapters (NEB) are used for trimming, a user-defined Bowtie2 index (base name given) is used for the Bowtie2 index, the coverage analysis is invoked, and a deep cleaning is done after completion.
 
+<h3>Example with Coverage Analysis Only</h3>
+
+    perl ~/bin/Fast-Plast/fast-plast.pl -1 /home/mmckain/Sequence_Vault/MSU_HiSeq4000_05032017/20170428_DNASeq_PE/20170428_DNASeq_PE/TK686R_S48_L005_R1_001.fastq.gz -2 /home/mmckain/Sequence_Vault/MSU_HiSeq4000_05032017/20170428_DNASeq_PE/20170428_DNASeq_PE/TK686R_S48_L005_R2_001.fastq.gz --name Schizachyrium_scoparium-TK686R --only_coverage /home/mmckain/DASH_Phylogeny/GSS_Plastomes/Schizachyrium_scoparium-TK686R/Schizachyrium_scoparium-TK686R/Final_Assembly/Schizachyrium_scoparium-TK686R_FULLCP.fsa --min_coverage 2 &
+
+In this example, a paired end library is being used.  The --only_coverage option is used with the path to the fasta file of the chloroplast genome provided. A minimum coverage of 2 is used.
+
+
 
 Definitions:
 
