@@ -241,8 +241,8 @@ Definitions:
 					exemplar from each available order is used to build the Bowtie2 indices. [default="All"]
 		--user_bowtie		User supplied bowtie2 indices. If this option is used, bowtie_index is ignored.
 		--coverage_analysis 	Flag to run the coverage analysis of a final chloroplast assembly.[Recommended]
-		--only_coverage       Option allows user to run coverage analysis directly on a provided chloroplast genome. [requires: read 
-                              files, chloroplast genome sequence]
+		--only_coverage           Option allows user to run coverage analysis directly on a provided chloroplast genome. [requires: 
+                                    read files, chloroplast genome sequence]
         --clean 		[light|deep] The "light" option will remove all bowtie indices, BLAST databases, SAM files,
 					Jellyfish dumps, and Jellyfish kmer files. The "deep" option will remove all directories except for the 
 					Final Assembly and Coverage Analysis directories. All files in the "light" option will also be removed. 
@@ -257,6 +257,7 @@ Definitions:
 
 * 21-May-2017 Fast-Plast v.1.2.5 <br>
     --only_coverage option added.  Allows users to provide a chloroplast genome and reads to run the coverage analysis portion of Fast-Plast.
+    <br>
     --Coverage used by Fast-Plast is printed to log and summary files.
 
 * 24-April-2017 Fast-Plast v.1.2.4 <br>
