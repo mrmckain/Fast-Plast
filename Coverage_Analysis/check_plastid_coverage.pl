@@ -26,8 +26,9 @@ while(<$file>){
 
 my $avg_cov = $total_cov/$total_windows;
 unless($mincov){
-	$mincov = ($avg_cov/$total_windows)*0.25;
+	$mincov = $avg_cov*0.25;
 }
+print "$mincov\n";
 my $current_kmer=0;
 my $current_kmer_start;
 my $current_kmer_end;
@@ -35,6 +36,7 @@ my $current_kmer_end;
 
 open my $out, ">", $exp_id  . "_problem_regions_plastid_assembly.txt";
 open $file, "<", $ARGV[0];
+my $run_cov;
 while(<$file>){
 	chomp;
 	my @tarray=split/\s+/;
@@ -43,25 +45,30 @@ while(<$file>){
 		if($current_kmer_start){
 			$current_kmer_end=$tarray[1];
 			$current_kmer++;
+			$run_cov+=$tarray[2];
 		}
 		else{
 			$current_kmer_start=$tarray[1];
 			$current_kmer_end=$tarray[1];
 			$current_kmer++;
+			$run_cov+=$tarray[2];
 		}
 	}
 	
 	else{
-		if($current_kmer >= $kmer){	
-			print $out "$current_kmer_start\t$current_kmer_end\n";
+		if($current_kmer >= $kmer){
+			my $run_avg = $run_cov/($current_kmer_end-$current_kmer_start);	
+			print $out "$current_kmer_start\t$current_kmer_end\t$run_avg\n";
 			$current_kmer=0;
 			$current_kmer_end=();
 			$current_kmer_start=();
+			$run_cov=0;
 		}
 		else{
 			$current_kmer=0;
 			$current_kmer_end=();
 			$current_kmer_start=();
+			$run_cov=0;
 		}
 	}
 }
