@@ -433,7 +433,7 @@ my $rscript_exec = "Rscript " . $COVERAGE_DIR . "/plot_coverage.r " . $name . ".
 system($rscript_exec);
 
 my $check_cov_exec;
-if($min_coverage){
+if(defined $min_coverage){
         $check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25 ".$min_coverage;
 }
 else{
@@ -854,7 +854,7 @@ my $rscript_exec = "Rscript " . $COVERAGE_DIR . "/plot_coverage.r " . $name . ".
 system($rscript_exec);
 
 my $check_cov_exec;
-if($min_coverage){
+if(defined $min_coverage){
 	$check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25 ".$min_coverage;
 }
 else{
@@ -933,7 +933,12 @@ else{
 	my $rscript_exec = "Rscript " . $COVERAGE_DIR . "/plot_coverage.r " . $name . ".coverage_25kmer.txt ". $name;
 	system($rscript_exec);
 
-	my $check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25 " . $min_coverage;
+	if(defined $min_coverage){
+        $check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25 ".$min_coverage;
+	}
+	else{
+        $check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25";
+	}
 	
 	my $coverage_used = `$check_cov_exec`;
 	chomp($coverage_used);
