@@ -42,12 +42,12 @@ my $min_coverage;
 my $threads = 4;
 my $adapters = $FPBIN . "/adapters/NEB-PE.fa";
 my $version;
-my $current_version = "Fast-Plast v.1.2.4";
+my $current_version = "Fast-Plast v.1.2.3";
 my $user_bowtie;
 my $clean;
 my $subsample;
-
-GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check,'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters, "subsample=i" => \$subsample)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
+my $cov_only;
+GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check,'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters, "subsample=i" => \$subsample, "only_coverage=s" => \$cov_only)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
 
 if($version) {
 	pod2usage( { -verbose => 99, -sections => "VERSION" } );
@@ -388,7 +388,99 @@ for my $check_tfile (@tfile_read){
 	}
 }
 chdir("../");
+##########
 
+if($cov_only){
+	$current_runtime = localtime();
+	print $LOGFILE "$current_runtime\tStarting coverage analyses.\n";
+	my $check_finish = $cov_only;
+	unless(-e $check_finish){
+        	print $LOGFILE "\t\t\t\tCannot complete coverage analysis. File empty or not found.";
+        die;
+	}
+	mkdir("Coverage_Analysis");
+	chdir("Coverage_Analysis");
+	my $build_bowtie2_exec = $BOWTIE2 . "-build $cov_only " . $name . "_bowtie";
+system($build_bowtie2_exec);
+
+my $cov_bowtie2_exec;
+if(glob("../1_Trimmed_Reads/$name*trimmed_U*.fq") && glob("../1_Trimmed_Reads/$name*trimmed_P*.fq")){
+        $cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+}
+elsif(glob("../1_Trimmed_Reads/$name*trimmed_U*.fq") && !glob("../1_Trimmed_Reads/$name*trimmed_P*.fq")){
+        $cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . "  -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+}
+elsif(!glob("../1_Trimmed_Reads/$name*trimmed_U*.fq") && glob("../1_Trimmed_Reads/$name*trimmed_P*.fq")){
+        $cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -S " . $name . ".sam";
+}
+else{
+        print $LOGFILE "Could not find reads to complete Coverage Analysis.  Check 1_Trimmed_Reads.\n";
+        die "Could not find reads to complete Coverage Analysis.  Check 1_Trimmed_Reads.\n";
+}
+
+system($cov_bowtie2_exec);
+
+my $jellyfish_count_exec = $JELLYFISH . " count -m 25 -t ". $threads . " -C -s 1G map_*";
+system($jellyfish_count_exec);
+
+my $jellyfish_dump_exec = $JELLYFISH . " dump mer_counts.jf > " . $name . "_25dump";
+system($jellyfish_dump_exec);
+
+my $window_cov_exec = "perl " . $COVERAGE_DIR . "/new_window_coverage.pl " . $name . "_25dump $cov_only  25";
+system($window_cov_exec);
+
+my $rscript_exec = "Rscript " . $COVERAGE_DIR . "/plot_coverage.r " . $name . ".coverage_25kmer.txt ". $name;
+system($rscript_exec);
+
+my $check_cov_exec;
+if($min_coverage){
+        $check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25 ".$min_coverage;
+}
+else{
+        $check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25";
+}
+my $coverage_used = `$check_cov_exec`;
+chomp($coverage_used);
+$current_runtime = localtime();
+print $LOGFILE "$current_runtime\tMinimum coverage of $coverage_used for verifying assembly.\n";
+print $SUMMARY "Minimum Coverage Used for Verification: $coverage_used\n";
+
+chdir("../");
+$current_runtime = localtime();
+print $LOGFILE "$current_runtime\tCoverage analysis finished.\n";
+if(-z "Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt"){
+        print $LOGFILE "\t\t\t\tNo issues with assembly coverage were identified.\n";
+
+        coverage_summary($cov_only, "Coverage_Analysis/");
+        if($clean){
+                        if ($clean eq "light"){
+                                unlink(glob("5_Plastome_Finishing/*fsa.n*"));
+                                unlink(glob("*/*bt2"));
+                                unlink(glob("Coverage_Analysis/*25dump"));
+                                unlink(glob("Coverage_Analysis/mer_counts.jf"));
+                                unlink(glob("*/*.sam"));
+                        }
+                        if ($clean eq "deep"){
+                                rmdir("1_Trimmed_Reads");
+                                rmdir("2_Bowtie_Mapping");
+                                rmdir("3_Spades_Assembly");
+                                rmdir("4_Afin_Assembly");
+                                rmdir("5_Plastome_Finishing");
+                                unlink(glob("Coverage_Analysis/*25dump"));
+                                unlink(glob("Coverage_Analysis/mer_counts.jf"));
+                                unlink(glob("*/*bt2"));
+
+                        }
+        }
+	 die "Fast-Plast finished.\n";
+
+}
+else{
+	print $LOGFILE "\t\t\t\tProblem regions identified with coverage analysis.  Check output.\n";
+	die "Fast-Plast finished.\n";
+}
+}
+	
 ########## Start Bowtie2 ##########
 
 $current_runtime = localtime();
@@ -468,12 +560,6 @@ print $LOGFILE "$current_runtime\tStarting improved assembly with afin.\n";
 
 mkdir("4_Afin_Assembly");
 chdir("4_Afin_Assembly");
-
-if(! -e "../3_Spades_Assembly/spades_iter1/contigs.fasta"){
-	print $LOGFILE "\t\t\t\tSPAdes did not finish. Check 3_Spades_Assembly directory.\n";
-	die "SPAdes did not finish properly.\n";
-
-}
 
 `perl $FPBIN/filter_spades_contigs_weigthed.pl ../3_Spades_Assembly/spades_iter1/contigs.fasta`;
 
@@ -774,15 +860,18 @@ if($min_coverage){
 else{
 	$check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25";
 }
-system($check_cov_exec);
-
+my $coverage_used = `$check_cov_exec`;
+chomp($coverage_used);
+$current_runtime = localtime();
+print $LOGFILE "$current_runtime\tMinimum coverage of $coverage_used for verifying assembly.\n";
+print $SUMMARY "Minimum Coverage Used for Verification: $coverage_used\n";
 chdir("../");
 $current_runtime = localtime(); 
 print $LOGFILE "$current_runtime\tCoverage analysis finished.\n";
 if(-z "Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt"){
 	print $LOGFILE "\t\t\t\tNo issues with assembly coverage were identified.\n";
 
-	coverage_summary("Final_Assembly/", "Coverage_Analysis/");
+	coverage_summary("Final_Assembly/$name\._CP_pieces.fsa", "Coverage_Analysis/");
 	if($clean){
 			if ($clean eq "light"){
 				unlink(glob("5_Plastome_Finishing/*fsa.n*"));
@@ -845,13 +934,17 @@ else{
 	system($rscript_exec);
 
 	my $check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25 " . $min_coverage;
-	system($check_cov_exec);
-
+	
+	my $coverage_used = `$check_cov_exec`;
+	chomp($coverage_used);
+	$current_runtime = localtime();
+	print $LOGFILE "$current_runtime\tMinimum coverage of $coverage_used for verifying assembly.\n";
+	print $SUMMARY "Minimum Coverage Used for Verification: $coverage_used\n";
 	if(-z $name."_problem_regions_plastid_assembly.txt"){
 		print $LOGFILE "\t\t\t\tAssembly was successful! No issues with assembly coverage were identified.\n";
 		print $LOGFILE "\t\t\t\tNew assembly can be found in Final_Assembly_Fixed_Low_Coverage.\n";
 
-		coverage_summary("../Final_Assembly_Fixed_Low_Coverage/", "../Coverage_Analysis_Reassembly/");
+		coverage_summary("../Final_Assembly_Fixed_Low_Coverage/$name\._CP_pieces.fsa", "../Coverage_Analysis_Reassembly/");
 		chdir("../");
 		if($clean){
 			if ($clean eq "light"){
@@ -1318,7 +1411,7 @@ sub remove_nested {
                 }
                 elsif(exists $blast_scores{$tarray[1]}{$tarray[0]}){
                         for (my $i=$qstart-1; $i <= ($qstop-1); $i++){
-                                $blast_scores{$tarray[0]}{$tarray[1]}{$i}++;
+                                $blast_scores{$tarray[1]}{$tarray[0]}{$i}++;
                         }
                 }
                 else{
@@ -1588,7 +1681,7 @@ sub orientate_plastome{
                     my $final_assembly_seq;
                     open my $fin, "<", $final_seq;
                     while(<$fin>){
-                    	chomp;
+			chomp;
                     	if(/>/){
                     		next;
                     	}
@@ -1643,7 +1736,8 @@ sub coverage_summary{
 
 	my %cplens;
 	my $cpsid;
-	open my $cppieces, "<", $_[0].$name."_CP_pieces.fsa";
+	if($_[0] =~ /CP_pieces/){
+	open my $cppieces, "<", $_[0];
 	while(<$cppieces>){
 		chomp;
 		if(/>/){
@@ -1653,7 +1747,10 @@ sub coverage_summary{
 			$cplens{$cpsid}.=$_;
 		}
 	}
-
+	}
+	else{
+		%cplens=%{identify_cp_regions($_[0])};
+	}	
 	my $end_lsc = length($cplens{lsc})-1;
 	my $end_ir = length($cplens{irb})+$end_lsc;
 	my $end_ssc = length($cplens{ssc})+$end_ir;
@@ -1683,7 +1780,62 @@ sub coverage_summary{
 	print $SUMMARY "Average Large Single Copy Coverage:\t$avg_lsc\nAverage Inverted Repeat Coverage:\t$avg_ir\nAverage Small Single Copy Coverage:\t$avg_ssc\n";
 
 }
-##########
+###########
+sub identify_cp_regions{
+	my $temp_cpgenome;
+	my $tcpid;
+	open my $file, "<", $_[0]; #cp genome full
+	while(<$file>){
+        	chomp;
+        	if(/>/){
+                $tcpid = substr($_,1);
+                next;
+        	}
+        else{
+                $temp_cpgenome .= $_;
+        }
+	}	
+
+	my $lsc;
+	my $ssc;
+	my $irb;
+	my $ira;
+
+	my $boundary1= substr(reverse($temp_cpgenome), 0, 21);
+	$boundary1 =~ tr/ATCGatcg/TAGCtagc/;
+	my $start_irb = index($temp_cpgenome, $boundary1);
+
+	$lsc = substr($temp_cpgenome, 0, $start_irb);
+
+	my $i = $start_irb;
+
+	my $irb_end = substr($temp_cpgenome, $i, 21);
+	$irb_end = reverse($irb_end);
+	$irb_end =~ tr/ATCGatcg/TAGCtagc/;
+
+	until($temp_cpgenome !~ /$irb_end/){
+        	$i++;
+        	$irb_end = substr($temp_cpgenome, $i, 21);
+        	$irb_end = reverse($irb_end);
+        	$irb_end =~ tr/ATCGatcg/TAGCtagc/;
+	}
+	$i--;
+	$irb_end = substr($temp_cpgenome, $i, 21);
+	$irb = substr($temp_cpgenome, $start_irb, ($i+21-$start_irb));
+	my $ira_seq = $irb_end;
+	$ira_seq = reverse($ira_seq);
+	$ira_seq =~ tr/ATCGatcg/TAGCtagc/;
+	my $ira_start = index($temp_cpgenome, $ira_seq);
+	$ssc = substr($temp_cpgenome, $i+21, $ira_start-($i+21));
+	$ira= substr($temp_cpgenome, $ira_start);
+        my %return_cp;
+	$return_cp{"lsc"}=$lsc;
+	$return_cp{"ssc"}=$ssc;
+	$return_cp{"irb"}=$irb;
+	return \%return_cp;
+}	
+###########
+
 sub reassemble_low_coverage{
 	my $final_seq = $_[0];
 	my $coverage_file = $_[1];
@@ -1813,7 +1965,7 @@ To install afin:
 
 =head1 VERSION
 
-Fast-Plast v.1.2.4
+Fast-Plast v.1.2.3
 
 
 
