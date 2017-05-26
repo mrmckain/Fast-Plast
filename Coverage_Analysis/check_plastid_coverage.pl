@@ -25,8 +25,11 @@ while(<$file>){
 }
 
 my $avg_cov = $total_cov/$total_windows;
-unless(defined $mincov){
-	$mincov = $avg_cov*0.25;
+if(defined $mincov){
+	$mincov=$ARGV[2];
+}	
+else{
+	$mincov = $avg_cov*0.15;
 }
 print "$mincov\n";
 my $current_kmer=0;
