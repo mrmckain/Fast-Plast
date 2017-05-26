@@ -16,6 +16,9 @@ while(<$file>){
 		$sid=$_;
 		my $cov = $2;
 		my $len_true=$1;
+		if ($1 < 1000){
+			next;
+		}
 		$total_length+=$1;
 		$coverage_lengths{$cov}=$len_true;
 		$accumulated_coverage+=$cov*$len_true;
