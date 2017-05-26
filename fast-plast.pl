@@ -42,7 +42,7 @@ my $min_coverage;
 my $threads = 4;
 my $adapters = $FPBIN . "/adapters/NEB-PE.fa";
 my $version;
-my $current_version = "Fast-Plast v.1.2.5";
+my $current_version = "Fast-Plast v.1.2.3";
 my $user_bowtie;
 my $clean;
 my $subsample;
@@ -932,12 +932,11 @@ else{
 
 	my $rscript_exec = "Rscript " . $COVERAGE_DIR . "/plot_coverage.r " . $name . ".coverage_25kmer.txt ". $name;
 	system($rscript_exec);
-
 	if(defined $min_coverage){
-        $check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25 ".$min_coverage;
+        	$check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25 ".$min_coverage;
 	}
 	else{
-        $check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25";
+        	$check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25";
 	}
 	
 	my $coverage_used = `$check_cov_exec`;
@@ -1867,6 +1866,7 @@ sub reassemble_low_coverage{
 	}
 	my $c_start;
 	my $c_stop;
+	my $first_time=0;
 	for my $starts (sort {$a <=> $b} keys %break_points){
 		if(!$c_start){
 			if ($starts != "0"){
@@ -1878,7 +1878,7 @@ sub reassemble_low_coverage{
 		}
 		else{
 			my $temp_break = substr($cass_seq, $c_start, $starts-$c_start);
-				$new_substrings{$c_start}{$starts-$c_start}=$temp_break;
+				$new_substrings{$c_start}{$starts-1}=$temp_break;
 			$c_start=$break_points{$starts}+1;
 		}
 	}
@@ -1970,7 +1970,7 @@ To install afin:
 
 =head1 VERSION
 
-Fast-Plast v.1.2.5
+Fast-Plast v.1.2.3
 
 
 
