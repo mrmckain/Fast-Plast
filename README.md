@@ -194,7 +194,7 @@ Coverage analysis and results of the reassembled plastome will be in this direct
 
 <h3>General Syntax</h3>
 
-<code>fast-plast.pl [-1 <paired_end_file1> -2 <paired_end_file2> || -single <singe_end_file>] -name <sample_name> [options]</code>
+<code>fast-plast.pl [-1 <paired_end_file1> -2 <paired_end_file2> || --single <single_end_file>] -name <sample_name> [options]</code>
 
 
 <h3>Example with Paired-End Data</h3>
@@ -205,13 +205,13 @@ In this example, one pair-end library is being used for assembly. The default ad
 
 <h3>Example with Single End Data</h3>
 
-	perl fast-plast.pl -s /home/mmckain/Sequence_Vault/Andropogoneae_GSS/Chionachne_koenigii-TK057/K17_GTCCGC_L006_R1_001.fastq.gz --name Chionachne_koenigii-TK057 --adapters TruSeq --bowtie_index All --coverage_analysis
+	perl fast-plast.pl --single /home/mmckain/Sequence_Vault/Andropogoneae_GSS/Chionachne_koenigii-TK057/K17_GTCCGC_L006_R1_001.fastq.gz --name Chionachne_koenigii-TK057 --adapters TruSeq --bowtie_index All --coverage_analysis
 
 In this example, one single end library is being used for assembly. The TruSeq adapters are used for trimming, a representative from each order is used for the Bowtie2 index, the coverage analysis is invoked, and no cleaning is done.
 
 <h3>Example with Mixed Libraries</h3>
 
-	perl fast-plast.pl -1 /home/mmckain/Sequence_Vault/Andropogoneae_GSS/Monocymbium_ceresiiforme-TK203/TK203_GCTACGCT-AGAGTAGA_Both_R1.fastq.gz -2 /home/mmckain/Sequence_Vault/Andropogoneae_GSS/Monocymbium_ceresiiforme-TK203/TK203_GCTACGCT-AGAGTAGA_Both_R2.fastq.gz -s /home/mmckain/Sequence_Vault/Andropogoneae_GSS/Monocymbium_ceresiiforme-TK203/Monocymbium_ceresiiforme-TK203_GA_122949-34_S42_R1_001.fastq --name Monocymbium_ceresiiforme-TK203 --user_bowtie /home/mmckain/Andropogoneae_Plastomes/FINISHED/androplast --coverage_analysis --clean deep
+	perl fast-plast.pl -1 /home/mmckain/Sequence_Vault/Andropogoneae_GSS/Monocymbium_ceresiiforme-TK203/TK203_GCTACGCT-AGAGTAGA_Both_R1.fastq.gz -2 /home/mmckain/Sequence_Vault/Andropogoneae_GSS/Monocymbium_ceresiiforme-TK203/TK203_GCTACGCT-AGAGTAGA_Both_R2.fastq.gz --single /home/mmckain/Sequence_Vault/Andropogoneae_GSS/Monocymbium_ceresiiforme-TK203/Monocymbium_ceresiiforme-TK203_GA_122949-34_S42_R1_001.fastq --name Monocymbium_ceresiiforme-TK203 --user_bowtie /home/mmckain/Andropogoneae_Plastomes/FINISHED/androplast --coverage_analysis --clean deep
 
 In this example, one single end library and one paired-end library are being used for assembly. The default adapters (NEB) are used for trimming, a user-defined Bowtie2 index (base name given) is used for the Bowtie2 index, the coverage analysis is invoked, and a deep cleaning is done after completion.
 
@@ -266,7 +266,7 @@ Definitions:
 * 01-June_2017  Fast-Plast v.1.2.6 <br>
     --skip parameter added. Allows users to skip the trimming step when "trim" option is include. Syntax: --skip trim
     <br>
-    
+
 * 21-May-2017 Fast-Plast v.1.2.5 <br>
     --only_coverage option added.  Allows users to provide a chloroplast genome and reads to run the coverage analysis portion of Fast-Plast.
     <br>
