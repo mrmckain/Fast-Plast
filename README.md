@@ -2,7 +2,7 @@ Fast-Plast: Rapid de novo assembly and finishing for whole chloroplast genomes
 =============
 <b>Authors</b>: Michael R. McKain, <a href="https://github.com/afinit/afin">Mark Wilson</a><br>
 </br>
-Version 1.2.5<br>
+Version 1.2.6<br>
 </br>
 <b>Contact</b>: https://github.com/mrmckain
 
@@ -248,6 +248,7 @@ Definitions:
 					exemplar from each available order is used to build the Bowtie2 indices. [default="All"]
 		--user_bowtie		User supplied bowtie2 indices. If this option is used, bowtie_index is ignored.
 		--coverage_analysis 	Flag to run the coverage analysis of a final chloroplast assembly.[Recommended]
+        --skip          Flag to skip trimming. Must include option "trim". [--skip trim]
 		--only_coverage         Option allows user to run coverage analysis directly on a provided chloroplast genome. [requires: 
                                     read files, chloroplast genome sequence]
             --clean 		[light|deep] The "light" option will remove all bowtie indices, BLAST databases, SAM files,
@@ -262,6 +263,10 @@ Definitions:
 
 ## Changelog
 
+* 01-June_2017  Fast-Plast v.1.2.6 <br>
+    --skip parameter added. Allows users to skip the trimming step when "trim" option is include. Syntax: --skip trim
+    <br>
+    
 * 21-May-2017 Fast-Plast v.1.2.5 <br>
     --only_coverage option added.  Allows users to provide a chloroplast genome and reads to run the coverage analysis portion of Fast-Plast.
     <br>
