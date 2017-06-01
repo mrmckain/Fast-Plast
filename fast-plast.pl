@@ -47,7 +47,8 @@ my $user_bowtie;
 my $clean;
 my $subsample;
 my $cov_only;
-GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check,'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters, "subsample=i" => \$subsample, "only_coverage=s" => \$cov_only)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
+my $skip;
+GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check, 'skip' => \$skip, 'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters, "subsample=i" => \$subsample, "only_coverage=s" => \$cov_only)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
 
 if($version) {
 	pod2usage( { -verbose => 99, -sections => "VERSION" } );
@@ -335,7 +336,39 @@ if($subsample){
 
 
 }
-
+if($skip && $skip eq "trim"){
+		if(@p1_array){
+			for my $p1array (@p1_array){
+					`cat $p1array >> $name.trimmed_P1.fq`;
+			}
+			
+		}
+		if(@p2_array){
+			for my $p2array (@p2_array){
+					`cat $p2array >> $name.trimmed_P2.fq`;
+			}
+			
+		}
+		if(@s_array){
+			for my $sarray (@s_array){
+					`cat $s1array >> $name.trimmed_UP.fq`;
+			}
+			
+		}
+		if (-s $name.".trimmed_P1.fq"){
+			my $se_size = &count_lines($name.".trimmed_P1.fq");
+			chomp($se_size);
+			$se_size=($se_size/4)*2;
+			print $SUMMARY "Total Cleaned Pair-End Reads:\t$se_size\n";
+		}
+		if (-s $name.".trimmed_UP.fq"){
+			my $se_size = &count_lines($name.".trimmed_UP.fq");
+			chomp($se_size);
+			$se_size=$se_size/4;
+			print $SUMMARY "Total Cleaned Single End Reads:\t$se_size\n";
+		}	
+}
+else{
 if($adapters =~ /nextera/i){
 	$adapters=$FPBIN."/adapters/NexteraPE-PE.fa";
 }
@@ -386,6 +419,7 @@ for my $check_tfile (@tfile_read){
 	if(-z $check_tfile){
 		unlink($check_tfile);
 	}
+}
 }
 chdir("../");
 ##########
