@@ -42,7 +42,7 @@ my $min_coverage;
 my $threads = 4;
 my $adapters = $FPBIN . "/adapters/NEB-PE.fa";
 my $version;
-my $current_version = "Fast-Plast v.1.2.3";
+my $current_version = "Fast-Plast v.1.2.6";
 my $user_bowtie;
 my $clean;
 my $subsample;
@@ -351,7 +351,7 @@ if($skip && $skip eq "trim"){
 		}
 		if(@s_array){
 			for my $sarray (@s_array){
-					`cat $s1array >> $name.trimmed_UP.fq`;
+					`cat $sarray >> $name.trimmed_UP.fq`;
 			}
 			
 		}
@@ -2004,7 +2004,7 @@ To install afin:
 
 =head1 VERSION
 
-Fast-Plast v.1.2.3
+Fast-Plast v.1.2.6
 
 
 
