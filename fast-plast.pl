@@ -1064,30 +1064,11 @@ sub build_bowtie2_indices {
 	open my $bt2_seq, ">", $bowtie_index.".fsa";
 	open my $default_gb, "<", $FPBIN."/GenBank_Plastomes";
 	my $gbid;
-	if($bowtie_index !~ /^all$/i || $bowtie_index !~ /genbank/i ){
-
-
-		while(<$default_gb>){
-			chomp;
-			if(/>/){
-				if(/$bowtie_index/){
-					$gbid=$_;
-				}
-				else{
-					$gbid=();
-				}
-			}
-			elsif($gbid){
-				print $bt2_seq "$gbid\n$_\n";
-			}
-		}
-		close $default_gb;
-	}
+	
 	if(-z $bowtie_index || $bowtie_index =~ /^all$/i || $bowtie_index =~ /genbank/i ){
 		print $LOGFILE "\t\t\t\tSamples for $bowtie_index are not in current GenBank plastomes. Using one representative from each order to make bowtie2 indices.\n";
 
-		open my $bt2_seq, ">", $bowtie_index;
-		open my $default_gb, "<", $FPBIN."/GenBank_Plastomes";
+		
 		$gbid=();
 		my %used;
 		while(<$default_gb>){
@@ -1107,13 +1088,32 @@ sub build_bowtie2_indices {
 				print $bt2_seq "$gbid\n$_\n";
 			}
 		}
-		close $default_gb;
 	
 	}
 	else{
+
+
+		while(<$default_gb>){
+			chomp;
+			if(/>/){
+				if(/$bowtie_index/){
+					$gbid=$_;
+				}
+				else{
+					$gbid=();
+				}
+			}
+			elsif($gbid){
+				print $bt2_seq "$gbid\n$_\n";
+			}
+		}
+		
+	
+	
+	
 		print $LOGFILE "\t\t\t\tSamples for $bowtie_index used to make bowtie2 indices.\n";
 	}
-
+	close $default_gb;
 	my $build_bowtie2_exec = $BOWTIE2 . "-build " . $bowtie_index.".fsa" . " " . $name . "_bowtie";
 	system($build_bowtie2_exec);
 	$bowtie_index=$name . "_bowtie";
