@@ -29,7 +29,7 @@ for (my $i=0; $i<$seqlen-151; $i++){
 			$current_end = $i;
 		}
 		else{
-			if($current_end){
+			if(defined $current_end){
 				$regions{$current_start}{$current_end}="sc";#. "_" . $current_start . "-" . $current_end;
 				$count++;
 				$current_start=$i;
@@ -53,8 +53,9 @@ for (my $i=0; $i<$seqlen-151; $i++){
 				$ir=();
 		}
 		else{
-			if($current_end){
+			if(defined $current_end){
 				$current_end=$i;
+				$ir=();
 			
 			}
 			else{
@@ -97,7 +98,7 @@ my $final_end;
 my $final_regionid;
 for my $start (sort {$a<=>$b} keys %regions){
         for my $end (keys %{$regions{$start}}){
-                if($final_start){
+                if(defined $final_start){
                         if($final_regionid ne $regions{$start}{$end}){
                                 $final_regions{$final_start}{$final_end}=$final_regionid;
                                 $final_start=$start;
