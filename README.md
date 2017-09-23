@@ -1,4 +1,5 @@
 Fast-Plast: Rapid de novo assembly and finishing for whole chloroplast genomes
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.973887.svg)](https://doi.org/10.5281/zenodo.973887)
 =============
 <b>Authors</b>: Michael R. McKain, <a href="https://github.com/afinit/afin">Mark Wilson</a><br>
 </br>
