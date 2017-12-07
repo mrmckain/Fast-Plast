@@ -92,6 +92,12 @@ if($paired_end1){
 			$tfile = glob ($tfile);
 		}
 		my $abs_path = abs_path($tfile);
+		unless(-e $tfile){
+			die "$tfile does not exist.";
+		}
+		unless(-r $tfile){
+			die "$tfile is not readable.";
+		}
 		push(@p1_array, $abs_path);
 	}
 }
@@ -101,6 +107,12 @@ if($paired_end2){
 	for my $tfile (@temp_array){
 		if($tfile =~ /~/){
 			$tfile = glob ($tfile);
+		}
+		unless(-e $tfile){
+			die "$tfile does not exist.";
+		}
+		unless(-r $tfile){
+			die "$tfile is not readable.";
 		}
 		my $abs_path = abs_path($tfile);
 		push(@p2_array, $abs_path);
@@ -112,6 +124,12 @@ if($single_end){
 	for my $tfile (@temp_array){
 		if($tfile =~ /~/){
 			$tfile = glob ($tfile);
+		}
+		unless(-e $tfile){
+			die "$tfile does not exist.";
+		}
+		unless(-r $tfile){
+			die "$tfile is not readable.";
 		}
 		my $abs_path = abs_path($tfile);
 		push(@s_array, $abs_path);
