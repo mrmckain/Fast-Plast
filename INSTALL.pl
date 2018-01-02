@@ -724,10 +724,10 @@ if($answer =~ /y/i){
 
 
 
-`perl -pi -e "s/my \$TRIMMOMATIC;/my \$TRIMMOMATIC = $trimmomatic\;/" $FPROOT/fast-plast.pl`;
-`perl -pi -e "s/my \$BOWTIE2;/my \$BOWTIE2 = $bowtie2\;/" $FPROOT/fast-plast.pl`;
-`perl -pi -e "s/my \$SPADES;/my \$SPADES = $spades\;/" $FPROOT/fast-plast.pl`;
-`perl -pi -e "s/my \$BLAST;/my \$BLAST = $blastn\;/" $FPROOT/fast-plast.pl`;
+#`perl -pi -e "s/my \$TRIMMOMATIC;/my \$TRIMMOMATIC = $trimmomatic\;/" $FPROOT/fast-plast.pl`;
+#`perl -pi -e "s/my \$BOWTIE2;/my \$BOWTIE2 = $bowtie2\;/" $FPROOT/fast-plast.pl`;
+#`perl -pi -e "s/my \$SPADES;/my \$SPADES = $spades\;/" $FPROOT/fast-plast.pl`;
+#`perl -pi -e "s/my \$BLAST;/my \$BLAST = $blastn\;/" $FPROOT/fast-plast.pl`;
 
 
 
@@ -775,7 +775,7 @@ if($answer =~ /y/i){
 
 	print "\njellyfish executable located: $jellyfish\n";
 
-	`perl -pi -e "s/my \$JELLYFISH;/my \$JELLYFISH = $jellyfish\;/" $FPROOT/Coverage_Analysis/coverage.pl`;
+	#`perl -pi -e "s/my \$JELLYFISH;/my \$JELLYFISH = $jellyfish\;/" $FPROOT/Coverage_Analysis/coverage.pl`;
 
 print "Fast-Plast installation complete.  See manual for directions on how to get started.\n"
 }
