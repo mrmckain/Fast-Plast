@@ -249,7 +249,7 @@ Definitions:
 					exemplar from each available order is used to build the Bowtie2 indices. Users may also specify multiple taxa separated by commas (","). Any of the following taxonomic levels is accepted for bowtie_index: genus, species epithet, tribe (if applicable), subfamily (if applicable), family, and order. [default="All"]
 		--user_bowtie		User supplied bowtie2 indices. If this option is used, bowtie_index is ignored.
 		--coverage_analysis 	Flag to run the coverage analysis of a final chloroplast assembly.[Recommended]
-        	--skip          Flag to skip trimming. Must include option "trim". [--skip trim]
+        	--skip          	Flag to skip trimming. Must include option "trim". [--skip trim]
 		--only_coverage         Option allows user to run coverage analysis directly on a provided chloroplast genome. [requires: 
                                     read files, chloroplast genome sequence]
             --clean 		[light|deep] The "light" option will remove all bowtie indices, BLAST databases, SAM files,
