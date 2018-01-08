@@ -3,7 +3,7 @@ Fast-Plast: Rapid de novo assembly and finishing for whole chloroplast genomes
 =============
 <b>Authors</b>: Michael R. McKain, <a href="https://github.com/afinit/afin">Mark Wilson</a><br>
 </br>
-Version 1.2.6<br>
+Version 1.2.7<br>
 </br>
 <b>Contact</b>: https://github.com/mrmckain
 
@@ -246,7 +246,7 @@ Definitions:
 					available. Also accepts the path to a user created FASTA file of adapters.[Default = NEB]
 		--bowtie_index		Taxonomic order of the sequenced species to pick references for bowtie2 indices. If the order is in the database, 
 					then all available samples for that order will be used. If order does not exist in database or the terms "all" or "GenBank" are given, one 
-					exemplar from each available order is used to build the Bowtie2 indices. [default="All"]
+					exemplar from each available order is used to build the Bowtie2 indices. Users may also specify multiple taxa separated by commas (","). Any of the following taxonomic levels is accepted for bowtie_index: genus, species epithet, tribe (if applicable), subfamily (if applicable), family, and order. [default="All"]
 		--user_bowtie		User supplied bowtie2 indices. If this option is used, bowtie_index is ignored.
 		--coverage_analysis 	Flag to run the coverage analysis of a final chloroplast assembly.[Recommended]
         --skip          Flag to skip trimming. Must include option "trim". [--skip trim]
@@ -263,6 +263,9 @@ Definitions:
 
 
 ## Changelog
+
+* 07-Jan_2018 Fast-Plast v.1.2.7 <b>
+    --added capacity for multiple taxa to be used for bowtie_index. These should be a comma separated list. Any of the following taxonomic levels is accepted for bowtie_index: genus, species epithet, tribe (if applicable), subfamily (if applicable), family, and order.
 
 * 01-June_2017  Fast-Plast v.1.2.6 <br>
     --skip parameter added. Allows users to skip the trimming step when "trim" option is include. Syntax: --skip trim
