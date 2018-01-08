@@ -1079,6 +1079,15 @@ sub scaffolding {
 sub build_bowtie2_indices {
 	
 	my $bowtie_index = $_[0];
+	my $bowtie_match;
+	if($bowtie_index =~ /,/){
+		my @tempbow = split (/,/, $bowtie_index);
+		$bowtie_match = join("|", $tempbow);
+		$bowtie_index = join("_", $tempbow);
+	}
+	else{
+		$bowtie_match = $bowtie_index;
+	}
 	open my $bt2_seq, ">", $bowtie_index.".fsa";
 	open my $default_gb, "<", $FPBIN."/GenBank_Plastomes";
 	my $gbid;
@@ -1114,7 +1123,7 @@ sub build_bowtie2_indices {
 		while(<$default_gb>){
 			chomp;
 			if(/>/){
-				if(/$bowtie_index/){
+				if(/$bowtie_match/){
 					$gbid=$_;
 				}
 				else{
