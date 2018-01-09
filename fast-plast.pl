@@ -1082,8 +1082,8 @@ sub build_bowtie2_indices {
 	my $bowtie_match;
 	if($bowtie_index =~ /,/){
 		my @tempbow = split (/,/, $bowtie_index);
-		$bowtie_match = join("|", $tempbow);
-		$bowtie_index = join("_", $tempbow);
+		$bowtie_match = join("|", @tempbow);
+		$bowtie_index = join("_", @tempbow);
 	}
 	else{
 		$bowtie_match = $bowtie_index;
