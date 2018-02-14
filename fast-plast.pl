@@ -356,20 +356,41 @@ if($subsample){
 }
 if($skip && $skip eq "trim"){
 		if(@p1_array){
+			my $tfile;
 			for my $p1array (@p1_array){
-					`cat $p1array >> $name.trimmed_P1.fq`;
+				if($p1array =~ /\.gz/){
+					$tfile = IO::Uncompress::Gunzip->new($p1array) or die "Problem found with $p1array: $GunzipError";
+				}
+				else{
+					$tfile = $p1array;
+				}
+				`cat $tfile >> $name.trimmed_P1.fq`;
 			}
 			
 		}
 		if(@p2_array){
+			my $tfile;
 			for my $p2array (@p2_array){
-					`cat $p2array >> $name.trimmed_P2.fq`;
+				if($p2array =~ /\.gz/){
+					$tfile = IO::Uncompress::Gunzip->new($p2array) or die "Problem found with $p2array: $GunzipError";
+				}
+				else{
+					$tfile = $p2array;
+				}
+				`cat $tfile >> $name.trimmed_P2.fq`;
 			}
 			
 		}
 		if(@s_array){
+			my $tfile;
 			for my $sarray (@s_array){
-					`cat $sarray >> $name.trimmed_UP.fq`;
+				if($sarray =~ /\.gz/){
+					$tfile = IO::Uncompress::Gunzip->new($sarray) or die "Problem found with $sarray: $GunzipError";
+				}
+				else{
+					$tfile = $sarray;
+				}
+				`cat $tfile >> $name.trimmed_UP.fq`;
 			}
 			
 		}
