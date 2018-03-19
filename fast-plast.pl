@@ -1,5 +1,6 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
 use strict;
+use warnings;
 use Getopt::Long;
 use Pod::Usage;
 use FindBin;
@@ -327,7 +328,7 @@ if($subsample){
 			my $count = 0;
 			my $tfile;
                         if($psf =~ /\.gz/){
-                                $tfile = IO::Uncompress::Gunzip->new($psf) or die "Problem found with $psf: $GunzipError";
+                                $tfile = IO::Uncompress::Gunzip->new($psf, MultiStream => 1) or die "Problem found with $psf: $GunzipError";
                         }
                         else{
                                 open $tfile, "<", $psf;
@@ -359,7 +360,7 @@ if($skip && $skip eq "trim"){
 			my $tfile;
 			for my $p1array (@p1_array){
 				if($p1array =~ /\.gz/){
-					$tfile = IO::Uncompress::Gunzip->new($p1array) or die "Problem found with $p1array: $GunzipError";
+					$tfile = IO::Uncompress::Gunzip->new($p1array, MultiStream => 1) or die "Problem found with $p1array: $GunzipError";
 				}
 				else{
 					$tfile = $p1array;
@@ -372,7 +373,7 @@ if($skip && $skip eq "trim"){
 			my $tfile;
 			for my $p2array (@p2_array){
 				if($p2array =~ /\.gz/){
-					$tfile = IO::Uncompress::Gunzip->new($p2array) or die "Problem found with $p2array: $GunzipError";
+					$tfile = IO::Uncompress::Gunzip->new($p2array, MultiStream => 1) or die "Problem found with $p2array: $GunzipError";
 				}
 				else{
 					$tfile = $p2array;
@@ -385,7 +386,7 @@ if($skip && $skip eq "trim"){
 			my $tfile;
 			for my $sarray (@s_array){
 				if($sarray =~ /\.gz/){
-					$tfile = IO::Uncompress::Gunzip->new($sarray) or die "Problem found with $sarray: $GunzipError";
+					$tfile = IO::Uncompress::Gunzip->new($sarray, MultiStream => 1) or die "Problem found with $sarray: $GunzipError";
 				}
 				else{
 					$tfile = $sarray;
