@@ -22,7 +22,7 @@ Fast-Plast uses a de novo assembly approach by combining the De Bruijn graph-bas
 
 Fast-Plast requires a number of commonly used bioinformatics programs. We have included an installation script to help users properly prepare Fast-Plast for use.
 
-* Perl 5+
+* Perl 5.x which has been installed with threading enabled (see <a href="https://perlmaven.com/how-to-build-perl-from-source-code">How to build perl from source</a>, if needed).
 * <a href="http://www.usadellab.org/cms/?page=trimmomatic">Trimmomatic</a> (initial read cleaning)
 * <a href="http://bowtie-bio.sourceforge.net/bowtie2/index.shtml">Bowtie2</a> (read reduction to only chloroplast-like reads)
 * <a href="http://bioinf.spbau.ru/spades">SPAdes</a> (initial assembly)
