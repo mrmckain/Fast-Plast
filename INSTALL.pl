@@ -505,7 +505,7 @@ else{
 		die "\nSorry. I cannot locate the Trimmomatic jar file in $temp_trim\. Please check again.\n";
 	}
 	my $tempf = read_file($control_file);
-		$tempf =~ s/my \$TRIMMOMATIC\;/my \$TRMIMMOMATIC=\"$trimmomatic\"\;/;
+		$tempf =~ s/my \$TRIMMOMATIC\;/my \$TRIMMOMATIC=\"$trimmomatic\"\;/;
 		write_file($control_file, $tempf);
 }
 
