@@ -89,31 +89,32 @@ Example:
 
 This will use all available Poales plastomes in the data set (118).
 
-Orders currently available in Fast-Plast (68):
+Orders currently available in Fast-Plast (71):
 
-    Apiales				Ericales		Marchantiales
-    Aquifoliales			Euglenales		Monomastigales
-    Araucariales			Eupodiscales		Myrtales
-    Asparagales			Fabales			Nymphaeales
-    Asterales			Fagales			Orthotrichales
-    Austrobaileyales		Fragilariales		Pinales
-    Brassicales			Fucales			Poales
-    Bryopsidales			Funariales		Polypodiales
-    Buxales				Garryales		Proteales
-    Caryophyllales			Gentianales		Pyrenomonadales
-    Celastrales			Geraniales		Ranunculales
-    Chlamydomonadales		Ginkgoales		Rosales
-    Chloranthales			Gracilariales		Sapindales
-    Chlorellales			Hypnales		Saxifragales
-    Cornales			Lamiales		Solanales
-    Cucurbitales			Laminariales		Sphaeropleales
-    Cupressales			Laurales		Takakiales
-    Cyanidiales			Liliales		Ulvales
-    Cyatheales			Lycopodiales		Vaucheriales
-    Cycadales			Magnoliales		Vitales
-    Desmidiales			Malpighiales		Zingiberales
-    Dioscoreales			Malvales		Zygnematales
-    Dipsacales			Mamiellales	
+    Alismatales		Dioscoreales		Mamiellales
+    Apiales			Dipsacales		Marchantiales
+    Aquifoliales		Ericales		Monomastigales
+    Araucariales		Euglenales		Myrtales
+    Asparagales		Eupodiscales		Nymphaeales
+    Asterales		Fabales			Orthotrichales
+    Austrobaileyales	Fagales			Pinales
+    Bangiales		Fragilariales		Poales
+    Brassicales		Fucales			Polypodiales
+    Bromeliaceae		Funariales		Proteales
+    Bryopsidales		Garryales		Pyrenomonadales
+    Buxales			Gentianales		Ranunculales
+    Caryophyllales		Geraniales		Rosales
+    Celastrales		Ginkgoales		Sapindales
+    Chlamydomonadales	Gracilariales		Saxifragales
+    Chloranthales		Hypnales		Solanales
+    Chlorellales		Lamiales		Sphaeropleales
+    Cornales		Laminariales		Takakiales
+    Cucurbitales		Laurales		Ulvales
+    Cupressales		Liliales		Vaucheriales
+    Cyanidiales		Lycopodiales		Vitales
+    Cyatheales		Magnoliales		Zingiberales
+    Cycadales		Malpighiales		Zygnematales
+    Desmidiales		Malvales	
 
 
 <h3>User Provided Bowtie Index</h3>
