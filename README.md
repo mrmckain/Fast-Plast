@@ -92,7 +92,7 @@ This will use all available Poales plastomes in the data set (118).
 Orders currently available in Fast-Plast (70):
 
 	Alismatales		Dipsacales	Marchantiales
-	Apiales	Ericales	Monomastigales
+	Apiales			Ericales	Monomastigales
 	Aquifoliales		Euglenales	Myrtales
 	Araucariales		Eupodiscales	Nymphaeales
 	Asparagales		Fabales		Orthotrichales
