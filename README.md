@@ -91,30 +91,30 @@ This will use all available Poales plastomes in the data set (118).
 
 Orders currently available in Fast-Plast (71):
 
-	Alismatales	Dipsacales	Marchantiales
+	Alismatales			Dipsacales	Marchantiales
 	Apiales	Ericales	Monomastigales
-	Aquifoliales	Euglenales	Myrtales
-	Araucariales	Eupodiscales	Nymphaeales
-	Asparagales	Fabales	Orthotrichales
-	Asterales	Fagales	Pinales
+	Aquifoliales		Euglenales	Myrtales
+	Araucariales		Eupodiscales	Nymphaeales
+	Asparagales		Fabales	Orthotrichales
+	Asterales		Fagales	Pinales
 	Austrobaileyales	Fragilariales	Poales
-	Bangiales	Fucales	Polypodiales
-	Brassicales	Funariales	Proteales
-	Bryopsidales	Garryales	Pyrenomonadales
-	Buxales	Gentianales	Ranunculales
+	Bangiales		Fucales	Polypodiales
+	Brassicales		Funariales	Proteales
+	Bryopsidales		Garryales	Pyrenomonadales
+	Buxales			Gentianales	Ranunculales
 	Caryophyllales	Geraniales	Rosales
-	Celastrales	Ginkgoales	Sapindales
+	Celastrales		Ginkgoales	Sapindales
 	Chlamydomonadales	Gracilariales	Saxifragales
-	Chloranthales	Hypnales	Solanales
-	Chlorellales	Lamiales	Sphaeropleales
-	Cornales	Laminariales	Takakiales
-	Cucurbitales	Laurales	Ulvales
-	Cupressales	Liliales	Vaucheriales
-	Cyanidiales	Lycopodiales	Vitales
-	Cyatheales	Magnoliales	Zingiberales
-	Cycadales	Malpighiales	Zygnematales
-	Desmidiales	Malvales	
-	Dioscoreales	Mamiellales		
+	Chloranthales		Hypnales	Solanales
+	Chlorellales		Lamiales	Sphaeropleales
+	Cornales		Laminariales	Takakiales
+	Cucurbitales		Laurales	Ulvales
+	Cupressales		Liliales	Vaucheriales
+	Cyanidiales		Lycopodiales	Vitales
+	Cyatheales		Magnoliales	Zingiberales
+	Cycadales		Malpighiales	Zygnematales
+	Desmidiales		Malvales	
+	Dioscoreales		Mamiellales		
 
 
 <h3>User Provided Bowtie Index</h3>
