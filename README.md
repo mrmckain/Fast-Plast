@@ -89,20 +89,20 @@ Example:
 
 This will use all available Poales plastomes in the data set (118).
 
-Orders currently available in Fast-Plast (71):
+Orders currently available in Fast-Plast (70):
 
-	Alismatales			Dipsacales	Marchantiales
+	Alismatales		Dipsacales	Marchantiales
 	Apiales	Ericales	Monomastigales
 	Aquifoliales		Euglenales	Myrtales
 	Araucariales		Eupodiscales	Nymphaeales
-	Asparagales		Fabales	Orthotrichales
-	Asterales		Fagales	Pinales
+	Asparagales		Fabales		Orthotrichales
+	Asterales		Fagales		Pinales
 	Austrobaileyales	Fragilariales	Poales
-	Bangiales		Fucales	Polypodiales
+	Bangiales		Fucales		Polypodiales
 	Brassicales		Funariales	Proteales
 	Bryopsidales		Garryales	Pyrenomonadales
 	Buxales			Gentianales	Ranunculales
-	Caryophyllales	Geraniales	Rosales
+	Caryophyllales		Geraniales	Rosales
 	Celastrales		Ginkgoales	Sapindales
 	Chlamydomonadales	Gracilariales	Saxifragales
 	Chloranthales		Hypnales	Solanales
