@@ -1404,8 +1404,8 @@ sub cpgene_recovery {
 			$chloroplast_db_genes{$1}=1;
 		}
 	}
-	`$BLAST/makeblastdb -in $FPBIN/Angiosperm_Chloroplast_Genes.fsa -dbtype nucl`;
-	my $blast_afin_exec = $BLAST . "blastn -query " . $current_afin . " -db " . $posgenes . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $current_afin."_positional_genes" . ".blastn";
+	`$BLAST/makeblastdb -in $FPBIN/Angiosperm_Chloroplast_Genes.fsa -dbtype nucl -out Angiosperm_Chloroplast_Genes`;
+	my $blast_afin_exec = $BLAST . "blastn -query " . $current_afin . " -db Angiosperm_Chloroplast_Genes -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $current_afin."_positional_genes" . ".blastn";
 	`$blast_afin_exec`;
 	my $total_chloroplast_db_genes= scalar keys %chloroplast_db_genes;
 
@@ -1680,7 +1680,7 @@ sub orientate_plastome{
         my $name = $_[1];
         my $path_to_final = $_[2];
 
-        `$BLAST/makeblastdb -in $posgenes -dbtype nucl`;
+        `$BLAST/makeblastdb -in $posgenes -dbtype nucl -out Angiosperm_Chloroplast_Genes`;
 
         for (my $i = 0; $i <=3; $i++){
 
@@ -1740,7 +1740,7 @@ sub orientate_plastome{
 				next;
 			}
 					
-			$blast_afin_exec = $BLAST . "blastn -query " . $split_fullname . " -db " . $posgenes . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $split_fullname . "_positional_genes" . ".blastn";
+			$blast_afin_exec = $BLAST . "blastn -query " . $split_fullname . " -db Angiosperm_Chloroplast_Genes -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $split_fullname . "_positional_genes" . ".blastn";
 			system($blast_afin_exec);
 			my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($split_fullname);
 			my %contigs_db_genes = %$contigs_db_genes;
