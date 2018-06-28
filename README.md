@@ -3,7 +3,7 @@ Fast-Plast: Rapid de novo assembly and finishing for whole chloroplast genomes
 =============
 <b>Authors</b>: Michael R. McKain, <a href="https://github.com/afinit/afin">Mark Wilson</a><br>
 </br>
-Version 1.2.7<br>
+Version 1.2.8<br>
 </br>
 <b>Contact</b>: https://github.com/mrmckain
 
@@ -264,6 +264,10 @@ Definitions:
 
 
 ## Changelog
+
+* 28-June_2018 Fast-Plast v.1.2.8 <br>
+    --Output directory of BLAST database for gene identification changed to user working directory.
+    <br>
 
 * 07-Jan_2018 Fast-Plast v.1.2.7 <br>
     --added capacity for multiple taxa to be used for bowtie_index. These should be a comma separated list. Any of the following taxonomic levels is accepted for bowtie_index: genus, species epithet, tribe (if applicable), subfamily (if applicable), family, and order.
