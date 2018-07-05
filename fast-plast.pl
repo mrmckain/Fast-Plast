@@ -945,7 +945,7 @@ print $LOGFILE "$current_runtime\tCoverage analysis finished.\n";
 if(-z "Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt"){
 	print $LOGFILE "\t\t\t\tNo issues with assembly coverage were identified.\n";
 
-	coverage_summary("Final_Assembly/$name\._CP_pieces.fsa", "Coverage_Analysis/");
+	coverage_summary("Final_Assembly/${name}_CP_pieces.fsa", "Coverage_Analysis/");
 	if($clean){
 			if ($clean eq "light"){
 				unlink(glob("5_Plastome_Finishing/*fsa.n*"));
@@ -1022,7 +1022,7 @@ else{
 		print $LOGFILE "\t\t\t\tAssembly was successful! No issues with assembly coverage were identified.\n";
 		print $LOGFILE "\t\t\t\tNew assembly can be found in Final_Assembly_Fixed_Low_Coverage.\n";
 
-		coverage_summary("../Final_Assembly_Fixed_Low_Coverage/$name\._CP_pieces.fsa", "../Coverage_Analysis_Reassembly/");
+		coverage_summary("../Final_Assembly_Fixed_Low_Coverage/${name}_CP_pieces.fsa", "../Coverage_Analysis_Reassembly/");
 		chdir("../");
 		if($clean){
 			if ($clean eq "light"){
