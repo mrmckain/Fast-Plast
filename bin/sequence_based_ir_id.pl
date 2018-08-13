@@ -11,6 +11,9 @@ my $name              = shift // die 'name (second command-line argument) requir
 my $ARGV_2            = shift // die 'third command-line argument required'; # What is a good name for this?
 my $min_region_legnth = shift // $DEFAULT_MIN_REGION_LENGTH;
 
+# Throw error if unknown argument used
+shift() && die 'Unexpected fifth argument not supported';
+
 my $sequence;
 my $sid;
 
