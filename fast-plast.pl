@@ -48,8 +48,9 @@ my $user_bowtie;
 my $clean;
 my $subsample;
 my $cov_only;
+my $min_region_length = 10000;
 my $skip;
-GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check, 'skip=s' => \$skip, 'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters, "subsample=i" => \$subsample, "only_coverage=s" => \$cov_only)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
+GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check, 'skip=s' => \$skip, 'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters, "subsample=i" => \$subsample, "only_coverage=s" => \$cov_only, "min_region_length=i" => \$min_region_length)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
 
 if($version) {
 	pod2usage( { -verbose => 99, -sections => "VERSION" } );
@@ -1684,7 +1685,7 @@ sub orientate_plastome{
 
         for (my $i = 0; $i <=3; $i++){
 
-        	`perl $FPBIN/sequence_based_ir_id.pl $current_afin $name $i`;
+        	`perl $FPBIN/sequence_based_ir_id.pl $current_afin $name $i $min_region_length`;
         	my $split_fullname= $name ."_regions_split".$i.".fsa";
 
         	`$BLAST/makeblastdb -in $split_fullname -dbtype nucl`;
@@ -2021,6 +2022,7 @@ Advanced options:
 	--user_bowtie		User supplied bowtie2 indices. If this option is used, bowtie_index is ignored.
 	--posgenes		User defined genes for identification of single copy/IR regions and orientation. Useful when major rearrangments are present in user plastomes.
 	--coverage_analysis 	Flag to run the coverage analysis of a final chloroplast assembly.
+	--min_region_length 	Minimum region length (passed on to sequence_based_ir_id.pl)
 
 =head1 DESCRIPTION
 
