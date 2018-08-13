@@ -6,10 +6,10 @@ use v5.10; # Minimum perl providing defined-or "//", which allows defaults to be
 my $DEFAULT_MIN_REGION_LENGTH = 10000;
 
 # Get commandline arguments
-my $current_afin        = shift // die 'current_afin (first command-line argument) required';
-my $name                = shift // die 'name (second command-line argument) required';
+my $current_afin          = shift // die 'current_afin (first command-line argument) required';
+my $name                  = shift // die 'name (second command-line argument) required';
 my $sc_region_to_split_on = shift // die 'sc_region_to_split_on (third command-line argument) required'; 
-my $min_region_legnth   = shift // $DEFAULT_MIN_REGION_LENGTH;
+my $min_region_legnth     = shift // $DEFAULT_MIN_REGION_LENGTH;
 
 # Throw error if unknown argument used
 shift() && die 'Unexpected fifth argument not supported';
