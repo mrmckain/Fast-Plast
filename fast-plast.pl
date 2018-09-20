@@ -464,7 +464,7 @@ for my $check_tfile (@tfile_read){
 }
 chdir("../");
 ##########
-
+my $jellyfish_pwd;
 if($cov_only){
 	$current_runtime = localtime();
 	print $LOGFILE "$current_runtime\tStarting coverage analyses.\n";
@@ -494,7 +494,7 @@ else{
 }
 
 system($cov_bowtie2_exec);
-my $jellyfish_pwd = system("pwd");
+$jellyfish_pwd = system("pwd");
 
 my $jellyfish_count_exec = $JELLYFISH . " count -m 25 -t ". $threads . " -C -s 1G " . $jellyfish_pwd . "/map_*";
 system($jellyfish_count_exec);
