@@ -916,7 +916,7 @@ else{
 }
 
 system($cov_bowtie2_exec);
-
+$jellyfish_pwd = system("pwd");
 my $jellyfish_count_exec = $JELLYFISH . " count -m 25 -t ". $threads . " -C -s 1G " . $jellyfish_pwd . "/map_*";
 system($jellyfish_count_exec);
 
@@ -996,7 +996,7 @@ else{
 	}
 
 	system($cov_bowtie2_exec);
-
+	$jellyfish_pwd = system("pwd");
 	my $jellyfish_count_exec = $JELLYFISH . " count -m 25 -t ". $threads . " -C -s 1G " . $jellyfish_pwd . "/map_*";
 	system($jellyfish_count_exec);
 
