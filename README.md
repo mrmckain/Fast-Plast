@@ -29,7 +29,7 @@ Fast-Plast requires a number of commonly used bioinformatics programs. We have i
 * <a href="https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download">BLAST+</a> (multiple checks for gene content)
 * <a href="https://github.com/nsoranzo/sspace_basic">SSPACE</a> (scaffolding when single contig not obtainable)
 * <a href="https://sourceforge.net/projects/bowtie-bio/">Bowtie1</a> (required for SSPACE)
-
+* <a href="https://www.r-project.org/">R</a> (required to plot coverage)
 <h3>afin</h3>
 
 * c++ complier with c++11 support and zlib.h.  zlib.h is a standard base library for most Unix systems but can be obtained <a href="http://www.zlib.net/">here</a>.

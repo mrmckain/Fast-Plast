@@ -48,8 +48,9 @@ my $user_bowtie;
 my $clean;
 my $subsample;
 my $cov_only;
+my $min_region_length = 10000;
 my $skip;
-GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check, 'skip=s' => \$skip, 'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters, "subsample=i" => \$subsample, "only_coverage=s" => \$cov_only)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
+GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check, 'skip=s' => \$skip, 'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters, "subsample=i" => \$subsample, "only_coverage=s" => \$cov_only, "min_region_length=i" => \$min_region_length)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
 
 if($version) {
 	pod2usage( { -verbose => 99, -sections => "VERSION" } );
@@ -463,7 +464,7 @@ for my $check_tfile (@tfile_read){
 }
 chdir("../");
 ##########
-
+my $jellyfish_pwd;
 if($cov_only){
 	$current_runtime = localtime();
 	print $LOGFILE "$current_runtime\tStarting coverage analyses.\n";
@@ -493,6 +494,7 @@ else{
 }
 
 system($cov_bowtie2_exec);
+$jellyfish_pwd = system("pwd");
 
 my $jellyfish_count_exec = $JELLYFISH . " count -m 25 -t ". $threads . " -C -s 1G map_*";
 system($jellyfish_count_exec);
@@ -914,8 +916,8 @@ else{
 }
 
 system($cov_bowtie2_exec);
-
-my $jellyfish_count_exec = $JELLYFISH . " count -m 25 -t ". $threads . " -C -s 1G map_*";
+$jellyfish_pwd = system("pwd");
+my $jellyfish_count_exec = $JELLYFISH . " count -m 25 -t ". $threads . " -C -s 1G " . "map_*";
 system($jellyfish_count_exec);
 
 my $jellyfish_dump_exec = $JELLYFISH . " dump mer_counts.jf > " . $name . "_25dump";
@@ -945,7 +947,7 @@ print $LOGFILE "$current_runtime\tCoverage analysis finished.\n";
 if(-z "Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt"){
 	print $LOGFILE "\t\t\t\tNo issues with assembly coverage were identified.\n";
 
-	coverage_summary("Final_Assembly/$name\._CP_pieces.fsa", "Coverage_Analysis/");
+	coverage_summary("Final_Assembly/${name}_CP_pieces.fsa", "Coverage_Analysis/");
 	if($clean){
 			if ($clean eq "light"){
 				unlink(glob("5_Plastome_Finishing/*fsa.n*"));
@@ -994,11 +996,11 @@ else{
 	}
 
 	system($cov_bowtie2_exec);
-
-	my $jellyfish_count_exec = $JELLYFISH . " count -m 25 -t ". $threads . " -C -s 1G map_*";
+	$jellyfish_pwd = system("pwd");
+	my $jellyfish_count_exec = $JELLYFISH . " count -m 25 -t ". $threads . " -C -s 1G " . $jellyfish_pwd . "/map_*";
 	system($jellyfish_count_exec);
 
-	my $jellyfish_dump_exec = $JELLYFISH . " dump mer_counts.jf > " . $name . "_25dump";
+	my $jellyfish_dump_exec = $JELLYFISH . " dump mer_counts.jf > " . $jellyfish_pwd . "/" . $name . "_25dump";
 	system($jellyfish_dump_exec);
 
 	my $window_cov_exec = "perl " . $COVERAGE_DIR . "/new_window_coverage.pl " . $name . "_25dump ../Final_Assembly_Fixed_Low_Coverage/" . $name . "_FULLCP.fsa 25";
@@ -1022,7 +1024,7 @@ else{
 		print $LOGFILE "\t\t\t\tAssembly was successful! No issues with assembly coverage were identified.\n";
 		print $LOGFILE "\t\t\t\tNew assembly can be found in Final_Assembly_Fixed_Low_Coverage.\n";
 
-		coverage_summary("../Final_Assembly_Fixed_Low_Coverage/$name\._CP_pieces.fsa", "../Coverage_Analysis_Reassembly/");
+		coverage_summary("../Final_Assembly_Fixed_Low_Coverage/${name}_CP_pieces.fsa", "../Coverage_Analysis_Reassembly/");
 		chdir("../");
 		if($clean){
 			if ($clean eq "light"){
@@ -1684,7 +1686,7 @@ sub orientate_plastome{
 
         for (my $i = 0; $i <=3; $i++){
 
-        	`perl $FPBIN/sequence_based_ir_id.pl $current_afin $name $i`;
+        	`perl $FPBIN/sequence_based_ir_id.pl $current_afin $name $i $min_region_length`;
         	my $split_fullname= $name ."_regions_split".$i.".fsa";
 
         	`$BLAST/makeblastdb -in $split_fullname -dbtype nucl`;
@@ -2021,6 +2023,7 @@ Advanced options:
 	--user_bowtie		User supplied bowtie2 indices. If this option is used, bowtie_index is ignored.
 	--posgenes		User defined genes for identification of single copy/IR regions and orientation. Useful when major rearrangments are present in user plastomes.
 	--coverage_analysis 	Flag to run the coverage analysis of a final chloroplast assembly.
+	--min_region_length 	Minimum region length (passed on to sequence_based_ir_id.pl)
 
 =head1 DESCRIPTION
 

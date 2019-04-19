@@ -160,10 +160,10 @@ if($answer =~ /n/i){
 		}
 		my $spades;
 		if($answer =~ /y/i){	
-			system("wget http://spades.bioinf.spbau.ru/release3.9.0/SPAdes-3.9.0-Linux.tar.gz");
-			if(-e "SPAdes-3.9.0-Linux.tar.gz"){
-				system("tar -xvzf SPAdes-3.9.0-Linux.tar.gz");
-				$spades = $FPROOT . "/bin/SPAdes-3.9.0-Linux";
+			system("wget http://spades.bioinf.spbau.ru/release3.11.1/SPAdes-3.11.1-Linux.tar.gz");
+			if(-e "SPAdes-3.11.1-Linux.tar.gz"){
+				system("tar -xvzf SPAdes-3.11.1-Linux.tar.gz");
+				$spades = $FPROOT . "/bin/SPAdes-3.11.1-Linux";
 				$spades = glob ("$spades/bin/spades.py");
 			}
 			else{

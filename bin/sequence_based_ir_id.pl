@@ -1,8 +1,23 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 use strict;
+use warnings;
+use v5.10; # Minimum perl providing defined-or "//", which allows defaults to be zero (unlike regular "||")
+
+my $DEFAULT_MIN_REGION_LENGTH = 10000;
+
+# Get commandline arguments
+my $current_afin          = shift // die 'current_afin (first command-line argument) required';
+my $name                  = shift // die 'name (second command-line argument) required';
+my $sc_region_to_split_on = shift // die 'sc_region_to_split_on (third command-line argument) required'; 
+my $min_region_legnth     = shift // $DEFAULT_MIN_REGION_LENGTH;
+
+# Throw error if unknown argument used
+shift() && die 'Unexpected fifth argument not supported';
+
 my $sequence;
 my $sid;
-open my $file, "<", $ARGV[0];
+
+open my $file, "<", $current_afin;
 while(<$file>){
 	chomp;
 	if(/>/){
@@ -82,12 +97,14 @@ for my $start (sort {$a<=>$b} keys %regions){
 }
 my $ssc=0;
 for my $start (sort {$a<=>$b} keys %regions){
-        for my $end (keys %{$regions{$start}}){
+	for my $end (keys %{$regions{$start}}){
 		if($regions{$start}{$end} eq "sc"){
 			$ssc++;
-		}
-		if(($ssc == $ARGV[2])  && $regions{$start}{$end} eq "sc"){
-			delete $regions{$start};
+
+			# Remove specified region
+			if($ssc == $sc_region_to_split_on) {
+				delete $regions{$start};
+			}
 		}
 	}
 }
@@ -119,10 +136,10 @@ for my $start (sort {$a<=>$b} keys %regions){
 
 $final_regions{$final_start}{$final_end}=$final_regionid;
 
-open my $out, ">", $ARGV[1] . "_regions_split" . $ARGV[2] . ".fsa";
+open my $out, ">", $name . "_regions_split" . $sc_region_to_split_on . ".fsa";
 for my $start (sort {$a<=>$b} keys %final_regions){
         for my $end (keys %{$final_regions{$start}}){
-                if($end-$start < 10000){
+                if($end-$start < $min_region_legnth){
                         next;
                 }
                 my $tempseq = substr($sequence,$start,($end-$start+1));
