@@ -49,11 +49,11 @@ if($answer =~ /n/i){
 		my $trimmomatic;
 		if($answer =~ /y/i){
 		
-			system("wget http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/Trimmomatic-0.36.zip");
+			system("wget http://www.usadellab.org/cms/uploads/supplementary/Trimmomatic/Trimmomatic-0.39.zip");
 			
-			if(-e "Trimmomatic-0.36.zip"){
-				system("unzip Trimmomatic-0.36.zip");
-				$trimmomatic = $FPROOT . "/bin/Trimmomatic-0.36/";
+			if(-e "Trimmomatic-0.39.zip"){
+				system("unzip Trimmomatic-0.39.zip");
+				$trimmomatic = $FPROOT . "/bin/Trimmomatic-0.39/";
 				$trimmomatic = glob ("$trimmomatic/*.jar");
 			}
 			else{
@@ -108,10 +108,10 @@ if($answer =~ /n/i){
 	}
 		my $bowtie2;
 		if($answer =~ /y/i){
-			system("wget https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.2.9/bowtie2-2.2.9-linux-x86_64.zip");
-			if(-e "bowtie2-2.2.9-linux-x86_64.zip"){
-				system("unzip bowtie2-2.2.9-linux-x86_64.zip");
-				$bowtie2 = $FPROOT . "/bin/bowtie2-2.2.9";
+			system("wget https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.3.5.1/bowtie2-2.3.5.1-linux-x86_64.zip");
+			if(-e "bowtie2-2.3.5.1-linux-x86_64.zip"){
+				system("unzip bowtie2-2.3.5.1-linux-x86_64.zip");
+				$bowtie2 = $FPROOT . "/bin/bowtie2-2.3.5.1";
 				$bowtie2 = glob ("$bowtie2/bowtie2");
 			}
 			else{
@@ -160,10 +160,10 @@ if($answer =~ /n/i){
 		}
 		my $spades;
 		if($answer =~ /y/i){	
-			system("wget http://spades.bioinf.spbau.ru/release3.11.1/SPAdes-3.11.1-Linux.tar.gz");
-			if(-e "SPAdes-3.11.1-Linux.tar.gz"){
-				system("tar -xvzf SPAdes-3.11.1-Linux.tar.gz");
-				$spades = $FPROOT . "/bin/SPAdes-3.11.1-Linux";
+			system("wget http://cab.spbu.ru/files/release3.14.0/SPAdes-3.14.0-Linux.tar.gz");
+			if(-e "SPAdes-3.14.0-Linux.tar.gz"){
+				system("tar -xvzf SPAdes-3.14.0-Linux.tar.gz");
+				$spades = $FPROOT . "/bin/SPAdes-3.14.0-Linux";
 				$spades = glob ("$spades/bin/spades.py");
 			}
 			else{
@@ -388,11 +388,11 @@ if($answer =~ /n/i){
 		my $jellyfish;
 		if($answer =~ /y/i){
 			
-			system("wget https://github.com/gmarcais/Jellyfish/releases/download/v2.2.6/jellyfish-2.2.6.tar.gz");
+			system("wget https://github.com/gmarcais/Jellyfish/releases/download/v2.3.0/jellyfish-2.3.0.tar.gz");
 			
-			if(-e "jellyfish-2.2.6.tar.gz"){
-				system("tar -xvzf jellyfish-2.2.6.tar.gz");
-				$jellyfish = $FPROOT . "/bin/jellyfish-2.2.6/";
+			if(-e "jellyfish-2.3.0.tar.gz"){
+				system("tar -xvzf jellyfish-2.3.0.tar.gz");
+				$jellyfish = $FPROOT . "/bin/jellyfish-2.3.0/";
 				chdir($jellyfish);
 				system("./configure");
 				system("make");
