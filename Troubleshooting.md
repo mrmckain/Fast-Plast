@@ -1,4 +1,4 @@
-Examples of fixing issues:
+<h1>Examples of fixing issues:</h1>
 
 Look at Camelina_microcarpa_ 101_afin_iter2.fa found in 
 
