@@ -111,7 +111,7 @@ if($answer =~ /n/i){
 			system("wget https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.3.5.1/bowtie2-2.3.5.1-linux-x86_64.zip");
 			if(-e "bowtie2-2.3.5.1-linux-x86_64.zip"){
 				system("unzip bowtie2-2.3.5.1-linux-x86_64.zip");
-				$bowtie2 = $FPROOT . "/bin/bowtie2-2.3.5.1";
+				$bowtie2 = $FPROOT . "/bin/bowtie2-2.3.5.1-linux-x86_64";
 				$bowtie2 = glob ("$bowtie2/bowtie2");
 			}
 			else{
