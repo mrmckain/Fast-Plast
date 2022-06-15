@@ -3,7 +3,7 @@ Fast-Plast: Rapid de novo assembly and finishing for whole chloroplast genomes
 =============
 <b>Authors</b>: Michael R. McKain, <a href="https://github.com/afinit/afin">Mark Wilson</a><br>
 </br>
-Version 1.2.8<br>
+Version 1.2.9<br>
 </br>
 <b>Contact</b>: https://github.com/mrmckain
 
@@ -11,7 +11,7 @@ Version 1.2.8<br>
 
 <h1>Description</h1>
 
-Fast-Plast is a pipeline that leverages existing and novel programs to quickly assemble, orient, and verify whole chloroplast genome sequences. For most datasets with sufficient data, Fast-Plast is able to produce a full-length de novo chloroplast genome assembly in approximately 30 minutes with no user mediation. In addition to a chloroplast sequence, Fast-Plast identifies chloroplast genes present in the final assembly.
+Fast-Plast is a pipeline that leverages existing and novel programs to quickly assemble, orient, and verify whole chloroplast genome sequences. For most datasets with sufficient data, Fast-Plast is able to produce a full-length de novo chloroplast genome assembly in less than 10 minutes with no user mediation. In addition to a chloroplast sequence, Fast-Plast identifies chloroplast genes present in the final assembly.
 
 Currently, Fast-Plast is written to accomodate Illumina data, although most data types could be used.
 
@@ -265,6 +265,12 @@ Definitions:
 
 ## Changelog
 
+* 14-June_2022 Fast-Plast v.1.2.9 <br>
+    --Minimum length of trim reads option added to pass to Trimmomatic.
+   <br>
+    --Afin reduced to one iteration. Afin now uses mapped reads to complete plastome instead of all reads.
+   <br>
+	
 * 28-June_2018 Fast-Plast v.1.2.8 <br>
     --Output directory of BLAST database for gene identification changed to user working directory.
     <br>
