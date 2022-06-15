@@ -18,6 +18,7 @@ BEGIN {
 }
 
 ###directories
+
 my $FPROOT = "$FindBin::RealBin";
 my $AFIN_DIR = "$FPROOT/afin";
 my $COVERAGE_DIR = "$FPROOT/Coverage_Analysis";
@@ -43,14 +44,15 @@ my $min_coverage;
 my $threads = 4;
 my $adapters = $FPBIN . "/adapters/NEB-PE.fa";
 my $version;
-my $current_version = "Fast-Plast v.1.2.8";
+my $current_version = "Fast-Plast v.1.2.9";
 my $user_bowtie;
 my $clean;
 my $subsample;
 my $cov_only;
 my $min_region_length = 10000;
+my $min_length_trim=140;
 my $skip;
-GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check, 'skip=s' => \$skip, 'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters, "subsample=i" => \$subsample, "only_coverage=s" => \$cov_only, "min_region_length=i" => \$min_region_length)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
+GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check, 'skip=s' => \$skip, 'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters, "subsample=i" => \$subsample, "only_coverage=s" => \$cov_only, "min_region_length=i" => \$min_region_length, "min_length_trim=i" => \$min_length_trim)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
 
 if($version) {
 	pod2usage( { -verbose => 99, -sections => "VERSION" } );
@@ -421,7 +423,7 @@ if($adapters =~ /NEB/i){
 }
 if(@p1_array){
 	for (my $i=0; $i < $pe_libs; $i++){
-		my $trim_exec = "java -classpath " . $TRIMMOMATIC . " org.usadellab.trimmomatic.TrimmomaticPE -threads " . $threads . " " . $p1_array[$i] . " " . $p2_array[$i] . " " . $name."_".$i.".trimmed_P1.fq " . $name."_".$i.".trimmed_U1.fq " . $name."_".$i.".trimmed_P2.fq " . $name."_".$i.".trimmed_U2.fq " . "ILLUMINACLIP:".$adapters.":1:30:10 SLIDINGWINDOW:10:20 MINLEN:40";
+		my $trim_exec = "java -classpath " . $TRIMMOMATIC . " org.usadellab.trimmomatic.TrimmomaticPE -threads " . $threads . " " . $p1_array[$i] . " " . $p2_array[$i] . " " . $name."_".$i.".trimmed_P1.fq " . $name."_".$i.".trimmed_U1.fq " . $name."_".$i.".trimmed_P2.fq " . $name."_".$i.".trimmed_U2.fq " . "ILLUMINACLIP:".$adapters.":1:30:10 SLIDINGWINDOW:10:20 MINLEN:" . $min_length_trim;
 		system($trim_exec);
 	}
 	`cat $name\*trimmed_P1.fq > $name.trimmed_P1.fq`;
@@ -435,7 +437,7 @@ if(@p1_array){
 
 if(@s_array){
 	for (my $i=0; $i < $s_libs; $i++){
-		my $trim_exec = "java -classpath " . $TRIMMOMATIC . " org.usadellab.trimmomatic.TrimmomaticSE -threads " . $threads . " " . $s_array[$i] . " " . $name."_".$i.".trimmed_SE.fq " . "ILLUMINACLIP:".$adapters.":1:30:10 SLIDINGWINDOW:10:20 MINLEN:40";
+		my $trim_exec = "java -classpath " . $TRIMMOMATIC . " org.usadellab.trimmomatic.TrimmomaticSE -threads " . $threads . " " . $s_array[$i] . " " . $name."_".$i.".trimmed_SE.fq " . "ILLUMINACLIP:".$adapters.":1:30:10 SLIDINGWINDOW:10:20 MINLEN:" . $min_length_trim;
 		system($trim_exec);
 	}
 	`cat $name\*trimmed_SE.fq >> $name.trimmed_UP.fq`;
@@ -693,13 +695,13 @@ rename("temp_filtered_spades_contigs.fsa", "filtered_spades_contigs.fsa");
 
 my $current_afin;
 my $extension = $maxsize*0.75;
-my ($total_afin_contigs, $max_afin, $min_afin) = &run_afin("150,50,50",100,"20,15,10","2,1,1","filtered_spades_contigs.fsa",$extension);
+my ($total_afin_contigs, $max_afin, $min_afin) = &run_afin(10,100,20,2,"filtered_spades_contigs.fsa",$extension);
 print $LOGFILE "\t\t\t\tAfter afin, there are $total_afin_contigs contigs with a maximum size of $max_afin and a minimum size of $min_afin.\n";
 $current_runtime = localtime();
 print $LOGFILE "$current_runtime\tRemoving nested contigs.\n";
 my $gotofinish;
 if( $total_afin_contigs > 1){
-	$current_afin = $name . "_afin_iter2.fa";
+	$current_afin = $name . "_afin_iter0.fa";
 
 	`$BLAST/makeblastdb -in $current_afin -dbtype nucl`;
 	my $blast_afin_exec = $BLAST . "blastn -query " . $current_afin . " -db " . $current_afin . " -evalue 1e-40 -outfmt 6 -max_target_seqs 100000000 > " . $current_afin . ".blastn";
@@ -728,6 +730,7 @@ if( $total_afin_contigs > 1){
 		print $LOGFILE "\t\t\t\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 
 	if(@p1_array){
+		die "Hit scaffolding.";
 		$current_afin = &scaffolding($current_afin,$name);
 		rename($current_afin, $name.".final.scaffolds.fasta");
 		
@@ -824,7 +827,7 @@ if( $total_afin_contigs > 1){
 
 
 else{
-	$current_afin = $name . "_afin_iter2.fa";
+	$current_afin = $name . "_afin_iter0.fa";
 	
 	my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
 	my %contigs_db_genes = %$contigs_db_genes;
@@ -1263,6 +1266,7 @@ if( $total_afin_contigs > 1){
 		print $LOGFILE "\t\t\t\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 
 	if(@p1_array){
+		die "Hit scaffolding.";
 		$current_afin = &scaffolding($current_afin,$name);
 		rename($current_afin, $name.".final.scaffolds.fasta");
 		$current_afin=$name.".final.scaffolds.fasta";
@@ -1352,10 +1356,10 @@ sub run_afin {
 	my $extension = $_[5];
 	my $afin_exec;
 	if($_[6]){
-		 $afin_exec = $AFIN_DIR . "/afin -c " . $_[4] . " -r ../1_Trimmed_Reads/" . $name .".trimmed* -l " . $_[0] . " -f .1 -d " . $_[1] . " -x " . $extension . " -p " . $_[2] . " -i " . $_[3] ." -o ". $name . "_afin --no_fusion";
+		 $afin_exec = $AFIN_DIR . "/afin -c " . $_[4] . " -r ../2_Bowtie_Mapping/map_* -l " . $_[0] . " -f .1 -d " . $_[1] . " -x " . $extension . " -p " . $_[2] . " -i " . $_[3] ." -o ". $name . "_afin --no_fusion";
 	}
 	else{	
-		 $afin_exec = $AFIN_DIR . "/afin -c " . $_[4] . " -r ../1_Trimmed_Reads/" . $name .".trimmed* -l " . $_[0] . " -f .1 -d " . $_[1] . " -x " . $extension . " -p " . $_[2] . " -i " . $_[3] ." -o ". $name . "_afin";
+		 $afin_exec = $AFIN_DIR . "/afin -c " . $_[4] . " -r ../2_Bowtie_Mapping/map_* -l " . $_[0] . " -f .1 -d " . $_[1] . " -x " . $extension . " -p " . $_[2] . " -i " . $_[3] ." -o ". $name . "_afin";
 	}
 	print $LOGFILE "\t\t\t\tUsing command $afin_exec.\n";
 	system($afin_exec);
@@ -1726,6 +1730,7 @@ sub orientate_plastome{
 			}
 			
 			if($exists_ir >1){
+				next;
 
 			}
 			my @range;
@@ -1748,7 +1753,7 @@ sub orientate_plastome{
 			my %contigs_db_genes = %$contigs_db_genes;
 			$percent_recovered_genes=$percent_recovered_genes*100;
 
-			if($percent_recovered_genes > 45){
+			if($percent_recovered_genes > 75){
 					`perl $FPBIN/orientate_plastome_v.2.0.pl $split_fullname $split_fullname\_positional_genes.blastn $name`;
         			my $final_seq = $name ."_FULLCP.fsa";
         			$blast_afin_exec = $BLAST . "blastn -query " . $final_seq . " -db " . $posgenes . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $current_afin . "_positional_genes" . ".blastn";
@@ -2024,6 +2029,7 @@ Advanced options:
 	--posgenes		User defined genes for identification of single copy/IR regions and orientation. Useful when major rearrangments are present in user plastomes.
 	--coverage_analysis 	Flag to run the coverage analysis of a final chloroplast assembly.
 	--min_region_length 	Minimum region length (passed on to sequence_based_ir_id.pl)
+	--min_length_trim	Minimum acceptable lenght for reads after trimming. [default = 140]
 
 =head1 DESCRIPTION
 
@@ -2056,7 +2062,7 @@ To install afin:
 
 =head1 VERSION
 
-Fast-Plast v.1.2.8
+Fast-Plast v.1.2.9
 
 
 
