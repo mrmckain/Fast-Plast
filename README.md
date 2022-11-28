@@ -240,6 +240,7 @@ Definitions:
 
 		Advanced options:
 
+		--min_length_trim	Acceptable minimum length for reads after trimming for adapters and quality. (Default = 140]
 		--subsample		Number of reads to subsample. Reads will be evenly pulled from all files. 
 		--threads		Number of threads used by Fast-Plast.  [Default = 4]
 		--min_coverage		Lowest acceptable coverage for 25-mer sliding window during coverage analysis. [Default = 0.25 * Average coverage]
