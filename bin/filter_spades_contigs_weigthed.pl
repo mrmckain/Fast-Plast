@@ -7,7 +7,10 @@ my $accumulated_coverage;
 my %coverage_lengths;
 my %cov_seqid;
 my %sequences;
-
+my $forced_minimum;
+if($ARGV[1]){	
+	my $forced_minimum=$ARGV[1]; #Optional
+}
 open my $file, "<", $ARGV[0];
 my $sid;
 while(<$file>){
@@ -45,8 +48,14 @@ for my $tcov (keys %coverage_lengths){
 
 my $stdev = sqrt($variance/$std_count);
 
-my $min_cov = $weighted_average-$stdev;
-my $max_cov	= $weighted_average+2.5*$stdev;
+my $min_cov;
+if($forced_minimum){
+	$min_cov = $forced_minimum;
+ }
+else{
+	$min_cov = $weighted_average-$stdev;
+}
+my $max_cov	= $weighted_average+2.5*$stdev; #Can add a factor here to change the amount of STDEV allowed for coverage.
 
 open my $out, ">", "filtered_spades_contigs.fsa";
 for my $tcov (sort keys %cov_seqid){
