@@ -108,10 +108,10 @@ if($answer =~ /n/i){
 	}
 		my $bowtie2;
 		if($answer =~ /y/i){
-			system("wget https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.3.5.1/bowtie2-2.3.5.1-linux-x86_64.zip");
-			if(-e "bowtie2-2.3.5.1-linux-x86_64.zip"){
-				system("unzip bowtie2-2.3.5.1-linux-x86_64.zip");
-				$bowtie2 = $FPROOT . "/bin/bowtie2-2.3.5.1-linux-x86_64";
+			system("wget https://github.com/BenLangmead/bowtie2/releases/download/v2.5.4/bowtie2-2.5.4-sra-linux-x86_64.zip");
+			if(-e "bowtie2-2.5.4-sra-linux-x86_64.zip"){
+				system("unzip bowtie2-2.5.4-sra-linux-x86_64.zip");
+				$bowtie2 = $FPROOT . "/bin/bowtie2-2.5.4-sra-linux-x86_64";
 				$bowtie2 = glob ("$bowtie2/bowtie2");
 			}
 			else{
@@ -160,10 +160,10 @@ if($answer =~ /n/i){
 		}
 		my $spades;
 		if($answer =~ /y/i){	
-			system("wget https://github.com/ablab/spades/releases/download/v3.15.5/SPAdes-3.15.5-Linux.tar.gz");
-			if(-e "SPAdes-3.15.5-Linux.tar.gz"){
-				system("tar -xvzf SPAdes-3.15.5-Linux.tar.gz");
-				$spades = $FPROOT . "/bin/SPAdes-3.15.5-Linux";
+			system("wget https://github.com/ablab/spades/releases/download/v4.0.0/SPAdes-4.0.0-Linux.tar.gz");
+			if(-e "SPAdes-4.0.0-Linux.tar.gz"){
+				system("tar -xvzf SPAdes-4.0.0-Linux.tar.gz");
+				$spades = $FPROOT . "/bin/SPAdes-4.0.0-Linux";
 				$spades = glob ("$spades/bin/spades.py");
 			}
 			else{
@@ -217,10 +217,10 @@ if($answer =~ /n/i){
 	}
 		my $bowtie1;
 		if($answer =~ /y/i){
-			system("wget https://sourceforge.net/projects/bowtie-bio/files/bowtie/1.1.2/bowtie-1.1.2-linux-x86_64.zip");
-			if(-e "bowtie-1.1.2-linux-x86_64.zip"){
-				system("unzip bowtie-1.1.2-linux-x86_64.zip");
-				$bowtie1 = $FPROOT . "/bin/bowtie-1.1.2";
+			system("wget https://sourceforge.net/projects/bowtie-bio/files/bowtie/1.3.1/bowtie-1.3.1-linux-x86_64.zip/download");
+			if(-e "bowtie-1.3.1-linux-x86_64.zip"){
+				system("unzip bowtie-1.3.1-linux-x86_64.zip");
+				$bowtie1 = $FPROOT . "/bin/bowtie-1.3.1";
 				$bowtie1 = glob ("$bowtie1/bowtie");
 			}
 			else{
@@ -256,7 +256,7 @@ if($answer =~ /n/i){
 			print "\nbowtie1 executable located: $bowtie1\n";
 		}
 		$tempf = read_file($control_file);
-		$bowtie1 =~ s/(.*?1.1.2\/)bowtie/$1/g;
+		$bowtie1 =~ s/(.*?1.3.1\/)bowtie/$1/g;
 		$tempf =~ s/my \$BOWTIE1\;/my \$BOWTIE1=\"$bowtie1\"\;/;
 		write_file($control_file, $tempf);
 		if($all){
@@ -327,11 +327,11 @@ if($answer =~ /n/i){
 		my $blastn;
 		if($answer =~ /y/i){
 			
-			system("wget ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.14.1/ncbi-blast-2.14.1+-x64-linux.tar.gz");
+			system("wget https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.16.0+-x64-linux.tar.gz");
 			
-			if(-e "ncbi-blast-2.14.1+-x64-linux.tar.gz"){
-				system("tar -xvzf ncbi-blast-2.14.1+-x64-linux.tar.gz");
-				$blastn = $FPROOT . "/bin/ncbi-blast-2.14.1+";
+			if(-e "ncbi-blast-2.16.0+-x64-linux.tar.gz"){
+				system("tar -xvzf ncbi-blast-2.16.0+-x64-linux.tar.gz");
+				$blastn = $FPROOT . "/bin/ncbi-blast-2.16.0+";
 				$blastn = glob ("$blastn/bin/");
 			}
 			else{
@@ -388,11 +388,11 @@ if($answer =~ /n/i){
 		my $jellyfish;
 		if($answer =~ /y/i){
 			
-			system("wget https://github.com/gmarcais/Jellyfish/releases/download/v2.3.0/jellyfish-2.3.0.tar.gz");
+			system("wget https://github.com/gmarcais/Jellyfish/releases/download/v2.3.1/jellyfish-2.3.1.tar.gz");
 			
-			if(-e "jellyfish-2.3.0.tar.gz"){
-				system("tar -xvzf jellyfish-2.3.0.tar.gz");
-				$jellyfish = $FPROOT . "/bin/jellyfish-2.3.0/";
+			if(-e "jellyfish-2.3.1.tar.gz"){
+				system("tar -xvzf jellyfish-2.3.1.tar.gz");
+				$jellyfish = $FPROOT . "/bin/jellyfish-2.3.1/";
 				chdir($jellyfish);
 				system("./configure");
 				system("make");
@@ -606,7 +606,7 @@ if($bowtie1 =~ /path/i){
 		}
 	}
 	my $tempf = read_file($control_file);
-		$bowtie1 =~ s/(.*?1.1.2\/)bowtie/$1/g;
+		$bowtie1 =~ s/(.*?1.3.1\/)bowtie/$1/g;
 
 		$tempf =~ s/my \$BOWTIE1\;/my \$BOWTIE1=\"$bowtie1\"\;/;
 		write_file($control_file, $tempf);
