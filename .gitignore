@@ -47,3 +47,7 @@ bin/GenBank_Plastomes
 bin/GenBank_Plastomes.metadata.tsv
 *.tar.gz
 bin/GenBank_Plastomes.rejected
+bin/GenBank_Plastomes
+bin/GenBank_Plastomes.metadata.tsv
+bin/GenBank_Plastomes.gz
+*.tar.gz
