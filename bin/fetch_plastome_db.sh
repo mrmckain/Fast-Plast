@@ -22,8 +22,8 @@ set -euo pipefail
 DB_VERSION="v2.0"
 # Zenodo direct-download URL. Format:
 #   https://zenodo.org/records/<RECORD_ID>/files/<FILENAME>?download=1
-DB_URL="https://zenodo.org/records/RECORD_ID/files/GenBank_Plastomes_v2.tar.gz?download=1"
-DB_SHA256="PUT_REAL_SHA256_HERE"
+DB_URL="https://zenodo.org/records/21210510/files/GenBank_Plastomes_v2.tar.gz?download=1"
+DB_SHA256="522b92577bf1c2707b0f6fd1a91e9efe1f243329c959059c9ece86863e3f6f74"
 ARCHIVE_NAME="GenBank_Plastomes_v2.tar.gz"
 # Files expected inside the archive (used to verify a good extraction):
 EXPECTED_FASTA="GenBank_Plastomes"
