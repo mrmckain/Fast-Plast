@@ -116,7 +116,14 @@ my $min_coverage;
 my $threads = 4;
 my $adapters = $FPBIN . "/adapters/NEB-PE.fa";
 my $version;
-my $current_version = "Fast-Plast v.1.2.9";
+# ---------------------------------------------------------------------------
+# Single source of truth for the Fast-Plast version. Update this ONE line on
+# release; it propagates to the startup log, the Plastome Summary file, and the
+# --version flag. (The POD VERSION section defers to --version, so there is no
+# second copy to keep in sync.)
+# ---------------------------------------------------------------------------
+my $FP_VERSION = "1.3.0";
+my $current_version = "Fast-Plast v.$FP_VERSION";
 my $user_bowtie;
 my $clean;
 my $subsample;
@@ -134,7 +141,8 @@ GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2
 $scaffold_reference = File::Spec->rel2abs($scaffold_reference) if $scaffold_reference;
 
 if($version) {
-	pod2usage( { -verbose => 99, -sections => "VERSION" } );
+	print "$current_version\n";
+	exit;
 }
 
 if ($help) {
@@ -2267,7 +2275,7 @@ To install afin:
 
 =head1 VERSION
 
-Fast-Plast v.1.2.9
+Run C<fast-plast.pl --version> to print the installed version.
 
 
 
