@@ -1,0 +1,20 @@
+name: fast-plast
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  # --- pipeline tools (same set the bioconda recipe declares at run time) ---
+  - perl
+  - blast >=2.16
+  - bowtie2
+  - spades
+  - fastp               # read trimming (replaces trimmomatic)
+  - pigz                # fast gzip; gzip used as fallback
+  - kmer-jellyfish      # provides the `jellyfish` (v2) executable
+  - r-base
+  - ragtag              # reference-guided scaffolding
+  - minimap2            # RagTag's aligner
+  - zlib
+  # --- only needed to compile afin from a clone ---
+  - make
+  - cxx-compiler

@@ -1,0 +1,70 @@
+{% set name = "fast-plast" %}
+{% set version = "1.3.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  # For a real submission, point this at a tagged release tarball and let
+  # bioconda compute the checksum (grayskull/`bioconda-utils` will fill it in):
+  #   url: https://github.com/mrmckain/Fast-Plast/archive/refs/tags/v{{ version }}.tar.gz
+  #   sha256: <filled in at submission>
+  url: https://github.com/mrmckain/Fast-Plast/archive/refs/tags/v{{ version }}.tar.gz
+  sha256: 0000000000000000000000000000000000000000000000000000000000000000
+
+build:
+  number: 0
+  # Not noarch: afin is compiled per-platform.
+  run_exports:
+    - {{ pin_subpackage(name, max_pin="x") }}
+
+requirements:
+  build:
+    - {{ compiler('cxx') }}
+    - make
+  host:
+    - zlib
+  run:
+    - perl
+    - zlib
+    # external pipeline tools (all bioconda) -------------------------------
+    - blast >=2.16
+    - bowtie2
+    - spades
+    - fastp                 # read trimming (replaces trimmomatic)
+    - pigz                  # fast gzip (de)compression; gzip used as fallback
+    - kmer-jellyfish        # jellyfish 2.x is packaged as kmer-jellyfish
+    - r-base
+    - ragtag                # reference-guided last-resort scaffolding
+    - minimap2              # RagTag's aligner (also pulled in by ragtag)
+    # NOTE: SSPACE + bowtie1 intentionally dropped; scaffolding now uses RagTag,
+    # which orders/orients afin contigs against a bundled reference plastome.
+
+test:
+  commands:
+    - command -v afin
+    - command -v fast-plast.pl
+    - blastn -version
+    - bowtie2 --version
+    - spades.py --version
+    - fastp --version
+    - pigz --version
+    - ragtag.py --version
+    - test -f "${PREFIX}/share/fast-plast/bin/Angiosperm_Chloroplast_Genes.fsa"
+
+about:
+  home: https://github.com/mrmckain/Fast-Plast
+  license: BSD-3-Clause
+  license_file: LICENSE.txt
+  summary: "Rapid de novo assembly and finishing of whole chloroplast genomes."
+  description: |
+    Fast-Plast assembles, orients, and verifies whole chloroplast genomes from
+    Illumina data. It combines the De Bruijn approach of SPAdes with the afin
+    seed-and-extend assembler to close low-coverage gaps, then resolves the
+    quadripartite structure and runs a coverage analysis.
+  dev_url: https://github.com/mrmckain/Fast-Plast
+
+extra:
+  recipe-maintainers:
+    - mrmckain

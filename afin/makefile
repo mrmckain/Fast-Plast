@@ -1,17 +1,34 @@
-CC := g++
-CPPFLAGS := -std=c++11 -g -pthread
+# afin - Fast-Plast seed-and-extend assembler
+#
+# Conda-build aware: honors CXX, CXXFLAGS, CPPFLAGS, LDFLAGS and PREFIX/DESTDIR
+# supplied by the build environment, while still building standalone from a
+# plain `make` in a git clone.
+
+CXX      ?= g++
+CXXFLAGS ?= -O2 -g
+CXXFLAGS += -std=c++11 -pthread
+LDLIBS   += -lz
+
+PREFIX  ?= /usr/local
+DESTDIR ?=
+BINDIR  := $(DESTDIR)$(PREFIX)/bin
+
 TARGET := afin
-OBJS := afin.o contig.o process.o read.o revcomp.o mismatch.o log.o gzip.o fusion.o match.o readlist.o extension.o contiglist.o
+OBJS := afin.o contig.o process.o read.o revcomp.o mismatch.o log.o gzip.o \
+        fusion.o match.o readlist.o extension.o contiglist.o
+
+.PHONY: all clean install
+all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(CPPFLAGS) -o $@ $(OBJS) -lz
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
-test: $(OBJS)
-	$(CC) $(CPPFLAGS) -o $@ $(OBJS) -lz
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 
-%.o : %.cpp
-	$(CC) $(CPPFLAGS) -c $< -o $@ 
+install: $(TARGET)
+	mkdir -p $(BINDIR)
+	install -m 0755 $(TARGET) $(BINDIR)/$(TARGET)
 
 clean:
-	/bin/rm -f *o $(TARGET)
-
+	rm -f *.o $(TARGET) test
