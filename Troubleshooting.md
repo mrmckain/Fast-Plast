@@ -1,15 +1,15 @@
 <h1>Examples of fixing issues:</h1>
 
-Look at Camelina_microcarpa_ 101_afin_iter2.fa found in bin.
+Look at Camelina_microcarpa_101_afin_iter2.fa found in bin.
 
 If you run the script “sequence_based_ir_id.pl” from the Fast-Plast bin (see below), you can split an assembly into putative portions (large single copy, inverted repeat, and small single copy) of the chloroplast genome.
 
-  perl ~/Github/Fast-Plast/bin/sequence_based_ir_id.pl Camelina_microcarpa_ 101_afin_iter2.fa Camelina_microcarpa_101 0
+  perl ~/Github/Fast-Plast/bin/sequence_based_ir_id.pl Camelina_microcarpa_101_afin_iter2.fa Camelina_microcarpa_101 0
 
 Syntax:
   perl sequence_based_ir_id.pl sequence_file_to_split name_base skip_parameter
 
-The skip parameter is the number of the occurrence of “single copy” that gets remove. A “0” means none, “1” means the first, and so on. The reason this exists is that it is not always possible to ID the full IR sequence. If you have an assembly where the real identity of the assembly looks like this: partial_IR-SSC-full_IR-LSC-partial_IR, you will likely get a result from the script that looks like this: IR-SC-IR-SC-IR-SC-IR. The script only IDs single copy and IR, but you will notice there is an extra SC (single copy) in the middle of the full IR. This is region not covered by the two partial IRs, so it cannot be recognized as an inverted repeat. In this example, using a skip parameter of “2” would result in an accurate depiction of the composition. Fast-Plast does this for you by running this script multiple times using 0, 1, and 2. 
+The skip parameter is the number of the occurrence of “single copy” that gets removed. A “0” means none, “1” means the first, and so on. The reason this exists is that it is not always possible to ID the full IR sequence. If you have an assembly where the real identity of the assembly looks like this: partial_IR-SSC-full_IR-LSC-partial_IR, you will likely get a result from the script that looks like this: IR-SC-IR-SC-IR-SC-IR. The script only IDs single copy and IR, but you will notice there is an extra SC (single copy) in the middle of the full IR. This is region not covered by the two partial IRs, so it cannot be recognized as an inverted repeat. In this example, using a skip parameter of “2” would result in an accurate depiction of the composition. Fast-Plast does this for you by running this script multiple times using 0, 1, and 2. 
 
 After running the script with skip parameter “0”, I get a fasta file with the following info:
 
@@ -38,4 +38,4 @@ This will give you the files:
   Base_name_FULLCP.fsa
   Base_name_CP_pieces.fsa
 
-The FULLCP file can then be used to run a coverage analysis with Fast-Plast to check the assembly. 
+The FULLCP file can then be used to run a coverage analysis with Fast-Plast to check the assembly.
