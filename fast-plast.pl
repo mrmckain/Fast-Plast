@@ -1294,6 +1294,7 @@ sub build_bowtie2_indices {
 	# rich-header behavior so an older database (taxonomy encoded in the defline)
 	# still works with this script -- and vice versa.
 	my %order_of;    # accession -> order
+	my %genus_of;    # accession -> genus (for one-per-genus reduction)
 	my %tax_blob;    # accession -> lowercased taxonomy string, for --bowtie_index matching
 	my $metafile = $FPBIN."/GenBank_Plastomes.metadata.tsv";
 	if(open my $mfh, "<", $metafile){
@@ -1305,6 +1306,7 @@ sub build_bowtie2_indices {
 			my $acc = $c[0];
 			next unless defined $acc && length $acc;
 			$order_of{$acc} = (defined $c[6] ? $c[6] : "");
+			$genus_of{$acc} = (defined $c[1] ? $c[1] : "");
 			$tax_blob{$acc} = lc join(" ", grep { defined } @c[1..$#c]);
 		}
 		close $mfh;
@@ -1352,20 +1354,34 @@ sub build_bowtie2_indices {
 	}
 	else{
 
-
+		# One sequence per unique genus among the matching taxa. Pulling every
+		# plastome for a broad taxon (e.g. all Poales) builds a needlessly large
+		# index; one representative per genus keeps the diversity that matters
+		# for read reduction while staying small. Sequences whose genus is
+		# unknown are kept (not collapsed), so no reference is silently dropped.
+		my %used_genus;
 		while(<$default_gb>){
 			chomp;
 			if(/>/){
-				my $hay;
+				my ($hay, $genus);
 				if($have_meta){
 					my ($acc) = /^>(\S+)/;
-					$hay = (defined $acc && exists $tax_blob{$acc}) ? $tax_blob{$acc} : "";
+					$hay   = (defined $acc && exists $tax_blob{$acc}) ? $tax_blob{$acc} : "";
+					$genus = (defined $acc && exists $genus_of{$acc}) ? lc($genus_of{$acc}) : "";
 				}
 				else{
 					$hay = $_;                          # legacy: match full header
+					($genus) = /^>([^_]+)/;             # genus = first header token
+					$genus = defined $genus ? lc($genus) : "";
 				}
 				if($hay =~ /$bowtie_match/i){
-					$gbid=$_;
+					if($genus eq "" || $genus eq "na" || !exists $used_genus{$genus}){
+						$gbid=$_;
+						$used_genus{$genus}=1 unless ($genus eq "" || $genus eq "na");
+					}
+					else{
+						$gbid=();               # genus already represented
+					}
 				}
 				else{
 					$gbid=();
@@ -1375,11 +1391,10 @@ sub build_bowtie2_indices {
 				print $bt2_seq "$gbid\n$_\n";
 			}
 		}
-		
-	
-	
-	
-		print $LOGFILE "\t\t\t\tSamples for $bowtie_index used to make bowtie2 indices.\n";
+
+
+
+		print $LOGFILE "\t\t\t\tSamples for $bowtie_index used to make bowtie2 indices (one representative per genus).\n";
 	}
 	close $default_gb;
 	my $build_bowtie2_exec = $BOWTIE2 . "-build " . $bowtie_index.".fsa" . " " . $name . "_bowtie";
