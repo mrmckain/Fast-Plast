@@ -1279,6 +1279,33 @@ sub build_bowtie2_indices {
 	else{
 		$bowtie_match = $bowtie_index;
 	}
+
+	# Taxonomy source. The current database uses bare-accession headers with a
+	# sidecar metadata TSV (accession genus species tribe subfamily family order
+	# source). Load it if present. If it's absent, fall back to the legacy
+	# rich-header behavior so an older database (taxonomy encoded in the defline)
+	# still works with this script -- and vice versa.
+	my %order_of;    # accession -> order
+	my %tax_blob;    # accession -> lowercased taxonomy string, for --bowtie_index matching
+	my $metafile = $FPBIN."/GenBank_Plastomes.metadata.tsv";
+	if(open my $mfh, "<", $metafile){
+		my $hdr = <$mfh>;   # column header
+		while(<$mfh>){
+			chomp;
+			next unless length;
+			my @c = split /\t/;
+			my $acc = $c[0];
+			next unless defined $acc && length $acc;
+			$order_of{$acc} = (defined $c[6] ? $c[6] : "");
+			$tax_blob{$acc} = lc join(" ", grep { defined } @c[1..$#c]);
+		}
+		close $mfh;
+	}
+	my $have_meta = %order_of ? 1 : 0;
+	unless($have_meta){
+		print $LOGFILE "\t\t\t\tNo metadata table ($metafile) found; using legacy header-encoded taxonomy.\n";
+	}
+
 	open my $bt2_seq, ">", $bowtie_index.".fsa";
 	open my $default_gb, "<", $FPBIN."/GenBank_Plastomes";
 	my $gbid;
@@ -1292,9 +1319,16 @@ sub build_bowtie2_indices {
 		while(<$default_gb>){
 			chomp;
 			if(/>/){
-				/_(.*?ales)_/;
-				my $temp_order = $1;
-				if(!exists $used{$temp_order}){
+				my $temp_order;
+				if($have_meta){
+					my ($acc) = /^>(\S+)/;
+					$temp_order = (defined $acc && exists $order_of{$acc}) ? $order_of{$acc} : "";
+				}
+				else{
+					($temp_order) = /_(.*?ales)_/;      # legacy rich header
+					$temp_order = "" unless defined $temp_order;
+				}
+				if($temp_order ne "" && !exists $used{$temp_order}){
 					$gbid=$_;
 					$used{$temp_order}=1;
 				}
@@ -1314,7 +1348,15 @@ sub build_bowtie2_indices {
 		while(<$default_gb>){
 			chomp;
 			if(/>/){
-				if(/$bowtie_match/){
+				my $hay;
+				if($have_meta){
+					my ($acc) = /^>(\S+)/;
+					$hay = (defined $acc && exists $tax_blob{$acc}) ? $tax_blob{$acc} : "";
+				}
+				else{
+					$hay = $_;                          # legacy: match full header
+				}
+				if($hay =~ /$bowtie_match/i){
 					$gbid=$_;
 				}
 				else{
