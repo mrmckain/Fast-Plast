@@ -9,7 +9,6 @@ use File::Spec;
 use Cwd;
 use Cwd 'abs_path';
 use Env qw (PATH);
-use IO::Uncompress::Gunzip qw(gunzip $GunzipError) ;
 
 BEGIN {
 
@@ -20,17 +19,90 @@ BEGIN {
 ###directories
 
 my $FPROOT = "$FindBin::RealBin";
-my $AFIN_DIR = "$FPROOT/afin";
-my $COVERAGE_DIR = "$FPROOT/Coverage_Analysis";
-my $FPBIN = "$FPROOT/bin";
-my $TRIMMOMATIC; #path to trimmomatic executable
-my $BOWTIE2; #path to bowtie2 executable
-my $SPADES; #path to spades executable
-my $BLAST; #path to blast executable
-my $SSPACE; #path to sspace exectuable
-my $BOWTIE1; #path to bowtie1 executable
-my $JELLYFISH; #path to jellyfish2 excecutable
-$ENV{'PATH'} = $PATH.':'.$BOWTIE1;
+
+#-----------------------------------------------------------------------------
+# Tool and data resolution
+#
+# Fast-Plast runs in two layouts:
+#   (1) from a git clone  - afin, helper scripts, and reference data live under
+#       the repository root; dependencies must be on PATH.
+#   (2) from a conda install - every external tool is on PATH (conda guarantees
+#       this) and Fast-Plast's own data lives under $PREFIX/share/fast-plast.
+#
+# External tools are located on PATH at runtime. Any tool can be overridden
+# without editing this file by exporting an environment variable, e.g.
+#   FP_BLAST=/opt/blast/bin/blastn   FP_SPADES=/opt/spades/bin/spades.py
+#-----------------------------------------------------------------------------
+
+# Locate an executable on PATH, honoring an override env var (file or dir value).
+sub find_exe {
+    my ($name, $envvar) = @_;
+    my $override = ($envvar && defined $ENV{$envvar}) ? $ENV{$envvar} : undef;
+    if (defined $override && length $override) {
+        return $override if -x $override && ! -d $override;
+        my $cand = File::Spec->catfile($override, $name);
+        return $cand if -x $cand && ! -d $cand;
+    }
+    for my $dir (File::Spec->path) {
+        my $cand = File::Spec->catfile($dir, $name);
+        return $cand if -x $cand && ! -d $cand;
+    }
+    return undef;
+}
+
+# Resolve a REQUIRED tool or die with an actionable message.
+sub require_exe {
+    my ($name, $envvar) = @_;
+    my $path = find_exe($name, $envvar);
+    return $path if $path;
+    die "ERROR: required dependency '$name' was not found on your PATH.\n"
+      . "       Install the package that provides it (e.g. via bioconda),\n"
+      . "       or set an override: $envvar=/full/path/to/$name, then re-run.\n";
+}
+
+# Directory portion of a resolved executable path (no trailing slash).
+sub exe_dir {
+    my ($exe) = @_;
+    my (undef, $dir, undef) = File::Spec->splitpath($exe);
+    $dir =~ s{/+$}{};
+    return $dir;
+}
+
+# Reference data + bundled helper scripts: explicit override, then conda
+# layout ($PREFIX/share/fast-plast, i.e. ../share/fast-plast from the driver
+# in $PREFIX/bin), then the classic clone layout.
+my $FP_SHARE = $ENV{'FASTPLAST_SHARE'};
+$FP_SHARE  ||= "$FPROOT/../share/fast-plast" if -d "$FPROOT/../share/fast-plast/bin";
+$FP_SHARE  ||= $FPROOT                       if -d "$FPROOT/bin";
+$FP_SHARE or die "ERROR: cannot locate Fast-Plast data directory. "
+               . "Set FASTPLAST_SHARE=/path/to/fast-plast/share.\n";
+my $FPBIN        = "$FP_SHARE/bin";
+my $COVERAGE_DIR = $ENV{'FASTPLAST_COVERAGE'} || "$FP_SHARE/Coverage_Analysis";
+
+# afin (compiled C++ core). On PATH under conda; compiled in-tree from a clone.
+# Call sites use "$AFIN_DIR/afin", so $AFIN_DIR is the binary's directory.
+my $afin_exe = find_exe('afin', 'FP_AFIN') || "$FPROOT/afin/afin";
+-e $afin_exe or die "ERROR: afin binary not found. Compile it (cd afin && make) "
+                  . "or install Fast-Plast via bioconda.\n";
+my $AFIN_DIR = exe_dir($afin_exe);
+
+# External executables. Values preserve the ORIGINAL call-site syntax:
+#   $BLAST is a *directory* (call sites use "$BLAST/blastn", "$BLAST/makeblastdb");
+#   the others are full executable paths.
+# $BLAST is the BLAST+ bin *directory* WITH a trailing slash, because call sites
+# use both "$BLAST/makeblastdb" and ($BLAST . "blastn"); the slash makes the
+# bare-concat form resolve correctly (double slashes elsewhere are harmless).
+my $BLAST     = exe_dir( require_exe('blastn',  'FP_BLAST') ) . "/";
+my $BOWTIE2   = require_exe('bowtie2',   'FP_BOWTIE2');
+my $SPADES    = require_exe('spades.py', 'FP_SPADES');
+my $JELLYFISH = require_exe('jellyfish', 'FP_JELLYFISH');
+my $FASTP     = require_exe('fastp',     'FP_FASTP');
+
+# Decompressor for gzipped reads: prefer pigz (faster and multi-member safe),
+# fall back to gzip. Streamed via "<tool> -dc"; pigz also honors -p <threads>.
+my $PIGZ = find_exe('pigz', 'FP_PIGZ') || find_exe('gzip', 'FP_GZIP')
+        or die "ERROR: neither pigz nor gzip was found on PATH.\n"
+             . "       Install one, or set FP_PIGZ / FP_GZIP.\n";
 
 my $help;
 my $paired_end1;
@@ -53,7 +125,13 @@ my $min_region_length = 10000;
 my $min_length_trim=140;
 my $skip;
 my $min_filter_spades;
-GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check, 'skip=s' => \$skip, 'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters, "subsample=i" => \$subsample, "only_coverage=s" => \$cov_only, "min_region_length=i" => \$min_region_length, "min_length_trim=i" => \$min_length_trim, "min_filter_spades=i" => \$min_filter_spades)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
+# Optional user-supplied reference plastome for RagTag scaffolding. Overrides
+# the automatic best-match selection from the bundled GenBank plastomes.
+my $scaffold_reference = $ENV{'FP_REFERENCE'};
+GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check, 'skip=s' => \$skip, 'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters, "subsample=i" => \$subsample, "only_coverage=s" => \$cov_only, "min_region_length=i" => \$min_region_length, "min_length_trim=i" => \$min_length_trim, "min_filter_spades=i" => \$min_filter_spades, "scaffold_reference=s" => \$scaffold_reference)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
+# Resolve the scaffold reference to an absolute path now, before any chdir,
+# so the scaffolding step (which runs several directories deep) can find it.
+$scaffold_reference = File::Spec->rel2abs($scaffold_reference) if $scaffold_reference;
 
 if($version) {
 	pod2usage( { -verbose => 99, -sections => "VERSION" } );
@@ -256,9 +334,9 @@ print $SUMMARY "Sample:\t$name\nFast-Plast Version:\t$current_version\n";
 
 
 
-########## Start Trimmomatic ##########
+########## Start fastp ##########
 $current_runtime = localtime();
-print $LOGFILE "$current_runtime\tStarting read trimming with Trimmomatic.\n\t\t\t\tUsing $TRIMMOMATIC.\n";
+print $LOGFILE "$current_runtime\tStarting read trimming with fastp.\n\t\t\t\tUsing $FASTP.\n";
 
 mkdir("1_Trimmed_Reads");
 chdir("1_Trimmed_Reads");
@@ -283,70 +361,43 @@ if($subsample){
 	if(@p1_array){
 		open my $sub_p1, ">", "subset_file1.fq";
 		for my $p1f (@p1_array){
+			my $in = &open_read_stream($p1f);
 			my $count = 0;
-			my $tfile;
-			if($p1f =~ /\.gz/){
-				$tfile = IO::Uncompress::Gunzip->new($p1f) or die "Problem found with $p1f: $GunzipError";
+			while(my $h = <$in>){
+				my $s = <$in>; my $plus = <$in>; my $q = <$in>;
+				last unless defined $q;          # truncated final record
+				print $sub_p1 $h, $s, $plus, $q;
+				last if ++$count >= $readsperfile;
 			}
-			else{
-				open $tfile, "<", $p1f;
-			}
-			SUB: while(<$tfile>){
-					chomp;
-					if($count <= $readsperfile*4){
-						print $sub_p1 "$_\n";
-						$count++;
-					}
-					else{
-						last SUB;
-					}
-			}
+			close $in;
 		}
 	}
 	if(@p2_array){
 		open my $sub_p2, ">", "subset_file2.fq";
 		for my $p2f (@p2_array){
+			my $in = &open_read_stream($p2f);
 			my $count = 0;
-			my $tfile;
-                        if($p2f =~ /\.gz/){
-                                $tfile = IO::Uncompress::Gunzip->new($p2f) or die "Problem found with $p2f: $GunzipError";
-                        }
-                        else{
-                                open $tfile, "<", $p2f;
-                        }
-			SUB: while(<$tfile>){
-					chomp;
-					if($count <= $readsperfile*4){
-						print $sub_p2 "$_\n";
-						$count++;
-					}
-					 else{
-                                               last SUB;
-                                        }
+			while(my $h = <$in>){
+				my $s = <$in>; my $plus = <$in>; my $q = <$in>;
+				last unless defined $q;
+				print $sub_p2 $h, $s, $plus, $q;
+				last if ++$count >= $readsperfile;
 			}
+			close $in;
 		}
 	}
 	if(@s_array){
 		open my $sub_s, ">", "subset_files.fq";
 		for my $psf (@s_array){
+			my $in = &open_read_stream($psf);
 			my $count = 0;
-			my $tfile;
-                        if($psf =~ /\.gz/){
-                                $tfile = IO::Uncompress::Gunzip->new($psf, MultiStream => 1) or die "Problem found with $psf: $GunzipError";
-                        }
-                        else{
-                                open $tfile, "<", $psf;
-                        }
-			SUB: while(<$tfile>){
-					chomp;
-					if($count <= $readsperfile*4){
-						print $sub_s "$_\n";
-						$count++;
-					}
-					 else{
-                                                last SUB;
-                                        }
+			while(my $h = <$in>){
+				my $s = <$in>; my $plus = <$in>; my $q = <$in>;
+				last unless defined $q;
+				print $sub_s $h, $s, $plus, $q;
+				last if ++$count >= $readsperfile;
 			}
+			close $in;
 		}
 	}
 
@@ -361,43 +412,19 @@ if($subsample){
 }
 if($skip && $skip eq "trim"){
 		if(@p1_array){
-			my $tfile;
 			for my $p1array (@p1_array){
-				if($p1array =~ /\.gz/){
-					$tfile = IO::Uncompress::Gunzip->new($p1array, MultiStream => 1) or die "Problem found with $p1array: $GunzipError";
-				}
-				else{
-					$tfile = $p1array;
-				}
-				`cat $tfile >> $name.trimmed_P1.fq`;
+				&append_reads($p1array, "$name.trimmed_P1.fq");
 			}
-			
 		}
 		if(@p2_array){
-			my $tfile;
 			for my $p2array (@p2_array){
-				if($p2array =~ /\.gz/){
-					$tfile = IO::Uncompress::Gunzip->new($p2array, MultiStream => 1) or die "Problem found with $p2array: $GunzipError";
-				}
-				else{
-					$tfile = $p2array;
-				}
-				`cat $tfile >> $name.trimmed_P2.fq`;
+				&append_reads($p2array, "$name.trimmed_P2.fq");
 			}
-			
 		}
 		if(@s_array){
-			my $tfile;
 			for my $sarray (@s_array){
-				if($sarray =~ /\.gz/){
-					$tfile = IO::Uncompress::Gunzip->new($sarray, MultiStream => 1) or die "Problem found with $sarray: $GunzipError";
-				}
-				else{
-					$tfile = $sarray;
-				}
-				`cat $tfile >> $name.trimmed_UP.fq`;
+				&append_reads($sarray, "$name.trimmed_UP.fq");
 			}
-			
 		}
 		if (-s $name.".trimmed_P1.fq"){
 			my $se_size = &count_lines($name.".trimmed_P1.fq");
@@ -424,7 +451,20 @@ if($adapters =~ /NEB/i){
 }
 if(@p1_array){
 	for (my $i=0; $i < $pe_libs; $i++){
-		my $trim_exec = "java -classpath " . $TRIMMOMATIC . " org.usadellab.trimmomatic.TrimmomaticPE -threads " . $threads . " " . $p1_array[$i] . " " . $p2_array[$i] . " " . $name."_".$i.".trimmed_P1.fq " . $name."_".$i.".trimmed_U1.fq " . $name."_".$i.".trimmed_P2.fq " . $name."_".$i.".trimmed_U2.fq " . "ILLUMINACLIP:".$adapters.":1:30:10 SLIDINGWINDOW:10:20 MINLEN:" . $min_length_trim;
+		my $trim_exec = $FASTP
+		  . " --in1 " . $p1_array[$i] . " --in2 " . $p2_array[$i]
+		  . " --out1 " . $name."_".$i.".trimmed_P1.fq"
+		  . " --out2 " . $name."_".$i.".trimmed_P2.fq"
+		  . " --unpaired1 " . $name."_".$i.".trimmed_U1.fq"
+		  . " --unpaired2 " . $name."_".$i.".trimmed_U2.fq"
+		  . " --adapter_fasta " . $adapters
+		  . " --detect_adapter_for_pe"
+		  . " --cut_right --cut_right_window_size 10 --cut_right_mean_quality 20"
+		  . " --length_required " . $min_length_trim
+		  . " --overrepresentation_analysis"
+		  . " --thread " . $threads
+		  . " --json " . $name."_".$i.".fastp.json --html " . $name."_".$i.".fastp.html"
+		  . " 2> " . $name."_".$i.".fastp.log";
 		system($trim_exec);
 	}
 	`cat $name\*trimmed_P1.fq > $name.trimmed_P1.fq`;
@@ -438,7 +478,16 @@ if(@p1_array){
 
 if(@s_array){
 	for (my $i=0; $i < $s_libs; $i++){
-		my $trim_exec = "java -classpath " . $TRIMMOMATIC . " org.usadellab.trimmomatic.TrimmomaticSE -threads " . $threads . " " . $s_array[$i] . " " . $name."_".$i.".trimmed_SE.fq " . "ILLUMINACLIP:".$adapters.":1:30:10 SLIDINGWINDOW:10:20 MINLEN:" . $min_length_trim;
+		my $trim_exec = $FASTP
+		  . " --in1 " . $s_array[$i]
+		  . " --out1 " . $name."_".$i.".trimmed_SE.fq"
+		  . " --adapter_fasta " . $adapters
+		  . " --cut_right --cut_right_window_size 10 --cut_right_mean_quality 20"
+		  . " --length_required " . $min_length_trim
+		  . " --overrepresentation_analysis"
+		  . " --thread " . $threads
+		  . " --json " . $name."_".$i.".SE.fastp.json --html " . $name."_".$i.".SE.fastp.html"
+		  . " 2> " . $name."_".$i.".SE.fastp.log";
 		system($trim_exec);
 	}
 	`cat $name\*trimmed_SE.fq >> $name.trimmed_UP.fq`;
@@ -474,7 +523,7 @@ if($cov_only){
 	my $check_finish = $cov_only;
 	unless(-e $check_finish){
         	print $LOGFILE "\t\t\t\tCannot complete coverage analysis. File empty or not found.";
-        die;
+        die "Fast-Plast: coverage analysis could not complete (see the run log).\n";
 	}
 	mkdir("Coverage_Analysis");
 	chdir("Coverage_Analysis");
@@ -735,7 +784,6 @@ if( $total_afin_contigs > 1){
 		print $LOGFILE "\t\t\t\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 
 	if(@p1_array){
-		die "Hit scaffolding.";
 		$current_afin = &scaffolding($current_afin,$name);
 		rename($current_afin, $name.".final.scaffolds.fasta");
 		
@@ -769,7 +817,7 @@ if( $total_afin_contigs > 1){
                                 chomp($temppwd);
                                 $temppwd .= "/". $current_afin;	
 				print $LOGFILE "\t\t\t\tCannot scaffold contigs into a single piece.  Coverage is too low or poorly distributed across plastome. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
-				die;
+				die "Fast-Plast: could not scaffold the contigs into a single plastome (coverage too low or uneven, or the reference was too distant). Best contigs are in Final_Assembly/. See the run log for details.\n";
 		}
 		else{
 			my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
@@ -802,7 +850,7 @@ if( $total_afin_contigs > 1){
                                 chomp($temppwd);
                                 $temppwd .= "/". $current_afin;	
 				print $LOGFILE "\t\t\t\tCannot scaffold contigs into a single piece.  Coverage is too low or poorly distributed across plastome. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
-				die;
+				die "Fast-Plast: could not scaffold the contigs into a single plastome (coverage too low or uneven, or the reference was too distant). Best contigs are in Final_Assembly/. See the run log for details.\n";
 	}
 	}	
 
@@ -881,14 +929,14 @@ if(!-d "Final_Assembly"){
                 chomp($temppwd);
                 $temppwd .= "/Final_Assembly/". $current_afin;
                 print $LOGFILE "\t\t\t\tCould not properly orientate the plastome. Either your plastome does not have an IR or there was an issue with the assembly. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
-				die;
+				die "Fast-Plast: could not orient the plastome (no detectable IR, or an assembly issue). Best contigs are in Final_Assembly/. See the run log for details.\n";
 	}
 	if( -e "4_Afin_Assembly/Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt"){
                 my $temppwd = `pwd`;
                 chomp($temppwd);
                 $temppwd .= "/Final_Assembly/". $current_afin;
                 print $LOGFILE "\t\t\t\tCould not properly orientate the plastome. Either your plastome does not have an IR or there was an issue with the assembly. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
-				die;
+				die "Fast-Plast: could not orient the plastome (no detectable IR, or an assembly issue). Best contigs are in Final_Assembly/. See the run log for details.\n";
 	}
 }
 $current_runtime = localtime();
@@ -901,7 +949,7 @@ print $LOGFILE "$current_runtime\tStarting coverage analyses.\n";
 my $check_finish = "Final_Assembly/".$name."_FULLCP.fsa";
 unless(-e $check_finish){
 	print $LOGFILE "\t\t\t\tCannot complete coverage analysis. Full chloroplast genome not complete.";
-	die;
+	die "Fast-Plast: coverage analysis could not complete (see the run log).\n";
 }
 mkdir("Coverage_Analysis");
 chdir("Coverage_Analysis");
@@ -1080,29 +1128,140 @@ else{
 	
 ##########
 sub scaffolding {
+        my ($contigs, $name) = @_;
         $current_runtime = localtime();
-        print $LOGFILE "$current_runtime\tStarting scaffolding with SSPACE.\n";
+        print $LOGFILE "$current_runtime\tStarting reference-guided scaffolding with RagTag.\n";
         mkdir ("Scaffolding");
         chdir("Scaffolding");
-        my @p1_temp = <../../1_Trimmed_Reads/*P1*>;
-        open my $lib_out, ">", $name . "_lib.txt";
-        my $lib_counter=1;
-        for my $p1file (@p1_temp){
-                        my $libc ="lib" . $lib_counter;
-                        my $short_p1=$p1file;
-                        my $short_p2 = $short_p1;
-                        $short_p2 =~ s/P1/P2/;
-                        print $lib_out "$libc\t$short_p1\t$short_p2\t300\t0.75\tFR\n";
-        }
-        close $lib_out;
-        my $sspace_build_exec = "perl " . $SSPACE ." -l " . $name."_lib.txt -s ../" .$_[0] . " -k 1 -g 1 -b" . $_[1];
-        system($sspace_build_exec);
 
-        my $scaffolded_assembly = "Scaffolding/".$name . ".final.scaffolds.fasta";
+        # The returned path is relative to the PARENT directory (the caller
+        # chdir's back up before using it), matching the original contract.
+        my $result;
+
+        # Reference selection: honor a user-supplied reference if given
+        # (-scaffold_reference / FP_REFERENCE), otherwise auto-pick the best
+        # match from the bundled GenBank plastomes.
+        my $ref;
+        if($scaffold_reference){
+                if(-s $scaffold_reference){
+                        system("cp $scaffold_reference scaffold_reference.fsa");
+                        $ref = "scaffold_reference.fsa";
+                        print $LOGFILE "$current_runtime\tUsing user-supplied scaffold reference: $scaffold_reference\n";
+                }
+                else{
+                        print $LOGFILE "$current_runtime\tWARNING: -scaffold_reference '$scaffold_reference' not found or empty; falling back to automatic selection.\n";
+                }
+        }
+        $ref ||= &select_reference_plastome("../$contigs", "scaffold_reference.fsa");
+
+        if($ref){
+                my $ragtag_exec = "ragtag.py scaffold $ref ../$contigs -o ragtag_out -w -r -t $threads";
+                system($ragtag_exec);
+                if(-e "ragtag_out/ragtag.scaffold.fasta"){
+                        $result = "Scaffolding/ragtag_out/ragtag.scaffold.fasta";
+                }
+        }
+
+        # Graceful fallback: no usable reference, or RagTag made no joins. Pass
+        # the afin contigs through unscaffolded so the pipeline still completes.
+        unless($result){
+                $current_runtime = localtime();
+                print $LOGFILE "$current_runtime\tScaffolding produced no joins; using afin contigs unscaffolded.\n";
+                system("cp ../$contigs ./unscaffolded.fasta");
+                $result = "Scaffolding/unscaffolded.fasta";
+        }
 
         chdir ("../");
-        return($scaffolded_assembly);
+        return($result);
 
+}
+
+##########
+
+sub select_reference_plastome {
+        # $query is a path relative to the current (Scaffolding) directory.
+        # Writes the chosen reference to $outref and returns it, or undef.
+        my ($query, $outref) = @_;
+        my $gb = $FPBIN . "/GenBank_Plastomes";
+        return undef unless (-e $gb && -e $query);
+
+        # Build the BLAST db locally (writable CWD; the shipped data dir may be
+        # read-only). NOTE: no -parse_seqids -- the bundled multi-plastome file
+        # has headers that make strict seqid parsing abort, and we don't need
+        # blastdbcmd lookups because we extract the chosen record by FASTA scan.
+        system("$BLAST/makeblastdb -in $gb -dbtype nucl -out gb_ref_db > makeblastdb.log 2>&1");
+
+        my $blout = "reference_selection.blastn";
+        system("$BLAST/blastn -query $query -db gb_ref_db -outfmt \"6 sseqid bitscore\" -max_target_seqs 50 -evalue 1e-20 > $blout 2>/dev/null");
+
+        # Pick the reference with the highest summed bitscore across all contigs.
+        my %score;
+        open my $bl, "<", $blout or return undef;
+        while(<$bl>){
+                chomp;
+                my ($sid, $bits) = split /\t/;
+                next unless defined $bits;
+                $score{$sid} += $bits;
+        }
+        close $bl;
+        return undef unless %score;
+
+        my ($best) = sort { $score{$b} <=> $score{$a} } keys %score;
+        return &extract_fasta_record($gb, $best, $outref) ? $outref : undef;
+}
+
+# Pull a single record (by first-token header id) out of a FASTA into $out.
+sub extract_fasta_record {
+        my ($fasta, $id, $out) = @_;
+        open my $in, "<", $fasta or return 0;
+        open my $o,  ">", $out   or return 0;
+        my $printing = 0; my $found = 0;
+        while(<$in>){
+                if(/^>(\S+)/){
+                        if($1 eq $id){ $printing = 1; $found = 1; }
+                        elsif($printing){ last; }   # passed our record; stop
+                        else{ $printing = 0; }
+                }
+                print $o $_ if $printing;
+        }
+        close $in; close $o;
+        return $found;
+}
+
+##########
+
+# Open a (possibly gzipped) reads file for streaming; returns a filehandle.
+# Gzipped input is piped through pigz/gzip -dc (pigz also gets -p threads),
+# which is fast and transparently handles multi-member gzip.
+sub open_read_stream {
+        my ($file) = @_;
+        my $fh;
+        if($file =~ /\.gz$/){
+                my @cmd = ($PIGZ);
+                push @cmd, "-p", $threads if $PIGZ =~ /pigz/;
+                push @cmd, "-dc", $file;
+                open($fh, "-|", @cmd) or die "ERROR: cannot decompress $file with $PIGZ: $!\n";
+        }
+        else{
+                open($fh, "<", $file) or die "ERROR: cannot open $file: $!\n";
+        }
+        return $fh;
+}
+
+# Append a (possibly gzipped) reads file onto $dst, decompressing with
+# pigz/gzip when needed. Used by the 'skip trim' path.
+sub append_reads {
+        my ($src, $dst) = @_;
+        if($src =~ /\.gz$/){
+                my $p = $PIGZ;
+                $p .= " -p $threads" if $PIGZ =~ /pigz/;
+                system("$p -dc '$src' >> '$dst'") == 0
+                        or die "ERROR: failed to decompress $src into $dst\n";
+        }
+        else{
+                system("cat '$src' >> '$dst'") == 0
+                        or die "ERROR: failed to read $src into $dst\n";
+        }
 }
 
 
@@ -1271,7 +1430,6 @@ if( $total_afin_contigs > 1){
 		print $LOGFILE "\t\t\t\t$percent_recovered_genes\% of known angiosperm chloroplast genes were recovered in $current_afin.\n";
 
 	if(@p1_array){
-		die "Hit scaffolding.";
 		$current_afin = &scaffolding($current_afin,$name);
 		rename($current_afin, $name.".final.scaffolds.fasta");
 		$current_afin=$name.".final.scaffolds.fasta";
@@ -1292,7 +1450,7 @@ if( $total_afin_contigs > 1){
                                 chomp($temppwd);
                                 $temppwd .= "/". $current_afin;	
 				print $LOGFILE "\t\t\t\tCannot scaffold contigs into a single piece.  Coverage is too low or poorly distributed across plastome. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
-				die;
+				die "Fast-Plast: could not scaffold the contigs into a single plastome (coverage too low or uneven, or the reference was too distant). Best contigs are in Final_Assembly/. See the run log for details.\n";
 		}
 	}
 	else{
@@ -1311,7 +1469,7 @@ if( $total_afin_contigs > 1){
                                 chomp($temppwd);
                                 $temppwd .= "/". $current_afin;	
 				print $LOGFILE "\t\t\t\tCannot scaffold contigs into a single piece.  Coverage is too low or poorly distributed across plastome. Best contigs are in $temppwd\. A list of genes in each contig can be found in \"Chloroplast_gene_composition_of_final_contigs.txt\"\.\n";
-				die;
+				die "Fast-Plast: could not scaffold the contigs into a single plastome (coverage too low or uneven, or the reference was too distant). Best contigs are in Final_Assembly/. See the run log for details.\n";
 	}
 	}	
 
@@ -2046,13 +2204,13 @@ Fast-Plast uses a de novo assembly approach by combining the de bruijn graph-bas
 
 =head1 REQUIREMENTS
 
-Fast-Plast requires Trimmomatic, bowtie2, SPAdes, and BLAST+.
+Fast-Plast requires fastp, bowtie2, SPAdes, and BLAST+.
 
 If you use the coverage analysis to verify the assembly, then Jellyfish 2 and R will be needed. We highly recommend the coverage analysis to check the Fast-Plast assembly. 
 
 afin requires a c++ complier with c++11 support and zlib.h.  zlib.h is a standard base library for most *nix systems. See https://github.com/mrmckain/Fast-Plast for help with installation.
 
-Fast-Plast is coded to use 4 threads during the Trimmomatic, bowtie2, SPAdes, and afin steps. This can simply be changed by the user if this number is not available.
+Fast-Plast is coded to use 4 threads during the fastp, bowtie2, SPAdes, and afin steps. This can simply be changed by the user if this number is not available.
 
 Memory requirements will vary based on the size of your data set. Expect to use 1.5-2x the memory for the size of your reads files. If your data set is exceptionally large, we have found success in reducing the dataset to 50 million reads and running them through Fast-Plast.
 
