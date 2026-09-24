@@ -3,7 +3,7 @@ Fast-Plast: Rapid de novo assembly and finishing for whole chloroplast genomes
 =============
 <b>Authors</b>: Michael R. McKain, <a href="https://github.com/afinit/afin">Mark Wilson</a><br>
 </br>
-Version 1.3.1<br>
+Version 1.3.2<br>
 </br>
 <b>Contact</b>: https://github.com/mrmckain
 
@@ -298,7 +298,7 @@ Definitions:
 
 <h1 id="changelog">Changelog</h1>
 
-* Unreleased <br>
+* 24-September-2026 Fast-Plast v.1.3.2 <br>
     --SPAdes k-mers are chosen from expected k-mer coverage over the mapped reads: the top k is the largest odd k up to 127 that keeps at least 50x expected k-mer coverage (each read of length L contributes L-k+1 k-mers over a nominal 150 kb plastome), on a 55,77,99,127 ladder. Pogonachne racemosa (237x, reads mostly trimmed to 100-120 bp) gets 55,77,99; Dichanthium parajpyeanum (1109x, clean 151 bp reads) gets 55,77,99,127, with which SPAdes leaves 3 large contigs instead of 13. The length-based choice below is the fallback when too few reads map. <br>
     --SPAdes k-mers are now chosen after trimming, from the 25th percentile of trimmed read lengths, instead of from the longest raw read. A 151 bp library whose reads mostly trim to 100-120 bp now gets 55,69,87 rather than 55,87,121; a library that trims cleanly is unchanged. The sampled length distribution is written to the progress log. <br>
     --afin: extension now stops at a branch (a position where a second base is supported by at least 25% of the reads, `-a/--max_ambiguity`), and every contig fusion must be supported by reads extending unambiguously across the junction from at least one side. On Pogonachne racemosa this prevents a fusion through a 476 bp repeat that inverted 25 kb of the LSC. Also fixed: an early stop permanently shortened later extensions of the same contig, and the afin makefile did not rebuild objects when a header changed. <br>

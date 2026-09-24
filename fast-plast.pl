@@ -128,7 +128,7 @@ my $version;
 # --version flag. (The POD VERSION section defers to --version, so there is no
 # second copy to keep in sync.)
 # ---------------------------------------------------------------------------
-my $FP_VERSION = "1.3.1";
+my $FP_VERSION = "1.3.2";
 my $current_version = "Fast-Plast v.$FP_VERSION";
 my $user_bowtie;
 my $clean;
