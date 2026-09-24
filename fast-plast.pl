@@ -392,25 +392,48 @@ print $LOGFILE "\t\t\t\tMaximum read length sampled from input: $maxsize.\n";
 
 
 
-###Set K-mer Size###
+###K-mer sizes###
+# SPAdes k-mers are chosen AFTER trimming, from the distribution of trimmed
+# read lengths (see below), because quality trimming can leave most reads
+# well short of the longest raw read: a 151 bp library whose reads mostly
+# trim to 100-120 bp contributes almost nothing at k=121. The table maps a
+# representative read length to a k-mer set; it is applied to the 25th
+# percentile of trimmed lengths so that at least three quarters of the reads
+# are longer than the largest k by a useful margin.
 my $spades_kmer;
-if($maxsize >= 140){
-	$spades_kmer = "55,87,121";
-}
-elsif($maxsize >= 100){
-	$spades_kmer = "55,69,87";
-}
-elsif($maxsize >= 80){
-	$spades_kmer = "45,57,69";
-}
-elsif($maxsize >= 50){
-	$spades_kmer = "31,37,43";
-}
-else{
-	$spades_kmer = "23,27,31";
+sub kmers_for_length {
+	my ($len) = @_;
+	return "55,87,121" if $len >= 140;
+	return "55,69,87"  if $len >= 100;
+	return "45,57,69"  if $len >= 80;
+	return "31,37,43"  if $len >= 50;
+	return "23,27,31";
 }
 
-print $LOGFILE "\t\t\t\tK-mer sizes for SPAdes set at $spades_kmer.\n";
+# Length statistics over the first $nrecords records of each file given:
+# returns (n, max, median, 25th percentile).
+sub read_length_stats {
+	my ($nrecords, @files) = @_;
+	my @len;
+	for my $file (@files){
+		next unless -s $file;
+		my $in = open_read_stream($file);
+		my $count = 0;
+		while(my $h = <$in>){
+			my $seq = <$in>;
+			last unless defined $seq;
+			<$in>; <$in>;
+			chomp($seq);
+			$seq =~ s/\r$//;
+			push @len, length($seq);
+			last if ++$count >= $nrecords;
+		}
+		close $in;
+	}
+	return (0, 0, 0, 0) unless @len;
+	@len = sort { $a <=> $b } @len;
+	return (scalar @len, $len[-1], $len[int(@len / 2)], $len[int(@len / 4)]);
+}
 
 ###Set minimum post-trim read length###
 if(!defined $min_length_trim){
@@ -620,6 +643,21 @@ for my $check_tfile (@tfile_read){
 		unlink($check_tfile);
 	}
 }
+}
+
+# Choose SPAdes k-mers from the trimmed reads (see kmers_for_length above).
+{
+	my ($n, $max, $median, $p25) = read_length_stats(200000,
+		map { "$name.trimmed_$_.fq" } qw(P1 P2 UP));
+	if($n){
+		$spades_kmer = kmers_for_length($p25);
+		print $LOGFILE "\t\t\t\tTrimmed read lengths ($n sampled): longest $max, median $median, 25th percentile $p25.\n";
+	}
+	else{
+		$spades_kmer = kmers_for_length($maxsize);
+		print $LOGFILE "\t\t\t\tNo trimmed reads to sample; choosing k-mers from the raw read length of $maxsize.\n";
+	}
+	print $LOGFILE "\t\t\t\tK-mer sizes for SPAdes set at $spades_kmer.\n";
 }
 chdir("../");
 ##########
