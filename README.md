@@ -3,7 +3,7 @@ Fast-Plast: Rapid de novo assembly and finishing for whole chloroplast genomes
 =============
 <b>Authors</b>: Michael R. McKain, <a href="https://github.com/afinit/afin">Mark Wilson</a><br>
 </br>
-Version 1.3.0<br>
+Version 1.3.1<br>
 </br>
 <b>Contact</b>: https://github.com/mrmckain
 
@@ -296,7 +296,8 @@ Definitions:
 
 <h1 id="changelog">Changelog</h1>
 
-* Unreleased (after v.1.3.0) <br>
+* 24-September-2026 Fast-Plast v.1.3.1 <br>
+    --`--version` and `--help` no longer require the external tools to be installed; dependencies are resolved after option parsing. <br>
     --SPAdes read error correction is now on by default (Fast-Plast previously passed `--only-assembler`); it closes contig breaks at homopolymer runs. `--spades_only_assembler` restores the old behaviour. <br>
     --Read length is now sampled from decompressed reads; gzipped input previously produced wrong SPAdes k-mer and afin extension settings. <br>
     --`--min_length_trim` defaults to 90% of the read length for reads shorter than 150 bp (a flat 140 discarded every read from 75/100 bp libraries). <br>

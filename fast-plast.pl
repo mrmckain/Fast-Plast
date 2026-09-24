@@ -81,33 +81,34 @@ $FP_SHARE or die "ERROR: cannot locate Fast-Plast data directory. "
 my $FPBIN        = "$FP_SHARE/bin";
 my $COVERAGE_DIR = $ENV{'FASTPLAST_COVERAGE'} || "$FP_SHARE/Coverage_Analysis";
 
-# afin (compiled C++ core). On PATH under conda; compiled in-tree from a clone.
-# Call sites use "$AFIN_DIR/afin", so $AFIN_DIR is the binary's directory.
-my $afin_exe = find_exe('afin', 'FP_AFIN') || "$FPROOT/afin/afin";
--e $afin_exe or die "ERROR: afin binary not found. Compile it (cd afin && make) "
-                  . "or install Fast-Plast via bioconda.\n";
-my $AFIN_DIR = exe_dir($afin_exe);
+# External executables are resolved in resolve_tools(), which runs after
+# option parsing so that --version and --help work on a machine without the
+# dependencies installed. Values preserve the ORIGINAL call-site syntax:
+#   $BLAST    BLAST+ bin *directory* WITH a trailing slash (call sites use both
+#             "$BLAST/makeblastdb" and $BLAST . "blastn");
+#   $AFIN_DIR directory of the afin binary (call sites use "$AFIN_DIR/afin");
+#   the others are full executable paths. jellyfish (coverage analysis only)
+#   and ragtag (paired-end scaffolding only) are resolved only when needed.
+my ($AFIN_DIR, $BLAST, $BOWTIE2, $SPADES, $FASTP, $PIGZ, $JELLYFISH, $RAGTAG);
 
-# External executables. Values preserve the ORIGINAL call-site syntax:
-#   $BLAST is a *directory* (call sites use "$BLAST/blastn", "$BLAST/makeblastdb");
-#   the others are full executable paths.
-# $BLAST is the BLAST+ bin *directory* WITH a trailing slash, because call sites
-# use both "$BLAST/makeblastdb" and ($BLAST . "blastn"); the slash makes the
-# bare-concat form resolve correctly (double slashes elsewhere are harmless).
-my $BLAST     = exe_dir( require_exe('blastn',  'FP_BLAST') ) . "/";
-my $BOWTIE2   = require_exe('bowtie2',   'FP_BOWTIE2');
-my $SPADES    = require_exe('spades.py', 'FP_SPADES');
-my $FASTP     = require_exe('fastp',     'FP_FASTP');
-# jellyfish (coverage analysis only) and ragtag (paired-end scaffolding only)
-# are resolved after option parsing, once we know whether the run needs them.
-my $JELLYFISH;
-my $RAGTAG;
+sub resolve_tools {
+	# afin (compiled C++ core). On PATH under conda; compiled in-tree from a clone.
+	my $afin_exe = find_exe('afin', 'FP_AFIN') || "$FPROOT/afin/afin";
+	-e $afin_exe or die "ERROR: afin binary not found. Compile it (cd afin && make) "
+	                  . "or install Fast-Plast via bioconda.\n";
+	$AFIN_DIR = exe_dir($afin_exe);
 
-# Decompressor for gzipped reads: prefer pigz (faster and multi-member safe),
-# fall back to gzip. Streamed via "<tool> -dc"; pigz also honors -p <threads>.
-my $PIGZ = find_exe('pigz', 'FP_PIGZ') || find_exe('gzip', 'FP_GZIP')
-        or die "ERROR: neither pigz nor gzip was found on PATH.\n"
-             . "       Install one, or set FP_PIGZ / FP_GZIP.\n";
+	$BLAST   = exe_dir( require_exe('blastn',  'FP_BLAST') ) . "/";
+	$BOWTIE2 = require_exe('bowtie2',   'FP_BOWTIE2');
+	$SPADES  = require_exe('spades.py', 'FP_SPADES');
+	$FASTP   = require_exe('fastp',     'FP_FASTP');
+
+	# Decompressor for gzipped reads: prefer pigz (faster and multi-member safe),
+	# fall back to gzip. Streamed via "<tool> -dc"; pigz also honors -p <threads>.
+	$PIGZ = find_exe('pigz', 'FP_PIGZ') || find_exe('gzip', 'FP_GZIP')
+	     or die "ERROR: neither pigz nor gzip was found on PATH.\n"
+	          . "       Install one, or set FP_PIGZ / FP_GZIP.\n";
+}
 
 my $help;
 my $paired_end1;
@@ -127,7 +128,7 @@ my $version;
 # --version flag. (The POD VERSION section defers to --version, so there is no
 # second copy to keep in sync.)
 # ---------------------------------------------------------------------------
-my $FP_VERSION = "1.3.0";
+my $FP_VERSION = "1.3.1";
 my $current_version = "Fast-Plast v.$FP_VERSION";
 my $user_bowtie;
 my $clean;
@@ -164,6 +165,8 @@ if($version) {
 if ($help) {
     pod2usage( { -exitstatus => 0 } );
 }
+
+resolve_tools();
 
 if ( !$paired_end1 && !$single_end ) {
     pod2usage( { -message => "ERROR: Missing reads file(s)." } );
