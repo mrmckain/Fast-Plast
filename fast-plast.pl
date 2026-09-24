@@ -1296,6 +1296,142 @@ sub select_reference_plastome {
         return &extract_fasta_record($gb, $best, $outref) ? $outref : undef;
 }
 
+# ---------------------------------------------------------------------------
+# afin strand-switch check.
+#
+# afin can fuse two contigs through a short repeat (for example a copy of
+# IR-boundary sequence elsewhere in the LSC): at the repeat it follows the
+# branch with the most reads, which is the double-coverage IR side, and
+# everything downstream of the join ends up inverted. The pipeline then has a
+# single, wrong contig and nothing downstream looks at it again. So after
+# every afin run the contigs are placed on a reference plastome and any
+# contig whose segments map to both strands is flagged.
+#
+# Two legitimate two-strand cases are excluded: the IR, whose query interval
+# maps to both strands by definition, and the SSC, which is found in either
+# orientation in a population of plastomes and is reported as a note, not a
+# problem, when the reversed segment's reference coordinates fall inside the
+# reference SSC (the shorter stretch between the two IR copies).
+#
+# The reference is --scaffold_reference if given, otherwise the best BLAST
+# match among the bundled plastomes (chosen once and reused). Findings go to
+# the progress log, the summary file and <contigs>.strand_check.txt. Returns
+# the number of flagged contigs; the run continues either way.
+# ---------------------------------------------------------------------------
+my $strand_check_ref;
+sub check_strand_switches {
+	my ($contigs) = @_;
+	return 0 unless -s $contigs;
+	my $ref;
+	if($scaffold_reference && -s $scaffold_reference){ $ref = $scaffold_reference; }
+	elsif($strand_check_ref && -s $strand_check_ref){ $ref = $strand_check_ref; }
+	else{
+		my $picked = &select_reference_plastome($contigs, "strand_check_reference.fsa");
+		unless($picked){
+			print $LOGFILE "\t\t\t\tStrand check skipped: no reference plastome could be selected.\n";
+			return 0;
+		}
+		$strand_check_ref = File::Spec->rel2abs($picked);
+		$ref = $strand_check_ref;
+	}
+	my $db = "strand_check_ref_db";
+	run_optional("$BLAST/makeblastdb -in \"$ref\" -dbtype nucl -out $db > /dev/null 2>&1", "makeblastdb (strand check)") or return 0;
+	my $bl = "$contigs.strand_check.blastn";
+	run_optional("$BLAST/blastn -query $contigs -db $db -outfmt \"6 qseqid qlen qstart qend sstart send length slen\" -evalue 1e-50 > $bl 2>/dev/null", "blastn (strand check)") or return 0;
+
+	my %hits; my $reflen = 0;
+	open my $in, "<", $bl or return 0;
+	while(<$in>){
+		chomp; my @c = split /\t/;
+		next if $c[6] < 2000;                      # only substantial alignments
+		my ($qs, $qe, $ss, $se) = @c[2..5];
+		my $str = ($ss <= $se) ? "+" : "-";
+		($ss, $se) = ($se, $ss) if $ss > $se;
+		push @{$hits{$c[0]}}, { qs => $qs, qe => $qe, ss => $ss, se => $se, str => $str };
+		$reflen = $c[7];
+	}
+	close $in;
+
+	my (@flags, @notes);
+	for my $q (sort keys %hits){
+		my @hs = @{$hits{$q}};
+		# IR-like HSPs: the same query interval is also hit on the opposite strand
+		my @ir_ref;
+		for my $x (@hs){
+			for my $y (@hs){
+				next if $x == $y || $x->{str} eq $y->{str};
+				my $lo = ($x->{qs} > $y->{qs}) ? $x->{qs} : $y->{qs};
+				my $hi = ($x->{qe} < $y->{qe}) ? $x->{qe} : $y->{qe};
+				my $short = (($x->{qe} - $x->{qs}) < ($y->{qe} - $y->{qs})) ? ($x->{qe} - $x->{qs}) : ($y->{qe} - $y->{qs});
+				if($short > 0 && ($hi - $lo) / $short >= 0.8){
+					$x->{ir} = 1;
+					push @ir_ref, [$x->{ss}, $x->{se}];
+				}
+			}
+		}
+		# reference SSC: the shorter of the two stretches between the IR copies
+		my @ssc;    # list of [lo, hi] intervals on the linear reference
+		if(@ir_ref >= 2){
+			my @c = sort { $a->[0] <=> $b->[0] } @ir_ref;
+			my ($first, $last) = ($c[0], $c[-1]);
+			my $between = $last->[0] - $first->[1];
+			my $around  = ($reflen - $last->[1]) + $first->[0];
+			@ssc = ($between <= $around) ? ([$first->[1], $last->[0]]) : ([$last->[1], $reflen], [1, $first->[0]]);
+		}
+		my @sc = sort { $a->{qs} <=> $b->{qs} } grep { !$_->{ir} } @hs;
+		# bases covered per strand, as the union of intervals (HSPs can overlap)
+		my %len;
+		for my $str ("+", "-"){
+			my ($cov, $lo, $hi) = (0);
+			for my $h (sort { $a->{qs} <=> $b->{qs} } grep { $_->{str} eq $str } @sc){
+				if(defined $hi && $h->{qs} <= $hi){ $hi = $h->{qe} if $h->{qe} > $hi; }
+				else{ $cov += $hi - $lo + 1 if defined $hi; ($lo, $hi) = ($h->{qs}, $h->{qe}); }
+			}
+			$cov += $hi - $lo + 1 if defined $hi;
+			$len{$str} = $cov;
+		}
+		next unless $len{"+"} && $len{"-"};
+		my $minor = ($len{"+"} >= $len{"-"}) ? "-" : "+";
+		my @seg = grep { $_->{str} eq $minor } @sc;
+		my $in_ssc = 0;
+		if(@ssc){
+			$in_ssc = 1;
+			for my $s (@seg){
+				my $ok = grep { $s->{ss} >= $_->[0] - 500 && $s->{se} <= $_->[1] + 500 } @ssc;
+				$in_ssc = 0 unless $ok;
+			}
+		}
+		my $desc = join("; ", map { sprintf("contig %d-%d = reference %d-%d", $_->{qs}, $_->{qe}, $_->{ss}, $_->{se}) } @seg);
+		if($in_ssc){
+			push @notes, "$q: the SSC is in the opposite orientation to the reference ($desc). This is a normal isomer, not an error.";
+		}
+		else{
+			push @flags, "$q: reversed segment(s) $desc, while the rest of the contig maps to the other strand. Likely an afin misjoin at a repeat; check this contig before trusting the assembly.";
+		}
+	}
+
+	open my $rep, ">", "$contigs.strand_check.txt";
+	print $rep "Reference: $ref\n";
+	print $rep "Contigs placed: " . scalar(keys %hits) . "\n";
+	print $rep "FLAG\t$_\n" for @flags;
+	print $rep "NOTE\t$_\n" for @notes;
+	print $rep "OK\tno strand switches\n" unless @flags || @notes;
+	close $rep;
+
+	$current_runtime = localtime();
+	if(@flags){
+		print $LOGFILE "$current_runtime\t******************WARNING: possible afin misjoin in $contigs.******************\n";
+		print $LOGFILE "\t\t\t\t$_\n" for @flags;
+		print $LOGFILE "\t\t\t\tDetails in $contigs.strand_check.txt.\n";
+		print $SUMMARY "WARNING - possible afin misjoin (strand switch vs. reference) in $contigs: " . scalar(@flags) . " contig(s). See " . (File::Spec->splitdir(getcwd()))[-1] . "/$contigs.strand_check.txt\n";
+	}
+	else{
+		print $LOGFILE "$current_runtime\tStrand check of $contigs against the reference: no strand switches.\n";
+	}
+	print $LOGFILE "\t\t\t\t$_\n" for @notes;
+	return scalar @flags;
+}
+
 # Pull a single record (by first-token header id) out of a FASTA into $out.
 sub extract_fasta_record {
         my ($fasta, $id, $out) = @_;
@@ -1708,6 +1844,9 @@ sub run_afin {
 		}
 	}
 	my $total_afin_contigs = keys %contig_lengths;
+	# afin can misjoin at repeats; place its output on a reference and flag
+	# strand switches before anything downstream trusts it.
+	check_strand_switches($name . "_afin_iter".$iter_num.".fa");
 	return ($total_afin_contigs, $max_afin, $min_afin);
 }
 

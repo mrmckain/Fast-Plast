@@ -186,6 +186,8 @@ Chloroplast_gene_composition_of_afin_contigs_nested_removed.txt contains informa
 If only single end data were used and more than one contig is found, Fast-Plast will quit here. The final output will be available in Final_Assembly.
 
 <h4>Scaffolding</h4>
+After each afin run, Fast-Plast places the afin contigs on the reference plastome (the `--scaffold_reference` if given, otherwise the best BLAST match among the bundled plastomes) and checks for strand switches within a contig. afin extends through repeats by following the branch with the most reads; where a short repeat also occurs at the IR boundary that is the double-coverage IR branch, and the contig downstream of the join comes out inverted. A flagged contig is reported in the progress log, the summary file and `4_Afin_Assembly/<contigs>.strand_check.txt`; the run continues, but the assembly should be checked before use. The IR (which maps to both strands by definition) and an SSC in the opposite orientation to the reference (a normal isomer) are recognised and not flagged.
+
 If more than one contig is found in the afin assembly and paired-end reads were used, RagTag is invoked to order and orient the contigs against a reference plastome, and afin then re-extends the ordered scaffold to close the joins. These results are found in the `Scaffolding/` subdirectory, including the chosen reference (`scaffold_reference.fsa`) and the RagTag output (`ragtag_out/`). By default the reference is selected automatically as the best BLAST match among the bundled plastomes; a specific reference can be supplied with `--scaffold_reference` (see Usage). If more than one contig/scaffold remains in the final output, this is the last step of the pipeline and results are found in Final_Assembly.
 
 <h3>5_Plastome_Finishing</h3>
@@ -295,6 +297,9 @@ Definitions:
 
 
 <h1 id="changelog">Changelog</h1>
+
+* Unreleased <br>
+    --After every afin run, the contigs are placed on the reference plastome and any contig whose segments map to both strands is flagged in the log, the summary and `<contigs>.strand_check.txt`. afin can fuse through a short repeat and invert everything downstream; the IR and the SSC orientation isomer are recognised and not flagged. <br>
 
 * 24-September-2026 Fast-Plast v.1.3.1 <br>
     --`--version` and `--help` no longer require the external tools to be installed; dependencies are resolved after option parsing. <br>
