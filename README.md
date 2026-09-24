@@ -265,10 +265,10 @@ Definitions:
 
 		Advanced options:
 
-		--min_length_trim	Acceptable minimum length for reads after trimming for adapters and quality. (Default = 140]
+		--min_length_trim	Acceptable minimum length for reads after trimming for adapters and quality. [Default = 140 for reads of 150 bp or longer; otherwise 90% of the sampled read length]
 		--subsample		Number of reads to subsample. Reads will be evenly pulled from all files. 
 		--threads		Number of threads used by Fast-Plast.  [Default = 4]
-		--min_coverage		Lowest acceptable coverage for 25-mer sliding window during coverage analysis. [Default = 0.25 * Average coverage]
+		--min_coverage		Lowest acceptable coverage for 25-mer sliding window during coverage analysis. [Default = 0.15 * Average coverage]
   		--min_filter_spades	Minimum coverage allowed for SPAdes contig to be passed to afin. Only recommended to change if default is not working. [Default is one standard deviation of weigthed average length of contigs.]
 		--adapters		[NEB|Nextera|TruSeq] Adapters used in making the sequencing library. NEB, Nextera, and TruSeq options 
 					available. Also accepts the path to a user created FASTA file of adapters. [Default = NEB]
@@ -293,6 +293,24 @@ Definitions:
 
 
 <h1 id="changelog">Changelog</h1>
+
+* Unreleased (after v.1.3.0) <br>
+    --Read length is now sampled from decompressed reads; gzipped input previously produced wrong SPAdes k-mer and afin extension settings. <br>
+    --`--min_length_trim` defaults to 90% of the read length for reads shorter than 150 bp (a flat 140 discarded every read from 75/100 bp libraries). <br>
+    --`--subsample` no longer invents a single-end library for paired-end runs. <br>
+    --`--min_filter_spades` is honored (it was silently ignored), and SPAdes contigs with identical coverage values are no longer collapsed. <br>
+    --`--posgenes` parses and its gene set is actually used for orientation and gene-recovery checks. <br>
+    --`--bowtie_index` matches whole taxon names (so `Poa` no longer pulls every Poaceae), and a taxon with no matches falls back to one representative per order as documented. <br>
+    --`--clean deep` removes the intermediate directories (it used `rmdir`, which cannot remove non-empty directories). <br>
+    --`--threads` is passed to afin. <br>
+    --Every external tool is checked for a non-zero exit status and the run stops at the failing step; `--only_coverage` and coverage-problem runs exit 0 instead of 255. <br>
+    --Low-coverage reassembly branch fixed (jellyfish was given a bogus path) and a low-coverage run reaching the end of the genome is now reported. <br>
+    --SPAdes is launched by its own shebang rather than `python`; jellyfish is only required when a coverage analysis is requested; RagTag is resolved at startup (`FP_RAGTAG`). <br>
+    --Missing reference database is reported at startup with the fetch command. <br>
+    --Adapter keyword matching anchored (a path containing "neb" is no longer replaced with the bundled NEB file). <br>
+    --IR identification (`sequence_based_ir_id.pl`) uses a k-mer set lookup: ~0.1 s instead of ~1 min per call, identical output. <br>
+    --BLAST database of the reference plastomes is built once beside the database and reused across runs. <br>
+    --Progress log is flushed as it is written, so `tail -f` works. <br>
 
 * 2026 Fast-Plast v.1.3.0 <br>
     --Read trimming switched from Trimmomatic to fastp; `--min_length_trim` now sets fastp's minimum length. <br>

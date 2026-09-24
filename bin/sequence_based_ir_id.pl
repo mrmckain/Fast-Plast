@@ -35,11 +35,20 @@ my $current_end;
 my $ir;
 my $count=0;
 
+# Set of every 151-mer in the assembly, so "does the reverse complement of
+# this window occur anywhere" is a hash lookup rather than a scan of the whole
+# sequence per position (which made this step quadratic: ~1 min per call on a
+# 185 kb assembly, and the driver calls it up to four times per assembly).
+my %present;
+for (my $k=0; $k<=$seqlen-151; $k++){
+	$present{substr($sequence, $k, 151)} = 1;
+}
+
 for (my $i=0; $i<$seqlen-151; $i++){
 	my $tempseq = substr($sequence, $i, 151);
 	my $rcseq = reverse($tempseq);
 	$rcseq =~ tr/ATCGNatcgn/TAGCNtagcn/;
-	if($sequence =~ /$rcseq/){
+	if(exists $present{$rcseq}){
 		if($ir){
 			$current_end = $i;
 		}

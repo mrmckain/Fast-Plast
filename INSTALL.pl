@@ -116,13 +116,13 @@ unless ($skip_deps) {
         ['spades.py',   'FP_SPADES',    'initial assembly'],
         ['blastn',      'FP_BLAST',     'gene/reference checks'],
         ['makeblastdb', 'FP_BLAST',     'BLAST database build'],
-        ['ragtag.py',   undef,          'scaffolding'],
+        ['ragtag.py',   'FP_RAGTAG',    'scaffolding'],
         ['minimap2',    undef,          'required by RagTag'],
     );
     my @optional = (
         ['pigz',        'FP_PIGZ',      'fast decompression (gzip used if absent)'],
         ['jellyfish',   'FP_JELLYFISH', 'coverage analysis'],
-        ['Rscript',     undef,          'coverage plotting'],
+        ['Rscript',     'FP_RSCRIPT',   'coverage plotting'],
     );
 
     for my $t (@required) {

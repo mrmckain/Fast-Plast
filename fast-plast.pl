@@ -6,6 +6,8 @@ use Pod::Usage;
 use FindBin;
 use lib ("$FindBin::Bin/PerlLib");
 use File::Spec;
+use File::Path qw(remove_tree);
+use IO::Handle;
 use Cwd;
 use Cwd 'abs_path';
 use Env qw (PATH);
@@ -95,8 +97,11 @@ my $AFIN_DIR = exe_dir($afin_exe);
 my $BLAST     = exe_dir( require_exe('blastn',  'FP_BLAST') ) . "/";
 my $BOWTIE2   = require_exe('bowtie2',   'FP_BOWTIE2');
 my $SPADES    = require_exe('spades.py', 'FP_SPADES');
-my $JELLYFISH = require_exe('jellyfish', 'FP_JELLYFISH');
 my $FASTP     = require_exe('fastp',     'FP_FASTP');
+# jellyfish (coverage analysis only) and ragtag (paired-end scaffolding only)
+# are resolved after option parsing, once we know whether the run needs them.
+my $JELLYFISH;
+my $RAGTAG;
 
 # Decompressor for gzipped reads: prefer pigz (faster and multi-member safe),
 # fall back to gzip. Streamed via "<tool> -dc"; pigz also honors -p <threads>.
@@ -129,16 +134,22 @@ my $clean;
 my $subsample;
 my $cov_only;
 my $min_region_length = 10000;
-my $min_length_trim=140;
+# Minimum read length after trimming. Left undefined here; once the read length
+# has been sampled it defaults to 140 for reads >= 150 bp and to 90% of the
+# read length otherwise (a flat 140 silently discarded every read from 75/100 bp
+# libraries).
+my $min_length_trim;
 my $skip;
 my $min_filter_spades;
 # Optional user-supplied reference plastome for RagTag scaffolding. Overrides
 # the automatic best-match selection from the bundled GenBank plastomes.
 my $scaffold_reference = $ENV{'FP_REFERENCE'};
-GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check, 'skip=s' => \$skip, 'positional_genes' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters, "subsample=i" => \$subsample, "only_coverage=s" => \$cov_only, "min_region_length=i" => \$min_region_length, "min_length_trim=i" => \$min_length_trim, "min_filter_spades=i" => \$min_filter_spades, "scaffold_reference=s" => \$scaffold_reference)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
+GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check, 'skip=s' => \$skip, 'posgenes|positional_genes=s' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters, "subsample=i" => \$subsample, "only_coverage=s" => \$cov_only, "min_region_length=i" => \$min_region_length, "min_length_trim=i" => \$min_length_trim, "min_filter_spades=i" => \$min_filter_spades, "scaffold_reference=s" => \$scaffold_reference)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
 # Resolve the scaffold reference to an absolute path now, before any chdir,
 # so the scaffolding step (which runs several directories deep) can find it.
 $scaffold_reference = File::Spec->rel2abs($scaffold_reference) if $scaffold_reference;
+# Same for a user-supplied adapter file (keywords are resolved later).
+$adapters = File::Spec->rel2abs($adapters) unless $adapters =~ /^(?:nextera|truseq|neb)$/i;
 
 if($version) {
 	print "$current_version\n";
@@ -160,11 +171,44 @@ if (!$paired_end1 && $paired_end2 || !$paired_end2 && $paired_end1){
 if ( !$name ) {
     pod2usage( { -message => "ERROR: Missing sample name." } );
 }
+# The name is spliced unquoted into shell commands and file globs throughout.
+if ( $name !~ /^[A-Za-z0-9._-]+$/ ) {
+    pod2usage( { -message => "ERROR: --name may only contain letters, digits, '.', '_' and '-'." } );
+}
 
 if($user_bowtie){
 	if ( !glob($user_bowtie."*")) {
     	pod2usage( { -message => "ERROR: User supplied Bowtie2 indices do not exist. Check path." } );
 	}
+}
+
+if($posgenes ne $FPBIN . "/Angiosperm_Chloroplast_Genes.fsa"){
+	$posgenes = File::Spec->rel2abs($posgenes);
+	-s $posgenes or pod2usage( { -message => "ERROR: --posgenes file '$posgenes' not found or empty." } );
+}
+
+if($skip && $skip ne "trim"){
+	pod2usage( { -message => "ERROR: --skip only accepts 'trim'." } );
+}
+if($clean && $clean ne "light" && $clean ne "deep"){
+	pod2usage( { -message => "ERROR: --clean only accepts 'light' or 'deep'." } );
+}
+
+# Fail before any work starts if this run needs something that is missing.
+# (These checks print to the terminal; STDERR is redirected to a log below.)
+if($coverage_check || $cov_only){
+	$JELLYFISH = require_exe('jellyfish', 'FP_JELLYFISH');
+	find_exe('Rscript', 'FP_RSCRIPT')
+	  or warn "WARNING: Rscript not found on PATH; the coverage plot will be skipped.\n";
+}
+if($paired_end1 && !$cov_only){
+	$RAGTAG = require_exe('ragtag.py', 'FP_RAGTAG');
+}
+if(!$user_bowtie && !$cov_only){
+	-s "$FPBIN/GenBank_Plastomes"
+	  or die "ERROR: reference plastome database not found at $FPBIN/GenBank_Plastomes.\n"
+	       . "       Download it with:  bash $FPBIN/fetch_plastome_db.sh\n"
+	       . "       or supply your own bowtie2 index with --user_bowtie.\n";
 }
 
 ### Get full paths for files.  Glob would work for all of them, but it requires perl 5.6+.  Only using it for the ~ calls, just in case. ####
@@ -173,7 +217,60 @@ my $start_time = time;
 open(STDERR, '>', $name.'_results_error.log') or die "Can't open log.\n";
 open(STDOUT, '>', $name.'_results_out.log') or die "Can't open log.\n";
 open my $LOGFILE, ">", $name."_Fast-Plast_Progress.log" or die "Can't open log.\n";
+$LOGFILE->autoflush(1);   # so `tail -f` on the progress log actually shows progress
+STDOUT->autoflush(1);
+STDERR->autoflush(1);
 print $LOGFILE "$datestring\tStarting $current_version.\n";
+
+# Run an external command, logging it and dying with the exit status on
+# failure. Every pipeline step goes through here so a failed tool stops the run
+# at the step that failed instead of several steps later on a missing file.
+sub run_cmd {
+	my ($cmd, $what) = @_;
+	$what ||= "command";
+	print $LOGFILE "\t\t\t\tRunning: $cmd\n";
+	my $rc = system($cmd);
+	return if $rc == 0;
+	my $why = ($rc == -1) ? "could not be started ($!)"
+	        : ($rc & 127)  ? "was killed by signal " . ($rc & 127)
+	        :                "exited with status " . ($rc >> 8);
+	print $LOGFILE "\t\t******************ERROR: $what $why.\n\t\t\t\tCommand: $cmd\n";
+	die "Fast-Plast: $what $why. See $name\_Fast-Plast_Progress.log and $name\_results_error.log.\n";
+}
+
+# Like run_cmd, but a failure is logged as a warning and the run continues.
+# For steps that have a fallback (RagTag) or are cosmetic (the coverage plot).
+sub run_optional {
+	my ($cmd, $what) = @_;
+	$what ||= "command";
+	print $LOGFILE "\t\t\t\tRunning: $cmd\n";
+	my $rc = system($cmd);
+	return 1 if $rc == 0;
+	print $LOGFILE "\t\t\t\tWARNING: $what failed (status " . ($rc >> 8) . "); continuing.\n";
+	return 0;
+}
+
+# Run a command and return its STDOUT, dying if it fails.
+sub capture_cmd {
+	my ($cmd, $what) = @_;
+	$what ||= "command";
+	print $LOGFILE "\t\t\t\tRunning: $cmd\n";
+	my $out = `$cmd`;
+	if($? != 0){
+		print $LOGFILE "\t\t******************ERROR: $what exited with status " . ($? >> 8) . ".\n";
+		die "Fast-Plast: $what failed. See $name\_Fast-Plast_Progress.log and $name\_results_error.log.\n";
+	}
+	return $out;
+}
+
+# Normal termination for paths that stop early on purpose (e.g. --only_coverage).
+# Previously these used die(), which exited non-zero and confused workflow managers.
+sub finish {
+	my ($msg) = @_;
+	print $LOGFILE "$msg\n" if $msg;
+	close $LOGFILE;
+	exit 0;
+}
 
 my @p1_array;
 if($paired_end1){
@@ -246,68 +343,37 @@ print $LOGFILE "$current_runtime\tDetermining best kmer sizes.\n";
 
 my $maxsize=0;
 
-
-
-if(@p1_array){
-	for my $file (@p1_array){
-		open my $tfile, "<", $file;
-		my $count = 0;
-		SIZE: while(<$tfile>){
-				my $seq = readline($tfile);
-				chomp($seq);
-				if(length($seq) > $maxsize){
-						$maxsize = length($seq);
-				}
-				$count++;
-				if($count == 100){
-					last SIZE;
-				}
-				readline($tfile);
-				readline($tfile);
-			}
+# Longest sequence among the first 100 records of each input file. Reads are
+# streamed through open_read_stream so gzipped input is decompressed; opening
+# a .gz directly (as older versions did) measured compressed bytes and chose
+# SPAdes k-mers and the afin extension length from garbage.
+sub max_read_length {
+	my ($file, $nrecords) = @_;
+	my $in = open_read_stream($file);
+	my $longest = 0;
+	my $count = 0;
+	while(my $h = <$in>){
+		my $seq = <$in>;
+		last unless defined $seq;
+		<$in>; <$in>;                       # '+' line and quality line
+		chomp($seq);
+		$seq =~ s/\r$//;
+		$longest = length($seq) if length($seq) > $longest;
+		last if ++$count >= $nrecords;
 	}
+	close $in;
+	return $longest;
 }
 
-
-if(@p2_array){
-	for my $file (@p2_array){
-		open my $tfile, "<", $file;
-		my $count = 0;
-		SIZE: while(<$tfile>){
-				my $seq = readline($tfile);
-				chomp($seq);
-				if(length($seq) > $maxsize){
-						$maxsize = length($seq);
-				}
-				$count++;
-				if($count == 100){
-					last SIZE;
-				}
-				readline($tfile);
-				readline($tfile);
-			}
-	}
+for my $file (@p1_array, @p2_array, @s_array){
+	my $len = max_read_length($file, 100);
+	$maxsize = $len if $len > $maxsize;
 }
-
-if(@s_array){
-	for my $file (@s_array){
-		open my $tfile, "<", $file;
-		my $count = 0;
-		SIZE: while(<$tfile>){
-				my $seq = readline($tfile);
-				chomp($seq);
-				if(length($seq) > $maxsize){
-						$maxsize = length($seq);
-				}
-				$count++;
-				if($count == 100){
-					last SIZE;
-				}
-				readline($tfile);
-				readline($tfile);
-			}
-	}
+if($maxsize == 0){
+	print $LOGFILE "\t\t******************ERROR: could not read any sequences from the input files.\n";
+	die "Fast-Plast: could not read any sequences from the input read files.\n";
 }
+print $LOGFILE "\t\t\t\tMaximum read length sampled from input: $maxsize.\n";
 ##########
 
 
@@ -331,6 +397,15 @@ else{
 }
 
 print $LOGFILE "\t\t\t\tK-mer sizes for SPAdes set at $spades_kmer.\n";
+
+###Set minimum post-trim read length###
+if(!defined $min_length_trim){
+	$min_length_trim = ($maxsize >= 150) ? 140 : int($maxsize * 0.9);
+	print $LOGFILE "\t\t\t\tMinimum read length after trimming set to $min_length_trim (from a sampled read length of $maxsize).\n";
+}
+elsif($min_length_trim > $maxsize){
+	print $LOGFILE "\t\t******************WARNING: --min_length_trim $min_length_trim exceeds the sampled read length of $maxsize; few or no reads will survive trimming.******************\n";
+}
 ##########
 
 ########## Create Directory ###########
@@ -409,14 +484,16 @@ if($subsample){
 		}
 	}
 
-	@p1_array=();
-	push(@p1_array, "subset_file1.fq");
-	@p2_array=();
-	push(@p2_array, "subset_file2.fq");
-	@s_array=();
-	push(@s_array, "subset_files.fq");
-
-
+	# Replace only the libraries that were actually subsampled, and update the
+	# library counts the trimming loops iterate over. Previously all three
+	# arrays were overwritten unconditionally, which invented a nonexistent
+	# single-end file for paired-end runs and left the counts stale.
+	@p1_array = ("subset_file1.fq") if @p1_array;
+	@p2_array = ("subset_file2.fq") if @p2_array;
+	@s_array  = ("subset_files.fq") if @s_array;
+	$pe_libs = scalar @p1_array;
+	$s_libs  = scalar @s_array;
+	print $LOGFILE "\t\t\t\tSubsampled $readsperfile reads from each of $total_input_files input files.\n";
 }
 if($skip && $skip eq "trim"){
 		if(@p1_array){
@@ -448,14 +525,22 @@ if($skip && $skip eq "trim"){
 		}	
 }
 else{
-if($adapters =~ /nextera/i){
+# Keyword selection of a bundled adapter set. Anchored: a user path that merely
+# contains "neb" or "truseq" must not be replaced.
+if($adapters =~ /^nextera$/i){
 	$adapters=$FPBIN."/adapters/NexteraPE-PE.fa";
 }
-if($adapters =~ /truseq/i){
+elsif($adapters =~ /^truseq$/i){
 	$adapters=$FPBIN."/adapters/TruSeq3-PE.fa";
 }
-if($adapters =~ /NEB/i){
+elsif($adapters =~ /^NEB$/i){
 	$adapters=$FPBIN."/adapters/NEB-PE.fa";
+}
+else{
+	unless(-s $adapters){
+		print $LOGFILE "\t\t******************ERROR: adapter file $adapters not found or empty.\n";
+		die "Fast-Plast: adapter file $adapters not found or empty.\n";
+	}
 }
 if(@p1_array){
 	for (my $i=0; $i < $pe_libs; $i++){
@@ -473,7 +558,7 @@ if(@p1_array){
 		  . " --thread " . $threads
 		  . " --json " . $name."_".$i.".fastp.json --html " . $name."_".$i.".fastp.html"
 		  . " 2> " . $name."_".$i.".fastp.log";
-		system($trim_exec);
+		run_cmd($trim_exec, "fastp");
 	}
 	`cat $name\*trimmed_P1.fq > $name.trimmed_P1.fq`;
 	`cat $name\*trimmed_P2.fq > $name.trimmed_P2.fq`;
@@ -496,7 +581,7 @@ if(@s_array){
 		  . " --thread " . $threads
 		  . " --json " . $name."_".$i.".SE.fastp.json --html " . $name."_".$i.".SE.fastp.html"
 		  . " 2> " . $name."_".$i.".SE.fastp.log";
-		system($trim_exec);
+		run_cmd($trim_exec, "fastp");
 	}
 	`cat $name\*trimmed_SE.fq >> $name.trimmed_UP.fq`;
 }
@@ -524,7 +609,6 @@ for my $check_tfile (@tfile_read){
 }
 chdir("../");
 ##########
-my $jellyfish_pwd;
 if($cov_only){
 	$current_runtime = localtime();
 	print $LOGFILE "$current_runtime\tStarting coverage analyses.\n";
@@ -536,37 +620,27 @@ if($cov_only){
 	mkdir("Coverage_Analysis");
 	chdir("Coverage_Analysis");
 	my $build_bowtie2_exec = $BOWTIE2 . "-build $cov_only " . $name . "_bowtie";
-system($build_bowtie2_exec);
+run_cmd($build_bowtie2_exec, "bowtie2-build");
 
-my $cov_bowtie2_exec;
-if(glob("../1_Trimmed_Reads/$name*trimmed_U*.fq") && glob("../1_Trimmed_Reads/$name*trimmed_P*.fq")){
-        $cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
-}
-elsif(glob("../1_Trimmed_Reads/$name*trimmed_U*.fq") && !glob("../1_Trimmed_Reads/$name*trimmed_P*.fq")){
-        $cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . "  -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
-}
-elsif(!glob("../1_Trimmed_Reads/$name*trimmed_U*.fq") && glob("../1_Trimmed_Reads/$name*trimmed_P*.fq")){
-        $cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -S " . $name . ".sam";
-}
-else{
+my $read_args = trimmed_read_args("../1_Trimmed_Reads");
+unless(defined $read_args){
         print $LOGFILE "Could not find reads to complete Coverage Analysis.  Check 1_Trimmed_Reads.\n";
         die "Could not find reads to complete Coverage Analysis.  Check 1_Trimmed_Reads.\n";
 }
-
-system($cov_bowtie2_exec);
-$jellyfish_pwd = system("pwd");
+my $cov_bowtie2_exec = "$BOWTIE2 --very-sensitive-local --quiet -p $threads -x ${name}_bowtie$read_args -S $name.sam";
+run_cmd($cov_bowtie2_exec, "bowtie2");
 
 my $jellyfish_count_exec = $JELLYFISH . " count -m 25 -t ". $threads . " -C -s 1G map_*";
-system($jellyfish_count_exec);
+run_cmd($jellyfish_count_exec, "jellyfish count");
 
 my $jellyfish_dump_exec = $JELLYFISH . " dump mer_counts.jf > " . $name . "_25dump";
-system($jellyfish_dump_exec);
+run_cmd($jellyfish_dump_exec, "jellyfish dump");
 
 my $window_cov_exec = "perl " . $COVERAGE_DIR . "/new_window_coverage.pl " . $name . "_25dump $cov_only  25";
-system($window_cov_exec);
+run_cmd($window_cov_exec, "new_window_coverage.pl");
 
 my $rscript_exec = "Rscript " . $COVERAGE_DIR . "/plot_coverage.r " . $name . ".coverage_25kmer.txt ". $name;
-system($rscript_exec);
+run_optional($rscript_exec, "Rscript coverage plot");
 
 my $check_cov_exec;
 if(defined $min_coverage){
@@ -575,7 +649,7 @@ if(defined $min_coverage){
 else{
         $check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25";
 }
-my $coverage_used = `$check_cov_exec`;
+my $coverage_used = capture_cmd($check_cov_exec, "check_plastid_coverage.pl");
 chomp($coverage_used);
 $current_runtime = localtime();
 print $LOGFILE "$current_runtime\tMinimum coverage of $coverage_used for verifying assembly.\n";
@@ -597,23 +671,23 @@ if(-z "Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt"){
                                 unlink(glob("*/*.sam"));
                         }
                         if ($clean eq "deep"){
-                                rmdir("1_Trimmed_Reads");
-                                rmdir("2_Bowtie_Mapping");
-                                rmdir("3_Spades_Assembly");
-                                rmdir("4_Afin_Assembly");
-                                rmdir("5_Plastome_Finishing");
+                                remove_tree("1_Trimmed_Reads");
+                                remove_tree("2_Bowtie_Mapping");
+                                remove_tree("3_Spades_Assembly");
+                                remove_tree("4_Afin_Assembly");
+                                remove_tree("5_Plastome_Finishing");
                                 unlink(glob("Coverage_Analysis/*25dump"));
                                 unlink(glob("Coverage_Analysis/mer_counts.jf"));
                                 unlink(glob("*/*bt2"));
 
                         }
         }
-	 die "Fast-Plast finished.\n";
+	 finish("Fast-Plast finished.");
 
 }
 else{
 	print $LOGFILE "\t\t\t\tProblem regions identified with coverage analysis.  Check output.\n";
-	die "Fast-Plast finished.\n";
+	finish("Fast-Plast finished.");
 }
 }
 	
@@ -633,24 +707,13 @@ if($user_bowtie){
 else{
 	$bowtie_index= &build_bowtie2_indices($bowtie_index);
 }
-my $bowtie2_exec;
-if(glob("../1_Trimmed_Reads/$name*trimmed_U*.fq") && glob("../1_Trimmed_Reads/$name*trimmed_P*.fq")){
-	$bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $bowtie_index . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
-}
-elsif(!glob("../1_Trimmed_Reads/$name*trimmed_U*.fq") && glob("../1_Trimmed_Reads/$name*trimmed_P*.fq")){
-		$bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $bowtie_index . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -S " . $name . ".sam";
-}
-
-elsif(glob("../1_Trimmed_Reads/$name*trimmed_U*.fq")){
-	$bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --al map_hits.fq -p " . $threads . " -x " . $bowtie_index . " -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
-
-}
-else{
+my $read_args = trimmed_read_args("../1_Trimmed_Reads");
+unless(defined $read_args){
         print $LOGFILE "\t\t******************ERROR: No trimmed read files were identified to run SPAdes.  Please check 1_Trimmed_Reads.******************\n";
         die ("No trimmed read files were identified to run SPAdes.  Please check 1_Trimmed_Reads.\n");
 }
-
-system($bowtie2_exec);
+my $bowtie2_exec = "$BOWTIE2 --very-sensitive-local -p $threads -x $bowtie_index$read_args -S $name.sam";
+run_cmd($bowtie2_exec, "bowtie2");
 
 
 if (-s "map_pair_hits.1.fq"){
@@ -676,19 +739,19 @@ chdir("3_Spades_Assembly");
 
 my $spades_exec;
 if(-s "../2_Bowtie_Mapping/map_pair_hits.1.fq" && -s "../2_Bowtie_Mapping/map_pair_hits.2.fq" && -s "../2_Bowtie_Mapping/map_hits.fq"){
-	$spades_exec = "python " . $SPADES . " -o spades_iter1 -1 ../2_Bowtie_Mapping/map_pair_hits.1.fq -2 ../2_Bowtie_Mapping/map_pair_hits.2.fq -s ../2_Bowtie_Mapping/map_hits.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
+	$spades_exec = $SPADES . " -o spades_iter1 -1 ../2_Bowtie_Mapping/map_pair_hits.1.fq -2 ../2_Bowtie_Mapping/map_pair_hits.2.fq -s ../2_Bowtie_Mapping/map_hits.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
 }
-elsif(-s "../2_Bowtie_Mapping/map_pair_hits.1.fq" && -s "../2_Bowtie_Mapping/map_pair_hits.2.fq" && -z ("../2_Bowtie_Mapping/map_hits.fq" || ! -e "../2_Bowtie_Mapping/map_hits.fq")){
-	$spades_exec = "python " . $SPADES . " -o spades_iter1 -1 ../2_Bowtie_Mapping/map_pair_hits.1.fq -2 ../2_Bowtie_Mapping/map_pair_hits.2.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
+elsif(-s "../2_Bowtie_Mapping/map_pair_hits.1.fq" && -s "../2_Bowtie_Mapping/map_pair_hits.2.fq" && (! -e "../2_Bowtie_Mapping/map_hits.fq" || -z "../2_Bowtie_Mapping/map_hits.fq")){
+	$spades_exec = $SPADES . " -o spades_iter1 -1 ../2_Bowtie_Mapping/map_pair_hits.1.fq -2 ../2_Bowtie_Mapping/map_pair_hits.2.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
 }
 elsif (-s "../2_Bowtie_Mapping/map_hits.fq"){
-	$spades_exec = "python " . $SPADES . " -o spades_iter1 -s ../2_Bowtie_Mapping/map_hits.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
+	$spades_exec = $SPADES . " -o spades_iter1 -s ../2_Bowtie_Mapping/map_hits.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
 }
 else{
 	print $LOGFILE "\t\t******************ERROR: No mapped reads files were identified to run SPAdes.  Please check 2_Bowtie_Mapping.******************\n";
 	die ("No mapped reads files were identified to run SPAdes.  Please check 2_Bowtie_Mapping.\n");
 }
-system($spades_exec);
+run_cmd($spades_exec, "SPAdes");
 chdir("../");
 ########## Start Afin ##########
 $current_runtime = localtime();
@@ -697,10 +760,10 @@ print $LOGFILE "$current_runtime\tStarting improved assembly with afin.\n";
 mkdir("4_Afin_Assembly");
 chdir("4_Afin_Assembly");
 if($min_filter_spades){
-	`perl $FPBIN/filter_spades_contigs_weigthed.pl ../3_Spades_Assembly/spades_iter1/contigs.fasta $min_filter_spades`;
+	run_cmd("perl $FPBIN/filter_spades_contigs_weigthed.pl ../3_Spades_Assembly/spades_iter1/contigs.fasta $min_filter_spades", "filter_spades_contigs_weigthed.pl");
 }
 else{
-	`perl $FPBIN/filter_spades_contigs_weigthed.pl ../3_Spades_Assembly/spades_iter1/contigs.fasta`;
+	run_cmd("perl $FPBIN/filter_spades_contigs_weigthed.pl ../3_Spades_Assembly/spades_iter1/contigs.fasta", "filter_spades_contigs_weigthed.pl");
 }
 
 my %temp_filtered;
@@ -765,9 +828,9 @@ my $gotofinish;
 if( $total_afin_contigs > 1){
 	$current_afin = $name . "_afin_iter0.fa";
 
-	`$BLAST/makeblastdb -in $current_afin -dbtype nucl`;
+	run_cmd("$BLAST/makeblastdb -in $current_afin -dbtype nucl", "makeblastdb");
 	my $blast_afin_exec = $BLAST . "blastn -query " . $current_afin . " -db " . $current_afin . " -evalue 1e-40 -outfmt 6 -max_target_seqs 100000000 > " . $current_afin . ".blastn";
-	`$blast_afin_exec`;
+	run_cmd($blast_afin_exec, "blastn");
 
 	&remove_nested($current_afin, $current_afin.".blastn");
 	
@@ -798,9 +861,9 @@ if( $total_afin_contigs > 1){
 		$current_afin=$name.".final.scaffolds.fasta";
 		$current_afin=&afin_wrap($current_afin, "extend");		
 
-		`$BLAST/makeblastdb -in $current_afin -dbtype nucl`;
+		run_cmd("$BLAST/makeblastdb -in $current_afin -dbtype nucl", "makeblastdb");
 		 $blast_afin_exec = $BLAST . "blastn -query " . $current_afin . " -db " . $current_afin . " -evalue 1e-40 -outfmt 6 -max_target_seqs 100000000 > " . $current_afin . ".blastn";
-		`$blast_afin_exec`;
+		run_cmd($blast_afin_exec, "blastn");
 
 		&remove_nested($current_afin, $current_afin.".blastn");
 		 ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($current_afin);
@@ -962,36 +1025,26 @@ unless(-e $check_finish){
 mkdir("Coverage_Analysis");
 chdir("Coverage_Analysis");
 my $build_bowtie2_exec = $BOWTIE2 . "-build ../Final_Assembly/" . $name . "_FULLCP.fsa " . $name . "_bowtie";
-system($build_bowtie2_exec);
+run_cmd($build_bowtie2_exec, "bowtie2-build");
 
-my $cov_bowtie2_exec;
-if(glob("../1_Trimmed_Reads/$name*trimmed_U*.fq") && glob("../1_Trimmed_Reads/$name*trimmed_P*.fq")){
-	$cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+my $read_args = trimmed_read_args("../1_Trimmed_Reads");
+unless(defined $read_args){
+        print $LOGFILE "Could not find reads to complete Coverage Analysis.  Check 1_Trimmed_Reads.\n";
+        die "Could not find reads to complete Coverage Analysis.  Check 1_Trimmed_Reads.\n";
 }
-elsif(glob("../1_Trimmed_Reads/$name*trimmed_U*.fq") && !glob("../1_Trimmed_Reads/$name*trimmed_P*.fq")){
-	$cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . "  -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
-}
-elsif(!glob("../1_Trimmed_Reads/$name*trimmed_U*.fq") && glob("../1_Trimmed_Reads/$name*trimmed_P*.fq")){
-	$cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -S " . $name . ".sam";
-}
-else{
-	print $LOGFILE "Could not find reads to complete Coverage Analysis.  Check 1_Trimmed_Reads.\n";
-	die "Could not find reads to complete Coverage Analysis.  Check 1_Trimmed_Reads.\n";
-}
-
-system($cov_bowtie2_exec);
-$jellyfish_pwd = system("pwd");
+my $cov_bowtie2_exec = "$BOWTIE2 --very-sensitive-local --quiet -p $threads -x ${name}_bowtie$read_args -S $name.sam";
+run_cmd($cov_bowtie2_exec, "bowtie2");
 my $jellyfish_count_exec = $JELLYFISH . " count -m 25 -t ". $threads . " -C -s 1G " . "map_*";
-system($jellyfish_count_exec);
+run_cmd($jellyfish_count_exec, "jellyfish count");
 
 my $jellyfish_dump_exec = $JELLYFISH . " dump mer_counts.jf > " . $name . "_25dump";
-system($jellyfish_dump_exec);
+run_cmd($jellyfish_dump_exec, "jellyfish dump");
 
 my $window_cov_exec = "perl " . $COVERAGE_DIR . "/new_window_coverage.pl " . $name . "_25dump ../Final_Assembly/" . $name . "_FULLCP.fsa 25";
-system($window_cov_exec);
+run_cmd($window_cov_exec, "new_window_coverage.pl");
 
 my $rscript_exec = "Rscript " . $COVERAGE_DIR . "/plot_coverage.r " . $name . ".coverage_25kmer.txt ". $name;
-system($rscript_exec);
+run_optional($rscript_exec, "Rscript coverage plot");
 
 my $check_cov_exec;
 if(defined $min_coverage){
@@ -1000,7 +1053,7 @@ if(defined $min_coverage){
 else{
 	$check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25";
 }
-my $coverage_used = `$check_cov_exec`;
+my $coverage_used = capture_cmd($check_cov_exec, "check_plastid_coverage.pl");
 chomp($coverage_used);
 $current_runtime = localtime();
 print $LOGFILE "$current_runtime\tMinimum coverage of $coverage_used for verifying assembly.\n";
@@ -1021,11 +1074,11 @@ if(-z "Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt"){
 				unlink(glob("*/*.sam"));
 			}
 			if ($clean eq "deep"){
-				rmdir("1_Trimmed_Reads");
-				rmdir("2_Bowtie_Mapping");
-				rmdir("3_Spades_Assembly");
-				rmdir("4_Afin_Assembly");
-				rmdir("5_Plastome_Finishing");
+				remove_tree("1_Trimmed_Reads");
+				remove_tree("2_Bowtie_Mapping");
+				remove_tree("3_Spades_Assembly");
+				remove_tree("4_Afin_Assembly");
+				remove_tree("5_Plastome_Finishing");
 				unlink(glob("Coverage_Analysis/*25dump"));
 				unlink(glob("Coverage_Analysis/mer_counts.jf"));
 				unlink(glob("*/*bt2"));
@@ -1049,29 +1102,26 @@ else{
 	mkdir("../Coverage_Analysis_Reassembly");
 	chdir("../Coverage_Analysis_Reassembly");	
 	my $build_bowtie2_exec = $BOWTIE2 . "-build ../Final_Assembly_Fixed_Low_Coverage/" . $name . "_FULLCP.fsa " . $name . "_bowtie";
-	system($build_bowtie2_exec);
+	run_cmd($build_bowtie2_exec, "bowtie2-build");
 
-	my $cov_bowtie2_exec;
-	if(@p1_array){
-		$cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq --al-conc map_pair_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . " -1 ../1_Trimmed_Reads/" . $name . ".trimmed_P1.fq -2 ../1_Trimmed_Reads/" . $name . ".trimmed_P2.fq -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
+	my $read_args = trimmed_read_args("../1_Trimmed_Reads");
+	unless(defined $read_args){
+	        print $LOGFILE "Could not find reads to complete Coverage Analysis.  Check 1_Trimmed_Reads.\n";
+	        die "Could not find reads to complete Coverage Analysis.  Check 1_Trimmed_Reads.\n";
 	}
-	else{
-		$cov_bowtie2_exec = $BOWTIE2 . " --very-sensitive-local --quiet --al map_hits.fq -p " . $threads . " -x " . $name ."_bowtie" . "  -U ../1_Trimmed_Reads/" . $name . ".trimmed_UP.fq -S " . $name . ".sam";
-	}
+	my $cov_bowtie2_exec = "$BOWTIE2 --very-sensitive-local --quiet -p $threads -x ${name}_bowtie$read_args -S $name.sam";
+	run_cmd($cov_bowtie2_exec, "bowtie2");
+	my $jellyfish_count_exec = $JELLYFISH . " count -m 25 -t ". $threads . " -C -s 1G map_*";
+	run_cmd($jellyfish_count_exec, "jellyfish count");
 
-	system($cov_bowtie2_exec);
-	$jellyfish_pwd = system("pwd");
-	my $jellyfish_count_exec = $JELLYFISH . " count -m 25 -t ". $threads . " -C -s 1G " . $jellyfish_pwd . "/map_*";
-	system($jellyfish_count_exec);
-
-	my $jellyfish_dump_exec = $JELLYFISH . " dump mer_counts.jf > " . $jellyfish_pwd . "/" . $name . "_25dump";
-	system($jellyfish_dump_exec);
+	my $jellyfish_dump_exec = $JELLYFISH . " dump mer_counts.jf > " . $name . "_25dump";
+	run_cmd($jellyfish_dump_exec, "jellyfish dump");
 
 	my $window_cov_exec = "perl " . $COVERAGE_DIR . "/new_window_coverage.pl " . $name . "_25dump ../Final_Assembly_Fixed_Low_Coverage/" . $name . "_FULLCP.fsa 25";
-	system($window_cov_exec);
+	run_cmd($window_cov_exec, "new_window_coverage.pl");
 
 	my $rscript_exec = "Rscript " . $COVERAGE_DIR . "/plot_coverage.r " . $name . ".coverage_25kmer.txt ". $name;
-	system($rscript_exec);
+	run_optional($rscript_exec, "Rscript coverage plot");
 	if(defined $min_coverage){
         	$check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25 ".$min_coverage;
 	}
@@ -1079,7 +1129,7 @@ else{
         	$check_cov_exec = "perl " . $COVERAGE_DIR . "/check_plastid_coverage.pl " . $name . ".coverage_25kmer.txt 25";
 	}
 	
-	my $coverage_used = `$check_cov_exec`;
+	my $coverage_used = capture_cmd($check_cov_exec, "check_plastid_coverage.pl");
 	chomp($coverage_used);
 	$current_runtime = localtime();
 	print $LOGFILE "$current_runtime\tMinimum coverage of $coverage_used for verifying assembly.\n";
@@ -1103,17 +1153,17 @@ else{
 
 			}
 			if ($clean eq "deep"){
-				rmdir("1_Trimmed_Reads");
-				rmdir("2_Bowtie_Mapping");
-				rmdir("3_Spades_Assembly");
-				rmdir("4_Afin_Assembly");
-				rmdir("5_Plastome_Finishing");
+				remove_tree("1_Trimmed_Reads");
+				remove_tree("2_Bowtie_Mapping");
+				remove_tree("3_Spades_Assembly");
+				remove_tree("4_Afin_Assembly");
+				remove_tree("5_Plastome_Finishing");
 				unlink(glob("Coverage_Analysis/*25dump"));
 				unlink(glob("Coverage_Analysis/mer_counts.jf"));
 				unlink(glob("*/*bt2"));
 				unlink(glob("Coverage_Analysis_Reassembly/mer_counts.jf"));
 				unlink(glob("Coverage_Analysis_Reassembly/*25dump"));
-				rmdir("4.5_Reassemble_Low_Coverage");
+				remove_tree("4.5_Reassemble_Low_Coverage");
 
 			}
 	}
@@ -1152,7 +1202,7 @@ sub scaffolding {
         my $ref;
         if($scaffold_reference){
                 if(-s $scaffold_reference){
-                        system("cp $scaffold_reference scaffold_reference.fsa");
+                        run_cmd("cp \"$scaffold_reference\" scaffold_reference.fsa", "copy of scaffold reference");
                         $ref = "scaffold_reference.fsa";
                         print $LOGFILE "$current_runtime\tUsing user-supplied scaffold reference: $scaffold_reference\n";
                 }
@@ -1163,8 +1213,8 @@ sub scaffolding {
         $ref ||= &select_reference_plastome("../$contigs", "scaffold_reference.fsa");
 
         if($ref){
-                my $ragtag_exec = "ragtag.py scaffold $ref ../$contigs -o ragtag_out -w -r -t $threads";
-                system($ragtag_exec);
+                my $ragtag_exec = "$RAGTAG scaffold $ref ../$contigs -o ragtag_out -w -r -t $threads";
+                run_optional($ragtag_exec, "RagTag");
                 if(-e "ragtag_out/ragtag.scaffold.fasta"){
                         $result = "Scaffolding/ragtag_out/ragtag.scaffold.fasta";
                 }
@@ -1175,7 +1225,7 @@ sub scaffolding {
         unless($result){
                 $current_runtime = localtime();
                 print $LOGFILE "$current_runtime\tScaffolding produced no joins; using afin contigs unscaffolded.\n";
-                system("cp ../$contigs ./unscaffolded.fasta");
+                run_cmd("cp ../$contigs ./unscaffolded.fasta", "copy of unscaffolded contigs");
                 $result = "Scaffolding/unscaffolded.fasta";
         }
 
@@ -1193,14 +1243,32 @@ sub select_reference_plastome {
         my $gb = $FPBIN . "/GenBank_Plastomes";
         return undef unless (-e $gb && -e $query);
 
-        # Build the BLAST db locally (writable CWD; the shipped data dir may be
-        # read-only). NOTE: no -parse_seqids -- the bundled multi-plastome file
-        # has headers that make strict seqid parsing abort, and we don't need
-        # blastdbcmd lookups because we extract the chosen record by FASTA scan.
-        system("$BLAST/makeblastdb -in $gb -dbtype nucl -out gb_ref_db > makeblastdb.log 2>&1");
+        # The BLAST db of the whole reference set is large and slow to build, so
+        # build it once beside the reference file when that directory is
+        # writable and reuse it across runs; otherwise build in the (writable)
+        # CWD. A lock directory guards against two concurrent runs building the
+        # shared copy at the same time: the second run just builds locally.
+        # NOTE: no -parse_seqids -- the bundled multi-plastome file has headers
+        # that make strict seqid parsing abort, and we don't need blastdbcmd
+        # lookups because we extract the chosen record by FASTA scan.
+        my $dbprefix = "gb_ref_db";
+        my $shared   = "$FPBIN/GenBank_Plastomes.blastdb";
+        if(-e "$shared.nal" || -e "$shared.nsq"){
+                $dbprefix = $shared;
+        }
+        elsif(-w $FPBIN && mkdir("$shared.lock")){
+                my $ok = run_optional("$BLAST/makeblastdb -in $gb -dbtype nucl -out $shared > makeblastdb.log 2>&1", "makeblastdb (reference plastomes)");
+                rmdir("$shared.lock");
+                $dbprefix = $shared if $ok;
+        }
+        if($dbprefix eq "gb_ref_db"){
+                run_optional("$BLAST/makeblastdb -in $gb -dbtype nucl -out $dbprefix > makeblastdb.log 2>&1", "makeblastdb (reference plastomes)")
+                        or return undef;
+        }
 
         my $blout = "reference_selection.blastn";
-        system("$BLAST/blastn -query $query -db gb_ref_db -outfmt \"6 sseqid bitscore\" -max_target_seqs 50 -evalue 1e-20 > $blout 2>/dev/null");
+        run_optional("$BLAST/blastn -query $query -db $dbprefix -outfmt \"6 sseqid bitscore\" -max_target_seqs 50 -evalue 1e-20 > $blout 2>/dev/null", "blastn (reference selection)")
+                or return undef;
 
         # Pick the reference with the highest summed bitscore across all contigs.
         my %score;
@@ -1275,18 +1343,36 @@ sub append_reads {
 
 ##########
 
+# bowtie2 read arguments for whichever trimmed files exist under $trim_dir
+# (paired, unpaired, or both). Returns undef when there are no reads at all.
+# Replaces four hand-written if/elsif chains, one of which (the reassembly
+# branch) assumed an unpaired file always existed for paired-end runs.
+sub trimmed_read_args {
+	my ($trim_dir) = @_;
+	my $p1 = "$trim_dir/$name.trimmed_P1.fq";
+	my $p2 = "$trim_dir/$name.trimmed_P2.fq";
+	my $up = "$trim_dir/$name.trimmed_UP.fq";
+	my $have_pe = (-s $p1 && -s $p2) ? 1 : 0;
+	my $have_up = (-s $up) ? 1 : 0;
+	return undef unless $have_pe || $have_up;
+	my $args = " --al map_hits.fq";
+	$args .= " --al-conc map_pair_hits.fq -1 $p1 -2 $p2" if $have_pe;
+	$args .= " -U $up" if $have_up;
+	return $args;
+}
+
 sub build_bowtie2_indices {
-	
+
 	my $bowtie_index = $_[0];
-	my $bowtie_match;
-	if($bowtie_index =~ /,/){
-		my @tempbow = split (/,/, $bowtie_index);
-		$bowtie_match = join("|", @tempbow);
-		$bowtie_index = join("_", @tempbow);
-	}
-	else{
-		$bowtie_match = $bowtie_index;
-	}
+	my @terms = grep { length } map { my $t = $_; $t =~ s/^\s+|\s+$//g; $t } split /,/, $bowtie_index;
+	$bowtie_index = join("_", @terms) if @terms > 1;
+
+	# Whole-token, case-insensitive match against each record's taxonomy
+	# (genus, species, tribe, subfamily, family, order). The old substring
+	# match made "Poa" pull every Poaceae, and treated regex metacharacters
+	# in the query as syntax.
+	my $term_re = @terms ? '(?:^|\s)(?:' . join("|", map { quotemeta(lc $_) } @terms) . ')(?:\s|$)' : undef;
+	my $want_all = (!defined $term_re || $bowtie_index =~ /^all$/i || $bowtie_index =~ /^genbank$/i) ? 1 : 0;
 
 	# Taxonomy source. The current database uses bare-accession headers with a
 	# sidecar metadata TSV (accession genus species tribe subfamily family order
@@ -1316,89 +1402,82 @@ sub build_bowtie2_indices {
 		print $LOGFILE "\t\t\t\tNo metadata table ($metafile) found; using legacy header-encoded taxonomy.\n";
 	}
 
-	open my $bt2_seq, ">", $bowtie_index.".fsa";
-	open my $default_gb, "<", $FPBIN."/GenBank_Plastomes";
-	my $gbid;
-	
-	if(-z $bowtie_index || $bowtie_index =~ /^all$/i || $bowtie_index =~ /genbank/i ){
-		print $LOGFILE "\t\t\t\tSamples for $bowtie_index are not in current GenBank plastomes. Using one representative from each order to make bowtie2 indices.\n";
+	my $gbfile = $FPBIN."/GenBank_Plastomes";
+	my $outfsa = $bowtie_index.".fsa";
 
-		
-		$gbid=();
-		my %used;
-		while(<$default_gb>){
-			chomp;
-			if(/>/){
-				my $temp_order;
-				if($have_meta){
-					my ($acc) = /^>(\S+)/;
-					$temp_order = (defined $acc && exists $order_of{$acc}) ? $order_of{$acc} : "";
-				}
-				else{
-					($temp_order) = /_(.*?ales)_/;      # legacy rich header
-					$temp_order = "" unless defined $temp_order;
-				}
-				if($temp_order ne "" && !exists $used{$temp_order}){
-					$gbid=$_;
-					$used{$temp_order}=1;
-				}
-				else{
-					$gbid=();
-				}
-			}
-			elsif($gbid){
-				print $bt2_seq "$gbid\n$_\n";
-			}
+	# Per-record taxonomy for a header line: (accession, order, genus, tokens).
+	my $taxonomy_of = sub {
+		my ($hdr) = @_;
+		my ($acc) = $hdr =~ /^>(\S+)/;
+		$acc = "" unless defined $acc;
+		if($have_meta && exists $order_of{$acc}){
+			return ($acc, $order_of{$acc}, lc $genus_of{$acc}, $tax_blob{$acc});
 		}
-	
-	}
-	else{
+		# legacy rich header: Genus_species_tribe_subfamily_family_order_ACC_source
+		(my $blob = $acc) =~ s/_/ /g;
+		my ($order) = $hdr =~ /_(.*?ales)_/;
+		my ($genus) = $hdr =~ /^>([^_]+)/;
+		return ($acc, (defined $order ? $order : ""), (defined $genus ? lc $genus : ""), lc $blob);
+	};
 
+	# Stream the database, writing every record for which $keep->() is true.
+	# Returns the number of records written.
+	my $write_selected = sub {
+		my ($keep) = @_;
+		open my $in,  "<", $gbfile or die "Fast-Plast: cannot open $gbfile: $!\n";
+		open my $out, ">", $outfsa or die "Fast-Plast: cannot write $outfsa: $!\n";
+		my $printing = 0; my $n = 0;
+		while(<$in>){
+			if(/^>/){
+				$printing = $keep->($_) ? 1 : 0;
+				$n++ if $printing;
+			}
+			print $out $_ if $printing;
+		}
+		close $in; close $out;
+		return $n;
+	};
+
+	my $written = 0;
+	unless($want_all){
 		# One sequence per unique genus among the matching taxa. Pulling every
 		# plastome for a broad taxon (e.g. all Poales) builds a needlessly large
 		# index; one representative per genus keeps the diversity that matters
 		# for read reduction while staying small. Sequences whose genus is
 		# unknown are kept (not collapsed), so no reference is silently dropped.
 		my %used_genus;
-		while(<$default_gb>){
-			chomp;
-			if(/>/){
-				my ($hay, $genus);
-				if($have_meta){
-					my ($acc) = /^>(\S+)/;
-					$hay   = (defined $acc && exists $tax_blob{$acc}) ? $tax_blob{$acc} : "";
-					$genus = (defined $acc && exists $genus_of{$acc}) ? lc($genus_of{$acc}) : "";
-				}
-				else{
-					$hay = $_;                          # legacy: match full header
-					($genus) = /^>([^_]+)/;             # genus = first header token
-					$genus = defined $genus ? lc($genus) : "";
-				}
-				if($hay =~ /$bowtie_match/i){
-					if($genus eq "" || $genus eq "na" || !exists $used_genus{$genus}){
-						$gbid=$_;
-						$used_genus{$genus}=1 unless ($genus eq "" || $genus eq "na");
-					}
-					else{
-						$gbid=();               # genus already represented
-					}
-				}
-				else{
-					$gbid=();
-				}
-			}
-			elsif($gbid){
-				print $bt2_seq "$gbid\n$_\n";
-			}
+		$written = $write_selected->(sub {
+			my (undef, undef, $genus, $blob) = $taxonomy_of->($_[0]);
+			return 0 unless $blob =~ /$term_re/;
+			return 1 if $genus eq "" || $genus eq "na";
+			return 0 if $used_genus{$genus}++;
+			return 1;
+		});
+		if($written){
+			print $LOGFILE "\t\t\t\t$written plastomes matching '$bowtie_index' (one per genus) used to make bowtie2 indices.\n";
 		}
-
-
-
-		print $LOGFILE "\t\t\t\tSamples for $bowtie_index used to make bowtie2 indices (one representative per genus).\n";
+		else{
+			print $LOGFILE "\t\t\t\tNo plastomes in the database match '$bowtie_index'. Using one representative from each order to make bowtie2 indices.\n";
+			$want_all = 1;
+		}
 	}
-	close $default_gb;
-	my $build_bowtie2_exec = $BOWTIE2 . "-build " . $bowtie_index.".fsa" . " " . $name . "_bowtie";
-	system($build_bowtie2_exec);
+	if($want_all){
+		my %used_order;
+		$written = $write_selected->(sub {
+			my (undef, $order) = $taxonomy_of->($_[0]);
+			return 0 if $order eq "";
+			return 0 if $used_order{$order}++;
+			return 1;
+		});
+		print $LOGFILE "\t\t\t\t$written plastomes (one per order) used to make bowtie2 indices.\n";
+	}
+	if($written == 0){
+		print $LOGFILE "\t\t******************ERROR: no reference plastomes could be selected from $gbfile.\n";
+		die "Fast-Plast: no reference plastomes could be selected from $gbfile (is the database intact?).\n";
+	}
+
+	my $build_bowtie2_exec = $BOWTIE2 . "-build " . $outfsa . " " . $name . "_bowtie";
+	run_cmd($build_bowtie2_exec, "bowtie2-build");
 	$bowtie_index=$name . "_bowtie";
 	return($bowtie_index);
 }
@@ -1469,9 +1548,9 @@ my $gotofinish;
 if( $total_afin_contigs > 1){
 	$current_afin = $name . "_afin_iter0.fa";
 
-	`$BLAST/makeblastdb -in $current_afin -dbtype nucl`;
+	run_cmd("$BLAST/makeblastdb -in $current_afin -dbtype nucl", "makeblastdb");
 	my $blast_afin_exec = $BLAST . "blastn -query " . $current_afin . " -db " . $current_afin . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $current_afin . ".blastn";
-	`$blast_afin_exec`;
+	run_cmd($blast_afin_exec, "blastn");
 
 	&remove_nested($current_afin, $current_afin.".blastn");
 	
@@ -1584,13 +1663,13 @@ sub run_afin {
 	my $extension = $_[5];
 	my $afin_exec;
 	if($_[6]){
-		 $afin_exec = $AFIN_DIR . "/afin -c " . $_[4] . " -r ../2_Bowtie_Mapping/map_* -l " . $_[0] . " -f .1 -d " . $_[1] . " -x " . $extension . " -p " . $_[2] . " -i " . $_[3] ." -o ". $name . "_afin --no_fusion";
+		 $afin_exec = $AFIN_DIR . "/afin -c " . $_[4] . " -r ../2_Bowtie_Mapping/map_* -l " . $_[0] . " -f .1 -d " . $_[1] . " -x " . $extension . " -p " . $_[2] . " -i " . $_[3] . " -t " . $threads . " -o ". $name . "_afin --no_fusion";
 	}
 	else{	
-		 $afin_exec = $AFIN_DIR . "/afin -c " . $_[4] . " -r ../2_Bowtie_Mapping/map_* -l " . $_[0] . " -f .1 -d " . $_[1] . " -x " . $extension . " -p " . $_[2] . " -i " . $_[3] ." -o ". $name . "_afin";
+		 $afin_exec = $AFIN_DIR . "/afin -c " . $_[4] . " -r ../2_Bowtie_Mapping/map_* -l " . $_[0] . " -f .1 -d " . $_[1] . " -x " . $extension . " -p " . $_[2] . " -i " . $_[3] . " -t " . $threads . " -o ". $name . "_afin";
 	}
 	print $LOGFILE "\t\t\t\tUsing command $afin_exec.\n";
-	system($afin_exec);
+	run_cmd($afin_exec, "afin");
 
 	my %contig_lengths;
 	my $afin_contig;
@@ -1630,7 +1709,10 @@ sub cpgene_recovery {
 	print $LOGFILE "$current_runtime\tChecking chloroplast gene recovery in contigs.\n";
 	my $current_afin = $_[0];
 	my %chloroplast_db_genes;
-	open my $cpdbgenes, "<", $FPBIN . "/Angiosperm_Chloroplast_Genes.fsa";
+	# Gene set: $posgenes (the bundled angiosperm set unless --posgenes was
+	# given). Previously this sub hard-coded the bundled file, so a custom
+	# gene set was never actually used for orientation.
+	open my $cpdbgenes, "<", $posgenes or die "Fast-Plast: cannot open gene file $posgenes: $!\n";
 	while(<$cpdbgenes>){
 		chomp;
 		if(/>/){
@@ -1638,9 +1720,13 @@ sub cpgene_recovery {
 			$chloroplast_db_genes{$1}=1;
 		}
 	}
-	`$BLAST/makeblastdb -in $FPBIN/Angiosperm_Chloroplast_Genes.fsa -dbtype nucl -out Angiosperm_Chloroplast_Genes`;
+	close $cpdbgenes;
+	# Build the BLAST db once per working directory instead of on every call.
+	unless(-e "Angiosperm_Chloroplast_Genes.nsq"){
+		run_cmd("$BLAST/makeblastdb -in $posgenes -dbtype nucl -out Angiosperm_Chloroplast_Genes", "makeblastdb");
+	}
 	my $blast_afin_exec = $BLAST . "blastn -query " . $current_afin . " -db Angiosperm_Chloroplast_Genes -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $current_afin."_positional_genes" . ".blastn";
-	`$blast_afin_exec`;
+	run_cmd($blast_afin_exec, "blastn");
 	my $total_chloroplast_db_genes= scalar keys %chloroplast_db_genes;
 
 	my %hit_chloroplast_db_genes;
@@ -1904,7 +1990,7 @@ sub remove_contamination{
                 }
         }
 
-        `mv $current_seq\_fixed $current_seq`;
+        rename($current_seq."_fixed", $current_seq) or die "Fast-Plast: cannot replace $current_seq: $!\n";
 }
 
 ##########
@@ -1914,16 +2000,16 @@ sub orientate_plastome{
         my $name = $_[1];
         my $path_to_final = $_[2];
 
-        `$BLAST/makeblastdb -in $posgenes -dbtype nucl -out Angiosperm_Chloroplast_Genes`;
+        run_cmd("$BLAST/makeblastdb -in $posgenes -dbtype nucl -out Angiosperm_Chloroplast_Genes", "makeblastdb");
 
         for (my $i = 0; $i <=3; $i++){
 
-        	`perl $FPBIN/sequence_based_ir_id.pl $current_afin $name $i $min_region_length`;
+        	run_cmd("perl $FPBIN/sequence_based_ir_id.pl $current_afin $name $i $min_region_length", "sequence_based_ir_id.pl");
         	my $split_fullname= $name ."_regions_split".$i.".fsa";
 
-        	`$BLAST/makeblastdb -in $split_fullname -dbtype nucl`;
+        	run_cmd("$BLAST/makeblastdb -in $split_fullname -dbtype nucl", "makeblastdb");
         	my $blast_afin_exec = $BLAST . "blastn -query " . $split_fullname . " -db " . $split_fullname . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $split_fullname . ".blastn";
-			system($blast_afin_exec);
+			run_cmd($blast_afin_exec, "blastn");
 
 			&remove_nested($split_fullname,$split_fullname.".blastn");
 
@@ -1975,17 +2061,15 @@ sub orientate_plastome{
 				next;
 			}
 					
-			$blast_afin_exec = $BLAST . "blastn -query " . $split_fullname . " -db Angiosperm_Chloroplast_Genes -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $split_fullname . "_positional_genes" . ".blastn";
-			system($blast_afin_exec);
+			# cpgene_recovery runs the positional-gene BLAST itself (and writes
+			# the same <split>_positional_genes.blastn the orientation script reads).
 			my ($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($split_fullname);
 			my %contigs_db_genes = %$contigs_db_genes;
 			$percent_recovered_genes=$percent_recovered_genes*100;
 
 			if($percent_recovered_genes > 75){
-					`perl $FPBIN/orientate_plastome_v.2.0.pl $split_fullname $split_fullname\_positional_genes.blastn $name`;
+					run_cmd("perl $FPBIN/orientate_plastome_v.2.0.pl $split_fullname $split_fullname\_positional_genes.blastn $name", "orientate_plastome_v.2.0.pl");
         			my $final_seq = $name ."_FULLCP.fsa";
-        			$blast_afin_exec = $BLAST . "blastn -query " . $final_seq . " -db " . $posgenes . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $current_afin . "_positional_genes" . ".blastn";
-        			system($blast_afin_exec);
         			($percent_recovered_genes, $contigs_db_genes) = &cpgene_recovery($final_seq);
         			%contigs_db_genes = %$contigs_db_genes;
         			$percent_recovered_genes=$percent_recovered_genes*100;
@@ -2179,30 +2263,23 @@ sub reassemble_low_coverage{
 			next;
 		}
 		else{
-			$cass_seq = $_;
+			$cass_seq .= $_;   # was '=', which kept only the last line of a wrapped FASTA
 		}
 	}
-	my $c_start;
-	my $c_stop;
-	my $first_time=0;
+	# Keep the stretches between low-coverage regions. $c_start is the first
+	# base after the previous bad region (0 before any). The old code tested
+	# truthiness, so a bad region starting at position 0 was never skipped.
+	my $c_start = 0;
 	for my $starts (sort {$a <=> $b} keys %break_points){
-		if(!$c_start){
-			if ($starts != "0"){
-				my $temp_break = substr($cass_seq, 0, $starts);
-				$new_substrings{"0"}{$starts-1}=$temp_break;
-				$c_start = $break_points{$starts}+1;
-				
-			}
+		if($starts > $c_start){
+			$new_substrings{$c_start}{$starts-1} = substr($cass_seq, $c_start, $starts-$c_start);
 		}
-		else{
-			my $temp_break = substr($cass_seq, $c_start, $starts-$c_start);
-				$new_substrings{$c_start}{$starts-1}=$temp_break;
-			$c_start=$break_points{$starts}+1;
-		}
+		$c_start = $break_points{$starts}+1;
 	}
-		my $temp_break = substr($cass_seq, $c_start);
-				$new_substrings{$c_start}{length($cass_seq)-1}=$temp_break;
-	
+	if($c_start < length($cass_seq)){
+		$new_substrings{$c_start}{length($cass_seq)-1} = substr($cass_seq, $c_start);
+	}
+
 	close($cassembly);
 	close($tcov);
 
@@ -2257,7 +2334,9 @@ Advanced options:
 	--posgenes		User defined genes for identification of single copy/IR regions and orientation. Useful when major rearrangments are present in user plastomes.
 	--coverage_analysis 	Flag to run the coverage analysis of a final chloroplast assembly.
 	--min_region_length 	Minimum region length (passed on to sequence_based_ir_id.pl)
-	--min_length_trim	Minimum acceptable lenght for reads after trimming. [default = 140]
+	--min_length_trim	Minimum acceptable length for reads after trimming. [default = 140 for reads of 150 bp or longer, otherwise 90% of the read length]
+	--posgenes		FASTA of genes used for LSC/SSC/IR identification and orientation. [default = bundled angiosperm gene set]
+	--scaffold_reference	Reference plastome (FASTA) for RagTag scaffolding, overriding automatic selection.
 
 =head1 DESCRIPTION
 
