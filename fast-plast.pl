@@ -141,10 +141,15 @@ my $min_region_length = 10000;
 my $min_length_trim;
 my $skip;
 my $min_filter_spades;
+# SPAdes read error correction (BayesHammer) is on by default. It costs little
+# on the reduced, plastid-only read set and closes contig breaks caused by
+# indel errors in homopolymer runs, which otherwise leave dead ends in the
+# k=121 graph. --spades_only_assembler restores the pre-1.3.1 behaviour.
+my $spades_only_assembler;
 # Optional user-supplied reference plastome for RagTag scaffolding. Overrides
 # the automatic best-match selection from the bundled GenBank plastomes.
 my $scaffold_reference = $ENV{'FP_REFERENCE'};
-GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check, 'skip=s' => \$skip, 'posgenes|positional_genes=s' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters, "subsample=i" => \$subsample, "only_coverage=s" => \$cov_only, "min_region_length=i" => \$min_region_length, "min_length_trim=i" => \$min_length_trim, "min_filter_spades=i" => \$min_filter_spades, "scaffold_reference=s" => \$scaffold_reference)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
+GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check, 'skip=s' => \$skip, 'posgenes|positional_genes=s' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters, "subsample=i" => \$subsample, "only_coverage=s" => \$cov_only, "min_region_length=i" => \$min_region_length, "min_length_trim=i" => \$min_length_trim, "min_filter_spades=i" => \$min_filter_spades, "spades_only_assembler" => \$spades_only_assembler, "scaffold_reference=s" => \$scaffold_reference)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
 # Resolve the scaffold reference to an absolute path now, before any chdir,
 # so the scaffolding step (which runs several directories deep) can find it.
 $scaffold_reference = File::Spec->rel2abs($scaffold_reference) if $scaffold_reference;
@@ -737,15 +742,17 @@ print $LOGFILE "$current_runtime\tStarting initial assembly with SPAdes.\n\t\t\t
 mkdir("3_Spades_Assembly");
 chdir("3_Spades_Assembly");
 
+my $spades_mode = $spades_only_assembler ? " --only-assembler" : "";
+print $LOGFILE "\t\t\t\tSPAdes read error correction " . ($spades_only_assembler ? "disabled (--spades_only_assembler)" : "enabled") . ".\n";
 my $spades_exec;
 if(-s "../2_Bowtie_Mapping/map_pair_hits.1.fq" && -s "../2_Bowtie_Mapping/map_pair_hits.2.fq" && -s "../2_Bowtie_Mapping/map_hits.fq"){
-	$spades_exec = $SPADES . " -o spades_iter1 -1 ../2_Bowtie_Mapping/map_pair_hits.1.fq -2 ../2_Bowtie_Mapping/map_pair_hits.2.fq -s ../2_Bowtie_Mapping/map_hits.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
+	$spades_exec = $SPADES . " -o spades_iter1 -1 ../2_Bowtie_Mapping/map_pair_hits.1.fq -2 ../2_Bowtie_Mapping/map_pair_hits.2.fq -s ../2_Bowtie_Mapping/map_hits.fq" . $spades_mode . " -k " . $spades_kmer . " -t " . $threads;
 }
 elsif(-s "../2_Bowtie_Mapping/map_pair_hits.1.fq" && -s "../2_Bowtie_Mapping/map_pair_hits.2.fq" && (! -e "../2_Bowtie_Mapping/map_hits.fq" || -z "../2_Bowtie_Mapping/map_hits.fq")){
-	$spades_exec = $SPADES . " -o spades_iter1 -1 ../2_Bowtie_Mapping/map_pair_hits.1.fq -2 ../2_Bowtie_Mapping/map_pair_hits.2.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
+	$spades_exec = $SPADES . " -o spades_iter1 -1 ../2_Bowtie_Mapping/map_pair_hits.1.fq -2 ../2_Bowtie_Mapping/map_pair_hits.2.fq" . $spades_mode . " -k " . $spades_kmer . " -t " . $threads;
 }
 elsif (-s "../2_Bowtie_Mapping/map_hits.fq"){
-	$spades_exec = $SPADES . " -o spades_iter1 -s ../2_Bowtie_Mapping/map_hits.fq --only-assembler -k " . $spades_kmer . " -t " . $threads;
+	$spades_exec = $SPADES . " -o spades_iter1 -s ../2_Bowtie_Mapping/map_hits.fq" . $spades_mode . " -k " . $spades_kmer . " -t " . $threads;
 }
 else{
 	print $LOGFILE "\t\t******************ERROR: No mapped reads files were identified to run SPAdes.  Please check 2_Bowtie_Mapping.******************\n";
@@ -2334,6 +2341,7 @@ Advanced options:
 	--posgenes		User defined genes for identification of single copy/IR regions and orientation. Useful when major rearrangments are present in user plastomes.
 	--coverage_analysis 	Flag to run the coverage analysis of a final chloroplast assembly.
 	--min_region_length 	Minimum region length (passed on to sequence_based_ir_id.pl)
+	--spades_only_assembler	Run SPAdes without read error correction (the behaviour before 1.3.1). Error correction is on by default.
 	--min_length_trim	Minimum acceptable length for reads after trimming. [default = 140 for reads of 150 bp or longer, otherwise 90% of the read length]
 	--posgenes		FASTA of genes used for LSC/SSC/IR identification and orientation. [default = bundled angiosperm gene set]
 	--scaffold_reference	Reference plastome (FASTA) for RagTag scaffolding, overriding automatic selection.

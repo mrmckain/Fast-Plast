@@ -270,6 +270,8 @@ Definitions:
 		--threads		Number of threads used by Fast-Plast.  [Default = 4]
 		--min_coverage		Lowest acceptable coverage for 25-mer sliding window during coverage analysis. [Default = 0.15 * Average coverage]
   		--min_filter_spades	Minimum coverage allowed for SPAdes contig to be passed to afin. Only recommended to change if default is not working. [Default is one standard deviation of weigthed average length of contigs.]
+		--spades_only_assembler	Run SPAdes without read error correction (the behaviour before 1.3.1). Error correction is on by default; it is cheap on the
+					mapped read subset and closes breaks caused by indel errors in homopolymer runs.
 		--adapters		[NEB|Nextera|TruSeq] Adapters used in making the sequencing library. NEB, Nextera, and TruSeq options 
 					available. Also accepts the path to a user created FASTA file of adapters. [Default = NEB]
 		--bowtie_index		Taxon used to pick references for the bowtie2 index. If the taxon is in the database, all matching samples are used. 
@@ -295,6 +297,7 @@ Definitions:
 <h1 id="changelog">Changelog</h1>
 
 * Unreleased (after v.1.3.0) <br>
+    --SPAdes read error correction is now on by default (Fast-Plast previously passed `--only-assembler`); it closes contig breaks at homopolymer runs. `--spades_only_assembler` restores the old behaviour. <br>
     --Read length is now sampled from decompressed reads; gzipped input previously produced wrong SPAdes k-mer and afin extension settings. <br>
     --`--min_length_trim` defaults to 90% of the read length for reads shorter than 150 bp (a flat 140 discarded every read from 75/100 bp libraries). <br>
     --`--subsample` no longer invents a single-end library for paired-end runs. <br>
