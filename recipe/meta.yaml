@@ -6,12 +6,10 @@ package:
   version: {{ version }}
 
 source:
-  # For a real submission, point this at a tagged release tarball and let
-  # bioconda compute the checksum (grayskull/`bioconda-utils` will fill it in):
-  #   url: https://github.com/mrmckain/Fast-Plast/archive/refs/tags/v{{ version }}.tar.gz
-  #   sha256: <filled in at submission>
+  # sha256 of the GitHub tag tarball; recompute on every version bump:
+  #   curl -sSL https://github.com/mrmckain/Fast-Plast/archive/refs/tags/v<ver>.tar.gz | shasum -a 256
   url: https://github.com/mrmckain/Fast-Plast/archive/refs/tags/v{{ version }}.tar.gz
-  sha256: 0000000000000000000000000000000000000000000000000000000000000000
+  sha256: 1877d8758307d08d0cceb105fb318d24fa4c47ffa03c5d100f4e6c11326e55e6
 
 build:
   number: 0
