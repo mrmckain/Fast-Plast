@@ -6,6 +6,9 @@
 
 static const int AMBIGUITY_MIN_DEPTH = 20;   // reads covering the position
 static const int AMBIGUITY_MIN_READS = 3;    // reads supporting the second base
+static const int FORK_WINDOW = 40;           // positions examined after a split to tell a variant from a fork
+static const int FORK_MIN_COMPARED = 5;      // positions where both read groups must still have reads
+static const double FORK_AGREE = 0.9;        // agreement needed to call it a variant
 
 Extension::Extension( Readlist *reads, int len ) : reads(reads), len(len), matches(Match(reads)){
   start = -1;
@@ -93,13 +96,47 @@ void Extension::bp_count(){
       // branch. A real branch there is re-examined at the start of the next
       // step with full depth.
       if( total >= AMBIGUITY_MIN_DEPTH && second >= AMBIGUITY_MIN_READS && second >= max_ambiguity * total ){
+        // Fork test. A heteroplasmic SNP also splits the reads here, but the
+        // two groups agree again immediately afterwards; at a repeat end they
+        // keep diverging. Compare the consensus of the majority-base reads
+        // with that of the second-base reads over the next FORK_WINDOW
+        // positions (where both groups still have reads): agreement means a
+        // variant, which is tolerated; disagreement means a fork, which stops
+        // the extension. An indel allele looks like a fork and stops it too,
+        // which errs on the safe side.
+        const char BASES[4] = { 'A', 'T', 'C', 'G' };
+        int maj = 0;
+        for( int b=1; b<4; b++ ){ if( ATCG_curr[b] > ATCG_curr[maj] ) maj = b; }
+        int sec = -1;
+        for( int b=0; b<4; b++ ){ if( b != maj && ( sec < 0 || ATCG_curr[b] > ATCG_curr[sec] ) ) sec = b; }
+        std::vector<int> group_maj, group_sec;
+        for( int j=0; j<(int)matches.get_matchlist_size(); j++ ){
+          int c = matches.get_pos( j, start+(pos_mult*i) );
+          if( c == BASES[maj] ) group_maj.push_back( j );
+          else if( c == BASES[sec] ) group_sec.push_back( j );
+        }
+        int compared = 0, agree = 0;
+        for( int d=1; d<=FORK_WINDOW; d++ ){
+          int cm[4] = {0,0,0,0}, cs[4] = {0,0,0,0};
+          for( int j : group_maj ){ int c = matches.get_pos( j, start+(pos_mult*(i+d)) ); for( int b=0; b<4; b++ ) if( c == BASES[b] ) cm[b]++; }
+          for( int j : group_sec ){ int c = matches.get_pos( j, start+(pos_mult*(i+d)) ); for( int b=0; b<4; b++ ) if( c == BASES[b] ) cs[b]++; }
+          int tm = 0, ts = 0, bm = 0, bs = 0;
+          for( int b=0; b<4; b++ ){ tm += cm[b]; ts += cs[b]; if( cm[b] > cm[bm] ) bm = b; if( cs[b] > cs[bs] ) bs = b; }
+          if( tm >= AMBIGUITY_MIN_READS && ts >= AMBIGUITY_MIN_READS ){
+            compared++;
+            if( bm == bs ) agree++;
+          }
+        }
+        bool variant = ( compared >= FORK_MIN_COMPARED && agree >= FORK_AGREE * compared );
         if( verbose ){
           std::lock_guard<std::mutex> lk_g(log_mut);
-          Log::Inst()->log_it( "ambiguity stop at extension position " + std::to_string(i) + ": " + std::to_string(second) + " of " + std::to_string(total) + " reads support a second base" );
+          Log::Inst()->log_it( std::string( variant ? "variant tolerated" : "ambiguity stop" ) + " at extension position " + std::to_string(i) + ": " + std::to_string(second) + " of " + std::to_string(total) + " reads support a second base; downstream agreement " + std::to_string(agree) + "/" + std::to_string(compared) );
         }
-        len = i;
-        stopped_ambiguous = true;
-        break;
+        if( ! variant ){
+          len = i;
+          stopped_ambiguous = true;
+          break;
+        }
       }
     }
 
