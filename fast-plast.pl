@@ -410,6 +410,51 @@ sub kmers_for_length {
 	return "23,27,31";
 }
 
+# Coverage-based choice, used once the reads have been mapped. Each read of
+# length L contributes L-k+1 k-mers, so expected k-mer coverage falls with k
+# and falls faster when reads have been trimmed short; a fixed length table
+# cannot see that. The top k is the largest odd k <= 127 whose expected k-mer
+# coverage over the mapped (plastid) reads stays above $floor, which leaves
+# headroom for coverage dips and sequencing errors. Below it the ladder uses
+# SPAdes' own spacing, 55,77,99,127, keeping 55 as the smallest k so that
+# very deep libraries do not tangle at small k on mitochondrial and nuclear
+# plastid-like reads. Plastome size is taken as a nominal 150 kb.
+# Returns ($kmer_string, $depth, $top_k, $nreads, \%kcov) or () when there
+# are too few mapped reads to decide.
+sub kmers_from_coverage {
+	my ($floor, @files) = @_;
+	my $genome = 150000;
+	my %kc; my ($n, $bases) = (0, 0);
+	for my $file (@files){
+		next unless -s $file;
+		my $in = open_read_stream($file);
+		while(my $h = <$in>){
+			my $seq = <$in>;
+			last unless defined $seq;
+			<$in>; <$in>;
+			chomp($seq);
+			my $L = length($seq);
+			$n++; $bases += $L;
+			for(my $k = 33; $k <= 127; $k += 2){
+				my $c = $L - $k + 1;
+				last if $c <= 0;
+				$kc{$k} += $c;
+			}
+		}
+		close $in;
+	}
+	return () if $n < 1000;
+	$kc{$_} = ($kc{$_} || 0) / $genome for keys %kc;
+	my $top = 0;
+	for(my $k = 33; $k <= 127; $k += 2){
+		$top = $k if ($kc{$k} || 0) >= $floor;
+	}
+	return () if $top < 55;
+	my @ladder = grep { $_ <= $top } (55, 77, 99, 127);
+	push @ladder, $top if $top > $ladder[-1];
+	return (join(",", @ladder), $bases / $genome, $top, $n, \%kc);
+}
+
 # Length statistics over the first $nrecords records of each file given:
 # returns (n, max, median, 25th percentile).
 sub read_length_stats {
@@ -788,6 +833,22 @@ $current_runtime = localtime();
 print $LOGFILE "$current_runtime\tStarting initial assembly with SPAdes.\n\t\t\t\tUsing $SPADES.\n";
 mkdir("3_Spades_Assembly");
 chdir("3_Spades_Assembly");
+
+# Final k-mer choice from the mapped reads (see kmers_from_coverage). The
+# length-based choice made after trimming stands only if this cannot decide.
+{
+	my ($kmers, $depth, $top, $n, $kc) = kmers_from_coverage(50,
+		map { "../2_Bowtie_Mapping/$_" } qw(map_pair_hits.1.fq map_pair_hits.2.fq map_hits.fq));
+	if($kmers){
+		my $prof = join("  ", map { sprintf("k%d=%.0fx", $_, $kc->{$_} || 0) } (55, 77, 99, 111, 121, 127));
+		printf $LOGFILE "\t\t\t\tMapped reads: %d, plastid depth ~%.0fx (150 kb nominal). Expected k-mer coverage: %s.\n", $n, $depth, $prof;
+		print $LOGFILE "\t\t\t\tLargest k with >= 50x expected k-mer coverage: $top. K-mer sizes for SPAdes set at $kmers (was $spades_kmer from read length).\n";
+		$spades_kmer = $kmers;
+	}
+	else{
+		print $LOGFILE "\t\t\t\tToo few mapped reads to choose k-mers from coverage; keeping $spades_kmer from read length.\n";
+	}
+}
 
 my $spades_mode = $spades_only_assembler ? " --only-assembler" : "";
 print $LOGFILE "\t\t\t\tSPAdes read error correction " . ($spades_only_assembler ? "disabled (--spades_only_assembler)" : "enabled") . ".\n";
