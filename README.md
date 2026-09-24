@@ -299,6 +299,7 @@ Definitions:
 <h1 id="changelog">Changelog</h1>
 
 * Unreleased <br>
+    --afin: extension now stops at a branch (a position where a second base is supported by at least 25% of the reads, `-a/--max_ambiguity`), and every contig fusion must be supported by reads extending unambiguously across the junction from at least one side. On Pogonachne racemosa this prevents a fusion through a 476 bp repeat that inverted 25 kb of the LSC. Also fixed: an early stop permanently shortened later extensions of the same contig, and the afin makefile did not rebuild objects when a header changed. <br>
     --After every afin run, the contigs are placed on the reference plastome and any contig whose segments map to both strands is flagged in the log, the summary and `<contigs>.strand_check.txt`. afin can fuse through a short repeat and invert everything downstream; the IR and the SSC orientation isomer are recognised and not flagged. <br>
 
 * 24-September-2026 Fast-Plast v.1.3.1 <br>

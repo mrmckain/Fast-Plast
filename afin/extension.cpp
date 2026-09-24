@@ -2,6 +2,10 @@
 
 #include "extension.hpp"
 #include "process.hpp"
+#include <algorithm>
+
+static const int AMBIGUITY_MIN_DEPTH = 20;   // reads covering the position
+static const int AMBIGUITY_MIN_READS = 3;    // reads supporting the second base
 
 Extension::Extension( Readlist *reads, int len ) : reads(reads), len(len), matches(Match(reads)){
   start = -1;
@@ -69,6 +73,34 @@ void Extension::bp_count(){
     if( ATCG_curr[4] < min_cov ){
       len = i;
       break;
+    }
+
+    // Ambiguity stop: if a second base is supported by at least max_ambiguity
+    // of the reads covering this position (and by at least 2 reads), the reads
+    // disagree about what comes next -- typically two genomic copies of a
+    // repeat diverging here. Extending further would mean choosing the
+    // better-covered copy, which is how a contig gets fused across a repeat
+    // into the wrong neighbour. Stop at the branch instead. This must happen
+    // before error_removal(), which would otherwise discard the minority
+    // reads as errant and hide the branch.
+    if( max_ambiguity > 0 ){
+      int total = ATCG_curr[0] + ATCG_curr[1] + ATCG_curr[2] + ATCG_curr[3];
+      std::vector<int> sorted( ATCG_curr.begin(), ATCG_curr.begin() + 4 );
+      std::sort( sorted.begin(), sorted.end() );
+      int second = sorted[2];   // second-largest count (equals the largest on a tie)
+      // Only test positions with enough reads: at the tail of an extension step
+      // few reads still reach, and 2 disagreeing of 7 is read-end noise, not a
+      // branch. A real branch there is re-examined at the start of the next
+      // step with full depth.
+      if( total >= AMBIGUITY_MIN_DEPTH && second >= AMBIGUITY_MIN_READS && second >= max_ambiguity * total ){
+        if( verbose ){
+          std::lock_guard<std::mutex> lk_g(log_mut);
+          Log::Inst()->log_it( "ambiguity stop at extension position " + std::to_string(i) + ": " + std::to_string(second) + " of " + std::to_string(total) + " reads support a second base" );
+        }
+        len = i;
+        stopped_ambiguous = true;
+        break;
+      }
     }
 
     // initialize next bp to 0 for each nucleotide
@@ -185,6 +217,11 @@ void Extension::build_string(){
 /// checks the matches against each other and the contig, compiles an extension of length len (or less if the length is limited by matches) that is returned
 /// used for off the front matching
 std::string Extension::get_extension( std::string contig, bool back ){
+  // bp_count() lowers len when it stops early (low coverage or ambiguity);
+  // restore the configured length so one early stop does not cap every later
+  // extension of this contig.
+  len = extend_len;
+  stopped_ambiguous = false;
   // contains multiplier for position calculation
   exten_seq = "";
   missed_bp_tot = 0;

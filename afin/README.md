@@ -29,6 +29,7 @@ After long nights and careful consideration I've come to the conclusion that thi
       -f, stop_ext           [default:  .5] During extension, if the percentage of reads remaining after cleaning is below stop_ext, do not extend here
       -g, mismatch           [default:  .1] maximum percentage of mismatches allowed when fusing two contigs
       -x, extend_len         [default:  40] Will add a max of extend_len bases each search loop
+      -a, max_ambiguity      [default: .25] Stop extending where a second base has at least this share of the reads; also verifies fusions with reads (0 disables)
       --silent               Suppress screen output
       --no_log               Suppress log file creation
       --no_fusion            Only extend, no attempt will be made to fuse contigs
@@ -49,6 +50,7 @@ After long nights and careful consideration I've come to the conclusion that thi
 * stop_ext  --  This number represents the fraction of reads required to remain after cleaning to continue with the extension. The purpose here is to avoid extending into regions of the genome where there are two clear paths that could be followed
 * mismatch  --  Maximum percentage of mismatched bases to be allowed for the fusion of two contigs to occur
 * extend_len  --  Maximum number of bases to extend a contig by during the extension process
+* max_ambiguity  --  Stop extending at a position where a second base is supported by at least this fraction of the reads (and by at least 3 reads, with at least 20 reads covering the position). Reads disagreeing about the next base usually means two genomic copies of a repeat diverge there; extending further would follow the better-covered copy and can fuse the contig into the wrong neighbour. The same test is applied to every proposed contig fusion: from at least one side, reads must extend unambiguously across the overlap and 1000 bases into the other contig. 0 disables both checks and restores the previous behaviour
 
 
 ### Installation ###

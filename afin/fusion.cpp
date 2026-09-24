@@ -285,16 +285,23 @@ void Fusion::process_fusions(){
       rev_j = "_r";
     }
 
-    contig_fusion_log( match_list[i] );
     fused_id = get_fused_id( contigs->get_contig(index_i).get_contig_id()+rev_i, contigs->get_contig(index_j).get_contig_id()+rev_j );
     fused_id = "fused(" + fused_id + ")";
+
+    // create fused contig
+    fused = build_fusion_string( contig_i, contig_j, match_list[i].get_length() );
+
+    // the reads must support the junction from both sides, or this is a repeat
+    if( max_ambiguity > 0 && ! fusion_supported( fused, (int)contig_i.length(), match_list[i].get_length() ) ){
+      Log::Inst()->log_it( "Fusion rejected, reads do not extend unambiguously across the junction: " + fused_id + " (overlap " + std::to_string(match_list[i].get_length()) + ")" );
+      continue;
+    }
+
+    contig_fusion_log( match_list[i] );
 
     // push each index onto the remove vector
     contig_remove_list.push_back( index_i );
     contig_remove_list.push_back( index_j );
-
-    // create fused contig
-    fused = build_fusion_string( contig_i, contig_j, match_list[i].get_length() );
 
     // commit fusion here
     commit_fusion( fused, fused_id, index_i, index_j );
@@ -321,6 +328,92 @@ void Fusion::process_fusions(){
       }
     }
   }
+}
+
+// Verify a proposed fusion with the reads. Two contigs whose ends overlap may
+// simply share a repeat: the overlap is perfect, but the genomic copies
+// diverge just beyond it, and fusing them joins the wrong neighbours (the
+// pipeline then carries an inverted or shuffled contig).
+//
+// From each side of the junction the reads are extended, as ordinary
+// extension does, across the overlap and FUSION_MARGIN bases into the other
+// contig. Because that uses the ambiguity stop, a branch anywhere in that
+// stretch (a repeat ending) makes the extension fall short. Only the side
+// that starts in unique sequence can testify: from inside a two-copy
+// repeat such as the IR, reads always branch at its end, so a legitimate
+// LSC/IR junction fails from the IR side and passes from the LSC side.
+//
+// Verdict per side: 1 = supported (reached the margin and matched),
+// -1 = contradicted (branch or mismatch before the margin), 0 = unknown
+// (ran out of coverage before the margin). The fusion is accepted if any
+// side is supported, rejected if any side is contradicted, and otherwise
+// left to the overlap logic as before.
+static const int FUSION_MARGIN = 1000;
+
+bool Fusion::fusion_supported( const std::string& fused, int len_a, int overlap ){
+  int left_edge = len_a - overlap;
+  if( left_edge < 0 ) left_edge = 0;
+  int right_edge = len_a;
+  if( right_edge > (int)fused.length() ) right_edge = (int)fused.length();
+  int need = right_edge - left_edge + FUSION_MARGIN;
+
+  int a = side_supported( fused, left_edge, need );
+  std::string rc = revcomp( fused );
+  int rc_left = (int)fused.length() - right_edge;
+  int b = side_supported( rc, rc_left, need );
+
+  if( verbose ){
+    Log::Inst()->log_it( "  fusion verdicts: from contig_a " + std::to_string(a) + ", from contig_b " + std::to_string(b) + " (1 supported, -1 contradicted, 0 no coverage)" );
+  }
+  if( a == 1 || b == 1 ) return true;
+  if( a == -1 || b == -1 ) return false;
+  return true;
+}
+
+// From position edge in seq, extend rightwards with the reads one extend_len
+// step at a time and compare the built sequence with seq[edge, edge+need).
+int Fusion::side_supported( const std::string& seq, int edge, int need ){
+  // not enough flank on this side to seed a search: nothing to test
+  if( edge < contig_sub_len ){
+    return 0;
+  }
+  if( edge + need > (int)seq.length() ){
+    need = (int)seq.length() - edge;
+  }
+  if( need <= 0 ){
+    return 0;
+  }
+
+  Extension ext( reads, extend_len );
+  std::string cur = seq.substr( 0, edge );
+  std::string built( "" );
+  bool ambiguous = false;
+  while( (int)built.length() < need ){
+    std::string window = cur.substr( cur.length() - contig_sub_len );
+    std::string e = ext.get_extension( window, true );
+    built += e;
+    cur += e;
+    if( ext.stopped_ambiguous ){
+      ambiguous = true;
+      break;
+    }
+    if( e.empty() ){
+      break;
+    }
+  }
+
+  int cmp = ( (int)built.length() < need ) ? (int)built.length() : need;
+  double sc = ( cmp > 0 ) ? mismatch_score( built.substr( 0, cmp ), seq.substr( edge, cmp ) ) : 0.0;
+  if( verbose ){
+    Log::Inst()->log_it( "  fusion check: edge=" + std::to_string(edge) + " need=" + std::to_string(need) + " built=" + std::to_string(built.length()) + " ambiguous=" + std::to_string(ambiguous) + " score=" + std::to_string(sc) );
+  }
+  if( cmp > 0 && sc > mismatch_threshold ){
+    return -1;                       // reads contradict the fused sequence
+  }
+  if( (int)built.length() >= need ){
+    return 1;                        // supported all the way to the margin
+  }
+  return ambiguous ? -1 : 0;         // branch = contradicted; coverage = unknown
 }
 
 // contig_fusion: Attempt to support fusion in case of possibly poorly constructed end.. returns new score from section in question

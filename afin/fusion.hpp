@@ -64,6 +64,10 @@ class Fusion{
     //    ::> contig object is the second while contig_ref is the first and the extension is being made off the front of the object
     double check_fusion_support( std::string contig, std::string contig_ref );
 
+    // read-based verification of a proposed fusion (see fusion.cpp)
+    bool fusion_supported( const std::string& fused, int len_a, int overlap );
+    int side_supported( const std::string& seq, int edge, int need );
+
     // tally mismatches in substrings passed and return score in the form of misatches per length
     double mismatch_score( std::string contig_sub_a, std::string contig_sub_b );
 };

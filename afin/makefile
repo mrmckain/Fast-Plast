@@ -23,6 +23,10 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(OBJS) $(LDLIBS)
 
+# every object depends on every header: a header change must rebuild all of
+# them, or objects compiled against different class layouts corrupt the heap
+$(OBJS): $(wildcard *.hpp)
+
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 

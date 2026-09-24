@@ -24,6 +24,7 @@ int log_output;
 int verbose;
 int no_fusion;
 double mismatch_threshold;
+double max_ambiguity;
 std::mutex log_mut;
 
 ////////////////////////////////////
@@ -85,6 +86,7 @@ void Process::logfile_print_options(){
   Log::Inst()->log_it( "mismatch_threshold: " + std::to_string(mismatch_threshold) );
   Log::Inst()->log_it( "max_threads: " + std::to_string(max_threads) );
   Log::Inst()->log_it( "stop_ext: " + std::to_string(stop_ext) );
+  Log::Inst()->log_it( "max_ambiguity: " + std::to_string(max_ambiguity) );
 }
 
 // initalize logfile

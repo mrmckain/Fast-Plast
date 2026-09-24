@@ -36,6 +36,7 @@ extern int log_output;
 extern int verbose;
 extern int no_fusion;
 extern double mismatch_threshold;
+extern double max_ambiguity;
 extern std::mutex log_mut;
 
 //////////////////////////////

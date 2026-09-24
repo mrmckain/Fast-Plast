@@ -16,6 +16,7 @@ class Extension{
     bool back;
     std::string contig;
     std::string exten_seq;
+    bool stopped_ambiguous;   // true when the last get_extension() ended at an ambiguity stop
     int pos_mult;
     int len;
     int missed_bp_tot;

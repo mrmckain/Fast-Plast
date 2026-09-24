@@ -11,7 +11,7 @@
 void print_usage( std::string prog ){
   std::cout << "Usage: " << prog << " -c contigsfile(s) -r readsfile(s) [-o outfile] [-m sort_char] [-s sub_len]" << std::endl;
   std::cout << "          [-l search_loops] [-i min_cov] [-p min_overlap] [-t max_threads]" << std::endl;
-  std::cout << "          [-d initial_trim] [-e max_missed] [-f stop_ext] [-g mismatch] [-x extend_len]" << std::endl;
+  std::cout << "          [-d initial_trim] [-e max_missed] [-f stop_ext] [-g mismatch] [-x extend_len] [-a max_ambiguity]" << std::endl;
   std::cout << "          [--silent] [--no_log] [--no_fusion] [--verbose] [--print_fused]" << std::endl << std::endl;
   std::cout << "       " << prog << " -h [--help]" << std::endl << std::endl;
   std::cout << std::endl;
@@ -29,6 +29,7 @@ void print_usage( std::string prog ){
   std::cout << "  -f,--stop_ext           [default:  .5] During extension, if the percentage of reads remaining after cleaning is below stop_ext, do not extend here" << std::endl;
   std::cout << "  -g,--mismatch           [default:  .1] maximum percentage of mismatches allowed when fusing two contigs" << std::endl;
   std::cout << "  -x,--extend_len         [default:  40] Will add a max of extend_len bp's each search loop" << std::endl;
+  std::cout << "  -a,--max_ambiguity      [default: .25] Stop extending at a position where a second base is supported by at least this fraction of the reads (and by at least 2 reads); prevents extension through a repeat by following the better-covered branch. 0 disables" << std::endl;
   std::cout << "  --silent                Suppress screen output" << std::endl;
   std::cout << "  --no_log                Suppress log file creation" << std::endl;
   std::cout << "  --no_fusion             Only extend, no attempt will be made to fuse contigs" << std::endl;
@@ -50,6 +51,7 @@ int main( int argc, char** argv ){
   log_output = 1;
   verbose = 0;
   no_fusion = 0;
+  max_ambiguity = 0.25;
 
   int c;
   bool quit_flag = false;
@@ -84,13 +86,14 @@ int main( int argc, char** argv ){
     {"mismatch",      required_argument,  0,  'g'},
     {"extend_len",    required_argument,  0,  'x'},
     {"stop_ext",      required_argument,  0,  'f'},
+    {"max_ambiguity", required_argument,  0,  'a'},
     {"help",          no_argument,        0,  'h'},
     {"test_run",      no_argument,        0,  'z'},
     {0, 0, 0, 0}
   };
 
   // get all options that have been provided on the command line
-  while (( c = getopt_long(argc, argv, "hr:c:o:s:l:x:m:i:p:t:d:e:f:g:z", long_options, &option_index )) != -1 ) {
+  while (( c = getopt_long(argc, argv, "hr:c:o:s:l:x:m:i:p:t:d:e:f:g:a:z", long_options, &option_index )) != -1 ) {
     switch( c ) {
       case 0:
         /* If this option set a flag, do nothing else now. */
@@ -148,6 +151,10 @@ int main( int argc, char** argv ){
       // mismatch_threshold option
       case 'g':
         process.iterable_opts["mismatch_threshold"] = optarg;
+        break;
+      // max_ambiguity option
+      case 'a':
+        max_ambiguity = std::stod(optarg);
         break;
       // outputfile option
       case 'o':
