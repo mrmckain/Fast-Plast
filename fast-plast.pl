@@ -156,6 +156,12 @@ GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2
 $scaffold_reference = File::Spec->rel2abs($scaffold_reference) if $scaffold_reference;
 # Same for a user-supplied adapter file (keywords are resolved later).
 $adapters = File::Spec->rel2abs($adapters) unless $adapters =~ /^(?:nextera|truseq|neb)$/i;
+# And the assembly given to --only_coverage: it is used from inside
+# <name>/Coverage_Analysis, so a relative path would silently break.
+if($cov_only){
+	$cov_only = File::Spec->rel2abs($cov_only);
+	-s $cov_only or pod2usage( { -message => "ERROR: --only_coverage file '$cov_only' not found or empty." } );
+}
 
 if($version) {
 	print "$current_version\n";
@@ -2304,8 +2310,14 @@ sub coverage_summary{
 	}
 	}
 	else{
-		%cplens=%{identify_cp_regions($_[0])};
-	}	
+		my $regions = identify_cp_regions($_[0]);
+		unless($regions){
+			print $LOGFILE "\t\t\t\tNo inverted repeat could be identified in $_[0]; per-region coverage averages skipped.\n";
+			print $SUMMARY "Per-region coverage: not computed (no inverted repeat identified in the assembly)\n";
+			return;
+		}
+		%cplens = %$regions;
+	}
 	my $end_lsc = length($cplens{lsc})-1;
 	my $end_ir = length($cplens{irb})+$end_lsc;
 	my $end_ssc = length($cplens{ssc})+$end_ir;
@@ -2356,9 +2368,15 @@ sub identify_cp_regions{
 	my $irb;
 	my $ira;
 
+	# The assembly is expected to end inside IRa, so the reverse complement of
+	# its last 21 bases marks the start of IRb. If that 21-mer is not found the
+	# assembly has no detectable IR (or does not end in one); report that
+	# instead of scanning off the end of the sequence (which looped forever).
+	return undef if length($temp_cpgenome) < 42;
 	my $boundary1= substr(reverse($temp_cpgenome), 0, 21);
 	$boundary1 =~ tr/ATCGatcg/TAGCtagc/;
 	my $start_irb = index($temp_cpgenome, $boundary1);
+	return undef if $start_irb < 0;
 
 	$lsc = substr($temp_cpgenome, 0, $start_irb);
 
@@ -2368,12 +2386,14 @@ sub identify_cp_regions{
 	$irb_end = reverse($irb_end);
 	$irb_end =~ tr/ATCGatcg/TAGCtagc/;
 
-	until($temp_cpgenome !~ /$irb_end/){
+	# walk forward while the reverse complement of the current 21-mer still occurs
+	until(length($irb_end) < 21 || index($temp_cpgenome, $irb_end) < 0){
         	$i++;
         	$irb_end = substr($temp_cpgenome, $i, 21);
         	$irb_end = reverse($irb_end);
         	$irb_end =~ tr/ATCGatcg/TAGCtagc/;
 	}
+	return undef if $i + 21 > length($temp_cpgenome);
 	$i--;
 	$irb_end = substr($temp_cpgenome, $i, 21);
 	$irb = substr($temp_cpgenome, $start_irb, ($i+21-$start_irb));
