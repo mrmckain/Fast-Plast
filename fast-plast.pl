@@ -871,6 +871,10 @@ else{
 }
 my $coverage_used = capture_cmd($check_cov_exec, "check_plastid_coverage.pl");
 chomp($coverage_used);
+# first line: the minimum coverage used; second line: counts of problem regions and low-complexity dropouts
+my ($coverage_note) = $coverage_used =~ /\n(.*)\z/s;
+$coverage_used =~ s/\n.*\z//s;
+print $LOGFILE "\t\t\t\t$coverage_note\n" if defined $coverage_note;
 $current_runtime = localtime();
 print $LOGFILE "$current_runtime\tMinimum coverage of $coverage_used for verifying assembly.\n";
 print $SUMMARY "Minimum Coverage Used for Verification: $coverage_used\n";
@@ -1294,6 +1298,10 @@ else{
 }
 my $coverage_used = capture_cmd($check_cov_exec, "check_plastid_coverage.pl");
 chomp($coverage_used);
+# first line: the minimum coverage used; second line: counts of problem regions and low-complexity dropouts
+my ($coverage_note) = $coverage_used =~ /\n(.*)\z/s;
+$coverage_used =~ s/\n.*\z//s;
+print $LOGFILE "\t\t\t\t$coverage_note\n" if defined $coverage_note;
 $current_runtime = localtime();
 print $LOGFILE "$current_runtime\tMinimum coverage of $coverage_used for verifying assembly.\n";
 print $SUMMARY "Minimum Coverage Used for Verification: $coverage_used\n";
@@ -1370,6 +1378,10 @@ else{
 	
 	my $coverage_used = capture_cmd($check_cov_exec, "check_plastid_coverage.pl");
 	chomp($coverage_used);
+	# first line: the minimum coverage used; second line: counts of problem regions and low-complexity dropouts
+	my ($coverage_note) = $coverage_used =~ /\n(.*)\z/s;
+	$coverage_used =~ s/\n.*\z//s;
+	print $LOGFILE "\t\t\t\t$coverage_note\n" if defined $coverage_note;
 	$current_runtime = localtime();
 	print $LOGFILE "$current_runtime\tMinimum coverage of $coverage_used for verifying assembly.\n";
 	print $SUMMARY "Minimum Coverage Used for Verification: $coverage_used\n";

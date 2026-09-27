@@ -273,7 +273,7 @@ Definitions:
 					if the whole library would exceed this depth, only as many reads as reach it are used (taken from the head of each file).
 					Skipped when --subsample is given. 0 disables. [Default = 300]
 		--threads		Number of threads used by Fast-Plast.  [Default = 4]
-		--min_coverage		Lowest acceptable coverage for 25-mer sliding window during coverage analysis. [Default = 0.15 * Average coverage]
+		--min_coverage		Lowest acceptable coverage for 25-mer sliding window during coverage analysis. [Default = 0.15 * mean window coverage, capped at 100. Runs of low windows whose sequence is >= 85% AT (or GC) or contains a homopolymer of 10+ bases are reported as low-complexity coverage dropouts, not problems.]
   		--min_filter_spades	Minimum coverage allowed for SPAdes contig to be passed to afin. Only recommended to change if default is not working. [Default is one standard deviation of weigthed average length of contigs.]
 		--spades_only_assembler	Run SPAdes without read error correction (the behaviour before 1.3.1). Error correction is on by default; it is cheap on the
 					mapped read subset and closes breaks caused by indel errors in homopolymer runs.
@@ -302,6 +302,7 @@ Definitions:
 <h1 id="changelog">Changelog</h1>
 
 * Unreleased <br>
+    --Coverage analysis: the low-coverage threshold (0.15 x mean) is capped at 100x, and low-coverage runs in extremely AT-rich or homopolymer sequence are reported as low-complexity dropouts (`<name>_low_complexity_dropouts.txt`) instead of problem regions. A 5,900x library had flagged seven AT-microsatellite dips at up to 456x as problems. <br>
     --`--bowtie_index` accepts a two-word species name (`"Sorghum bicolor"` or `Sorghum_bicolor`): all accessions of that species build the index and the first becomes the scaffolding and strand-check reference, skipping the database-wide reference search. <br>
     --The afin extension length is passed as an integer. <br>
     --Depth cap: a pilot of the first 500,000 records per file is trimmed and mapped before the full trimming step, the plastid fraction is extrapolated to the whole library, and if all reads would exceed `--target_depth` (default 300x) only as many as reach it are used. Deep libraries run several times faster and avoid coverage artifacts; shallow ones are untouched. The bowtie2 index is now built before trimming. <br>
