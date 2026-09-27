@@ -133,6 +133,12 @@ my $current_version = "Fast-Plast v.$FP_VERSION";
 my $user_bowtie;
 my $clean;
 my $subsample;
+# Cap the plastid depth. A pilot of the first reads is trimmed and mapped to
+# estimate the plastid fraction; if all the reads would exceed this depth,
+# only as many as reach it are used (via the --subsample machinery). Deep
+# libraries assemble no better past a few hundred x and take longer; very deep
+# ones produce coverage-driven artifacts. 0 disables the cap.
+my $target_depth = 300;
 my $cov_only;
 my $min_region_length = 10000;
 # Minimum read length after trimming. Left undefined here; once the read length
@@ -150,7 +156,7 @@ my $spades_only_assembler;
 # Optional user-supplied reference plastome for RagTag scaffolding. Overrides
 # the automatic best-match selection from the bundled GenBank plastomes.
 my $scaffold_reference = $ENV{'FP_REFERENCE'};
-GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check, 'skip=s' => \$skip, 'posgenes|positional_genes=s' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters, "subsample=i" => \$subsample, "only_coverage=s" => \$cov_only, "min_region_length=i" => \$min_region_length, "min_length_trim=i" => \$min_length_trim, "min_filter_spades=i" => \$min_filter_spades, "spades_only_assembler" => \$spades_only_assembler, "scaffold_reference=s" => \$scaffold_reference)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
+GetOptions('help|?' => \$help,'version' => \$version, "1=s" => \$paired_end1, "2=s" => \$paired_end2, "single=s" => \$single_end, "bowtie_index=s" => \$bowtie_index, "user_bowtie=s" => \$user_bowtie, "name=s" => \$name, "clean=s" => \$clean, 'coverage_analysis' => \$coverage_check, 'skip=s' => \$skip, 'posgenes|positional_genes=s' => \$posgenes, "threads=i" => \$threads, "min_coverage=i" => \$min_coverage, "adapters=s" => \$adapters, "subsample=i" => \$subsample, "target_depth=i" => \$target_depth, "only_coverage=s" => \$cov_only, "min_region_length=i" => \$min_region_length, "min_length_trim=i" => \$min_length_trim, "min_filter_spades=i" => \$min_filter_spades, "spades_only_assembler" => \$spades_only_assembler, "scaffold_reference=s" => \$scaffold_reference)  or pod2usage( { -message => "ERROR: Invalid parameter." } );
 # Resolve the scaffold reference to an absolute path now, before any chdir,
 # so the scaffolding step (which runs several directories deep) can find it.
 $scaffold_reference = File::Spec->rel2abs($scaffold_reference) if $scaffold_reference;
@@ -194,6 +200,7 @@ if($user_bowtie){
 	if ( !glob($user_bowtie."*")) {
     	pod2usage( { -message => "ERROR: User supplied Bowtie2 indices do not exist. Check path." } );
 	}
+	$user_bowtie = File::Spec->rel2abs($user_bowtie);   # used from inside <name>/...
 }
 
 if($posgenes ne $FPBIN . "/Angiosperm_Chloroplast_Genes.fsa"){
@@ -497,7 +504,123 @@ chdir("$name");
 open my $SUMMARY, ">", $name."_Plastome_Summary.txt";
 print $SUMMARY "Sample:\t$name\nFast-Plast Version:\t$current_version\n";
 
+########## Bowtie2 index ##########
+# Built before trimming so the depth pilot below can map against it; the
+# mapping step later reuses it.
+my $index_prebuilt = 0;
+unless($cov_only){
+	$current_runtime = localtime();
+	print $LOGFILE "$current_runtime\tBuilding the bowtie2 index.\n";
+	mkdir("2_Bowtie_Mapping");
+	chdir("2_Bowtie_Mapping");
+	if($user_bowtie){
+		$bowtie_index = $user_bowtie;
+	}
+	else{
+		$bowtie_index = &build_bowtie2_indices($bowtie_index);
+	}
+	$index_prebuilt = 1;
+	chdir("../");
+}
 
+########## Depth pilot ##########
+# Trim and map the first PILOT_RECORDS records of each read file, measure the
+# plastid fraction per raw read and the trimmed plastid read length, count the
+# reads in the full files, and decide whether the whole library exceeds
+# --target_depth. If it does, set $subsample so that the trimming step below
+# takes only as many reads as reach the target. Reads are taken from the head
+# of each file, which for Illumina data is a tile-ordered, organelle-agnostic
+# sample. Skipped when --subsample was given explicitly or for --only_coverage.
+if($target_depth > 0 && !$subsample && !$cov_only){
+	my $PILOT_RECORDS = 500000;
+	$current_runtime = localtime();
+	print $LOGFILE "$current_runtime\tDepth pilot: mapping the first $PILOT_RECORDS records of each file to estimate plastid depth (target ${target_depth}x).\n";
+	mkdir("0_Depth_Pilot");
+	chdir("0_Depth_Pilot");
+
+	my $pilot_raw = 0;
+	my (@pp1, @pp2, @pps);
+	for my $i (0..$#p1_array){
+		$pilot_raw += copy_head($p1_array[$i], "pilot_$i.P1.fq", $PILOT_RECORDS);
+		$pilot_raw += copy_head($p2_array[$i], "pilot_$i.P2.fq", $PILOT_RECORDS);
+		push @pp1, "pilot_$i.P1.fq"; push @pp2, "pilot_$i.P2.fq";
+	}
+	for my $i (0..$#s_array){
+		$pilot_raw += copy_head($s_array[$i], "pilot_$i.S.fq", $PILOT_RECORDS);
+		push @pps, "pilot_$i.S.fq";
+	}
+
+	# trim the pilot exactly as the full data will be trimmed (or not at all
+	# with --skip trim), into the file names trimmed_read_args() expects
+	my $trimmed_adapters = $adapters;
+	$trimmed_adapters = $FPBIN."/adapters/NexteraPE-PE.fa" if $adapters =~ /^nextera$/i;
+	$trimmed_adapters = $FPBIN."/adapters/TruSeq3-PE.fa"   if $adapters =~ /^truseq$/i;
+	$trimmed_adapters = $FPBIN."/adapters/NEB-PE.fa"       if $adapters =~ /^NEB$/i;
+	for my $i (0..$#pp1){
+		if($skip && $skip eq "trim"){
+			append_reads($pp1[$i], "$name.trimmed_P1.fq");
+			append_reads($pp2[$i], "$name.trimmed_P2.fq");
+		}
+		else{
+			run_cmd("$FASTP --in1 $pp1[$i] --in2 $pp2[$i] --out1 t_$i.P1.fq --out2 t_$i.P2.fq --unpaired1 t_$i.U1.fq --unpaired2 t_$i.U2.fq"
+			      . " --adapter_fasta $trimmed_adapters --detect_adapter_for_pe --cut_right --cut_right_window_size 10 --cut_right_mean_quality 20"
+			      . " --length_required $min_length_trim --thread $threads --json t_$i.json --html t_$i.html 2> t_$i.fastp.log", "fastp (pilot)");
+			append_reads("t_$i.P1.fq", "$name.trimmed_P1.fq") if -s "t_$i.P1.fq";
+			append_reads("t_$i.P2.fq", "$name.trimmed_P2.fq") if -s "t_$i.P2.fq";
+			for my $u ("t_$i.U1.fq", "t_$i.U2.fq"){ append_reads($u, "$name.trimmed_UP.fq") if -s $u; }
+		}
+	}
+	for my $i (0..$#pps){
+		if($skip && $skip eq "trim"){
+			append_reads($pps[$i], "$name.trimmed_UP.fq");
+		}
+		else{
+			run_cmd("$FASTP --in1 $pps[$i] --out1 t_$i.SE.fq --adapter_fasta $trimmed_adapters --cut_right --cut_right_window_size 10 --cut_right_mean_quality 20"
+			      . " --length_required $min_length_trim --thread $threads --json t_$i.SE.json --html t_$i.SE.html 2> t_$i.SE.fastp.log", "fastp (pilot)");
+			append_reads("t_$i.SE.fq", "$name.trimmed_UP.fq") if -s "t_$i.SE.fq";
+		}
+	}
+
+	my $pilot_args = trimmed_read_args(".");
+	my $decided = 0;
+	if(defined $pilot_args){
+		my $idx = $user_bowtie ? $user_bowtie : "../2_Bowtie_Mapping/${name}_bowtie";
+		run_cmd("$BOWTIE2 --very-sensitive-local --quiet -p $threads -x $idx$pilot_args -S pilot.sam", "bowtie2 (pilot)");
+		my $mapped = 0;
+		$mapped += (count_lines("map_pair_hits.1.fq") || 0) / 4 * 2 if -s "map_pair_hits.1.fq";
+		$mapped += (count_lines("map_hits.fq") || 0) / 4             if -s "map_hits.fq";
+		my (undef, undef, $plastid_len) = read_length_stats(50000, grep { -s $_ } ("map_pair_hits.1.fq", "map_pair_hits.2.fq", "map_hits.fq"));
+		if($mapped >= 100 && $plastid_len){
+			# reads in the whole library (P2 taken as equal to P1)
+			my $total_raw = 0;
+			$total_raw += 2 * count_fastq_records($_) for @p1_array;
+			$total_raw += count_fastq_records($_)     for @s_array;
+			my $frac = $mapped / $pilot_raw;                           # plastid reads per raw read
+			my $depth_all = $total_raw * $frac * $plastid_len / 150000;
+			my $needed_raw = int($target_depth * 150000 / $plastid_len / $frac);
+			printf $LOGFILE "\t\t\t\tPilot: %d of %d reads mapped (%.2f%%), trimmed plastid read length %d; the library holds %d reads, estimated plastid depth %.0fx.\n",
+			    $mapped, $pilot_raw, 100*$frac, $plastid_len, $total_raw, $depth_all;
+			if($needed_raw >= 0.9 * $total_raw){
+				print $LOGFILE "\t\t\t\tAt or below the ${target_depth}x target: using all reads.\n";
+				print $SUMMARY "Estimated plastid depth of all reads:\t" . sprintf("%.0f", $depth_all) . "x (all reads used)\n";
+			}
+			else{
+				$subsample = $needed_raw;
+				printf $LOGFILE "\t\t\t\tSubsampling to %d reads for ~%dx plastid depth (%.0f%% of the library).\n", $needed_raw, $target_depth, 100*$needed_raw/$total_raw;
+				print $SUMMARY "Estimated plastid depth of all reads:\t" . sprintf("%.0f", $depth_all) . "x\nSubsampled to:\t$needed_raw reads (~${target_depth}x)\n";
+			}
+			$decided = 1;
+		}
+		else{
+			print $LOGFILE "\t\t\t\tPilot mapped only $mapped reads; cannot estimate depth. Using all reads.\n";
+		}
+	}
+	else{
+		print $LOGFILE "\t\t\t\tPilot produced no trimmed reads; using all reads.\n";
+	}
+	chdir("../");
+	remove_tree("0_Depth_Pilot") if $decided;   # keep it only when the decision could not be made, for diagnosis
+}
 
 ########## Start fastp ##########
 $current_runtime = localtime();
@@ -797,12 +920,13 @@ print $LOGFILE "$current_runtime\tStarting read mapping with bowtie2.\n\t\t\t\tU
 mkdir("2_Bowtie_Mapping");
 chdir("2_Bowtie_Mapping");
 
-if($user_bowtie){
-
-	$bowtie_index = $user_bowtie;
-}
-else{
-	$bowtie_index= &build_bowtie2_indices($bowtie_index);
+unless($index_prebuilt){
+	if($user_bowtie){
+		$bowtie_index = $user_bowtie;
+	}
+	else{
+		$bowtie_index = &build_bowtie2_indices($bowtie_index);
+	}
 }
 my $read_args = trimmed_read_args("../1_Trimmed_Reads");
 unless(defined $read_args){
@@ -1591,6 +1715,34 @@ sub append_reads {
         }
 }
 
+
+# Copy the first $n records of a (possibly gzipped) FASTQ into $dst; returns
+# the number of records written.
+sub copy_head {
+	my ($src, $dst, $n) = @_;
+	my $in = open_read_stream($src);
+	open my $out, ">", $dst or die "ERROR: cannot write $dst: $!\n";
+	my $count = 0;
+	while(my $h = <$in>){
+		my $s = <$in>; my $plus = <$in>; my $q = <$in>;
+		last unless defined $q;
+		print $out $h, $s, $plus, $q;
+		last if ++$count >= $n;
+	}
+	close $in; close $out;
+	return $count;
+}
+
+# Exact record count of a (possibly gzipped) FASTQ, via a line count.
+sub count_fastq_records {
+	my ($file) = @_;
+	my $cmd = ($file =~ /\.gz$/)
+	        ? "$PIGZ" . ($PIGZ =~ /pigz/ ? " -p $threads" : "") . " -dc '$file' | wc -l"
+	        : "wc -l < '$file'";
+	my $lines = capture_cmd($cmd, "read count of $file");
+	$lines =~ s/\s+//g;
+	return int($lines / 4);
+}
 
 ##########
 
@@ -2635,6 +2787,7 @@ Advanced options:
 	--min_region_length 	Minimum region length (passed on to sequence_based_ir_id.pl)
 	--spades_only_assembler	Run SPAdes without read error correction (the behaviour before 1.3.1). Error correction is on by default.
 	--min_length_trim	Minimum acceptable length for reads after trimming. [default = 140 for reads of 150 bp or longer, otherwise 90% of the read length]
+	--target_depth		Cap on plastid depth, estimated from a pilot mapping of the first reads; excess reads are not used. 0 disables. [default = 300]
 	--posgenes		FASTA of genes used for LSC/SSC/IR identification and orientation. [default = bundled angiosperm gene set]
 	--scaffold_reference	Reference plastome (FASTA) for RagTag scaffolding, overriding automatic selection.
 

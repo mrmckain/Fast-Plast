@@ -269,6 +269,9 @@ Definitions:
 
 		--min_length_trim	Acceptable minimum length for reads after trimming for adapters and quality. [Default = 140 for reads of 150 bp or longer; otherwise 90% of the sampled read length]
 		--subsample		Number of reads to subsample. Reads will be evenly pulled from all files. 
+		--target_depth		Cap on plastid depth. The first 500,000 records of each file are trimmed and mapped to estimate the plastid fraction;
+					if the whole library would exceed this depth, only as many reads as reach it are used (taken from the head of each file).
+					Skipped when --subsample is given. 0 disables. [Default = 300]
 		--threads		Number of threads used by Fast-Plast.  [Default = 4]
 		--min_coverage		Lowest acceptable coverage for 25-mer sliding window during coverage analysis. [Default = 0.15 * Average coverage]
   		--min_filter_spades	Minimum coverage allowed for SPAdes contig to be passed to afin. Only recommended to change if default is not working. [Default is one standard deviation of weigthed average length of contigs.]
@@ -301,6 +304,7 @@ Definitions:
 * Unreleased <br>
     --`--bowtie_index` accepts a two-word species name (`"Sorghum bicolor"` or `Sorghum_bicolor`): all accessions of that species build the index and the first becomes the scaffolding and strand-check reference, skipping the database-wide reference search. <br>
     --The afin extension length is passed as an integer. <br>
+    --Depth cap: a pilot of the first 500,000 records per file is trimmed and mapped before the full trimming step, the plastid fraction is extrapolated to the whole library, and if all reads would exceed `--target_depth` (default 300x) only as many as reach it are used. Deep libraries run several times faster and avoid coverage artifacts; shallow ones are untouched. The bowtie2 index is now built before trimming. <br>
 
 * 24-September-2026 Fast-Plast v.1.3.2 <br>
     --SPAdes k-mers are chosen from expected k-mer coverage over the mapped reads: the top k is the largest odd k up to 127 that keeps at least 50x expected k-mer coverage (each read of length L contributes L-k+1 k-mers over a nominal 150 kb plastome), on a 55,77,99,127 ladder. Pogonachne racemosa (237x, reads mostly trimmed to 100-120 bp) gets 55,77,99; Dichanthium parajpyeanum (1109x, clean 151 bp reads) gets 55,77,99,127, with which SPAdes leaves 3 large contigs instead of 13. The length-based choice below is the fallback when too few reads map. <br>
