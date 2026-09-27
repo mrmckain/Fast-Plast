@@ -116,7 +116,7 @@ Example:
 
 This will use all available Poales plastomes in the data set.
 
-Any of the following taxonomic levels is accepted for `--bowtie_index`: genus, species epithet, tribe (if applicable), subfamily (if applicable), family, and order. Multiple taxa may be given as a comma-separated list. Matching is case-insensitive.
+Any of the following taxonomic levels is accepted for `--bowtie_index`: genus, species epithet, tribe (if applicable), subfamily (if applicable), family, and order. Multiple taxa may be given as a comma-separated list. Matching is case-insensitive. A two-word term names a species exactly, for example `--bowtie_index "Sorghum bicolor"` (or `Sorghum_bicolor`): every accession of that species is used for the index, and the first of them also serves as the reference for scaffolding and the afin strand check, which skips the search of the whole database for a reference. This is the fastest and most specific setting when the species, or a very close relative, is already in the database. `--scaffold_reference` still takes precedence if given.
 
 The taxa and accessions currently available are enumerated in the companion metadata table, `bin/GenBank_Plastomes.metadata.tsv` (installed by the fetch script). This table is the authoritative, versioned record of database contents; consult it (or the Zenodo record) for the current set of orders, families, and genera rather than a static list.
 
@@ -297,6 +297,10 @@ Definitions:
 
 
 <h1 id="changelog">Changelog</h1>
+
+* Unreleased <br>
+    --`--bowtie_index` accepts a two-word species name (`"Sorghum bicolor"` or `Sorghum_bicolor`): all accessions of that species build the index and the first becomes the scaffolding and strand-check reference, skipping the database-wide reference search. <br>
+    --The afin extension length is passed as an integer. <br>
 
 * 24-September-2026 Fast-Plast v.1.3.2 <br>
     --SPAdes k-mers are chosen from expected k-mer coverage over the mapped reads: the top k is the largest odd k up to 127 that keeps at least 50x expected k-mer coverage (each read of length L contributes L-k+1 k-mers over a nominal 150 kb plastome), on a 55,77,99,127 ladder. Pogonachne racemosa (237x, reads mostly trimmed to 100-120 bp) gets 55,77,99; Dichanthium parajpyeanum (1109x, clean 151 bp reads) gets 55,77,99,127, with which SPAdes leaves 3 large contigs instead of 13. The length-based choice below is the fallback when too few reads map. <br>

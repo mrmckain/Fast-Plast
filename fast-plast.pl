@@ -934,7 +934,7 @@ rename("temp_filtered_spades_contigs.fsa", "filtered_spades_contigs.fsa");
 
 
 my $current_afin;
-my $extension = $maxsize*0.75;
+my $extension = int($maxsize*0.75);
 my ($total_afin_contigs, $max_afin, $min_afin) = &run_afin(10,100,20,2,"filtered_spades_contigs.fsa",$extension);
 print $LOGFILE "\t\t\t\tAfter afin, there are $total_afin_contigs contigs with a maximum size of $max_afin and a minimum size of $min_afin.\n";
 $current_runtime = localtime();
@@ -1615,15 +1615,20 @@ sub trimmed_read_args {
 sub build_bowtie2_indices {
 
 	my $bowtie_index = $_[0];
-	my @terms = grep { length } map { my $t = $_; $t =~ s/^\s+|\s+$//g; $t } split /,/, $bowtie_index;
-	$bowtie_index = join("_", @terms) if @terms > 1;
+	my @terms = grep { length } map { my $t = $_; $t =~ s/^\s+|\s+$//g; $t =~ s/_/ /g; $t } split /,/, $bowtie_index;
 
-	# Whole-token, case-insensitive match against each record's taxonomy
-	# (genus, species, tribe, subfamily, family, order). The old substring
-	# match made "Poa" pull every Poaceae, and treated regex metacharacters
-	# in the query as syntax.
-	my $term_re = @terms ? '(?:^|\s)(?:' . join("|", map { quotemeta(lc $_) } @terms) . ')(?:\s|$)' : undef;
-	my $want_all = (!defined $term_re || $bowtie_index =~ /^all$/i || $bowtie_index =~ /^genbank$/i) ? 1 : 0;
+	# A two-word term ("Sorghum bicolor", or Sorghum_bicolor) names a species:
+	# every accession of that species is used, and the first one also becomes
+	# the reference for scaffolding and the strand check unless
+	# --scaffold_reference was given. Single words match any taxonomic rank as
+	# whole tokens (genus, species epithet, tribe, subfamily, family, order),
+	# case-insensitively, one plastome per genus among the matches.
+	my @species_terms = map { [ map { lc } split /\s+/, $_ ] } grep { /\s/ } @terms;
+	my @word_terms    = grep { !/\s/ } @terms;
+	(my $index_label = join("_", @terms)) =~ s/\s+/_/g;
+	$bowtie_index = $index_label if @terms;
+	my $term_re = @word_terms ? '(?:^|\s)(?:' . join("|", map { quotemeta(lc $_) } @word_terms) . ')(?:\s|$)' : undef;
+	my $want_all = ((!defined $term_re && !@species_terms) || $bowtie_index =~ /^all$/i || $bowtie_index =~ /^genbank$/i) ? 1 : 0;
 
 	# Taxonomy source. The current database uses bare-accession headers with a
 	# sidecar metadata TSV (accession genus species tribe subfamily family order
@@ -1632,6 +1637,7 @@ sub build_bowtie2_indices {
 	# still works with this script -- and vice versa.
 	my %order_of;    # accession -> order
 	my %genus_of;    # accession -> genus (for one-per-genus reduction)
+	my %species_of;  # accession -> species epithet (for "Genus species" terms)
 	my %tax_blob;    # accession -> lowercased taxonomy string, for --bowtie_index matching
 	my $metafile = $FPBIN."/GenBank_Plastomes.metadata.tsv";
 	if(open my $mfh, "<", $metafile){
@@ -1644,6 +1650,7 @@ sub build_bowtie2_indices {
 			next unless defined $acc && length $acc;
 			$order_of{$acc} = (defined $c[6] ? $c[6] : "");
 			$genus_of{$acc} = (defined $c[1] ? $c[1] : "");
+			$species_of{$acc} = (defined $c[2] ? $c[2] : "");
 			$tax_blob{$acc} = lc join(" ", grep { defined } @c[1..$#c]);
 		}
 		close $mfh;
@@ -1656,19 +1663,21 @@ sub build_bowtie2_indices {
 	my $gbfile = $FPBIN."/GenBank_Plastomes";
 	my $outfsa = $bowtie_index.".fsa";
 
-	# Per-record taxonomy for a header line: (accession, order, genus, tokens).
+	# Per-record taxonomy for a header line: (accession, order, genus, tokens, species).
 	my $taxonomy_of = sub {
 		my ($hdr) = @_;
 		my ($acc) = $hdr =~ /^>(\S+)/;
 		$acc = "" unless defined $acc;
 		if($have_meta && exists $order_of{$acc}){
-			return ($acc, $order_of{$acc}, lc $genus_of{$acc}, $tax_blob{$acc});
+			return ($acc, $order_of{$acc}, lc $genus_of{$acc}, $tax_blob{$acc}, lc $species_of{$acc});
 		}
 		# legacy rich header: Genus_species_tribe_subfamily_family_order_ACC_source
 		(my $blob = $acc) =~ s/_/ /g;
 		my ($order) = $hdr =~ /_(.*?ales)_/;
-		my ($genus) = $hdr =~ /^>([^_]+)/;
-		return ($acc, (defined $order ? $order : ""), (defined $genus ? lc $genus : ""), lc $blob);
+		my @tok = split /_/, $acc;
+		my $genus   = defined $tok[0] ? lc $tok[0] : "";
+		my $species = defined $tok[1] ? lc $tok[1] : "";
+		return ($acc, (defined $order ? $order : ""), $genus, lc $blob, $species);
 	};
 
 	# Stream the database, writing every record for which $keep->() is true.
@@ -1697,15 +1706,35 @@ sub build_bowtie2_indices {
 		# for read reduction while staying small. Sequences whose genus is
 		# unknown are kept (not collapsed), so no reference is silently dropped.
 		my %used_genus;
+		my @species_hits;
 		$written = $write_selected->(sub {
-			my (undef, undef, $genus, $blob) = $taxonomy_of->($_[0]);
-			return 0 unless $blob =~ /$term_re/;
+			my ($acc, undef, $genus, $blob, $species) = $taxonomy_of->($_[0]);
+			for my $st (@species_terms){
+				if($genus eq $st->[0] && $species eq $st->[1]){
+					push @species_hits, $acc;
+					return 1;                       # every accession of a named species
+				}
+			}
+			return 0 unless defined $term_re && $blob =~ /$term_re/;
 			return 1 if $genus eq "" || $genus eq "na";
 			return 0 if $used_genus{$genus}++;
 			return 1;
 		});
+		if(@species_hits){
+			print $LOGFILE "\t\t\t\t" . scalar(@species_hits) . " accession(s) of the named species: @species_hits.\n";
+			if($scaffold_reference){
+				print $LOGFILE "\t\t\t\t--scaffold_reference was given, so $scaffold_reference stays the scaffolding and strand-check reference.\n";
+			}
+			else{
+				my $reffile = $name . ".species_reference.fsa";
+				if(extract_fasta_record($gbfile, $species_hits[0], $reffile)){
+					$scaffold_reference = File::Spec->rel2abs($reffile);
+					print $LOGFILE "\t\t\t\tUsing $species_hits[0] as the reference for scaffolding and the strand check (skips the database-wide reference search).\n";
+				}
+			}
+		}
 		if($written){
-			print $LOGFILE "\t\t\t\t$written plastomes matching '$bowtie_index' (one per genus) used to make bowtie2 indices.\n";
+			print $LOGFILE "\t\t\t\t$written plastomes matching '$bowtie_index' used to make bowtie2 indices" . (@word_terms ? " (one per genus for rank terms)" : "") . ".\n";
 		}
 		else{
 			print $LOGFILE "\t\t\t\tNo plastomes in the database match '$bowtie_index'. Using one representative from each order to make bowtie2 indices.\n";
@@ -1783,7 +1812,7 @@ sub count_contigs {
 sub afin_wrap {
 	my $current_afin=$_[0];
 	
-my $extension = $maxsize*0.75;
+my $extension = int($maxsize*0.75);
 my ($total_afin_contigs, $max_afin, $min_afin);
 
 if($_[1]){
@@ -2596,6 +2625,8 @@ Advanced options:
 	--threads		Number of threads used by Fast-Plast.  [Default = 4]
 	--adapters		Files of adapters used in making sequencing library. Users can select "Nextera" for Nextera adapters, "TruSeq" for TruSeq adapters, leave the default (NEB), or provide their own. [Default = NEB-PE]
 	--bowtie_index		Order for sample to draw references for mapping. If order exists, then all available samples for that order will be used. 
+				A two-word term ("Genus species" or Genus_species) selects that species exactly and makes its first accession the
+				scaffolding and strand-check reference.
 				If order does not exist in default set or the terms "all" or "GenBank" are given, one exemplar from each available order is used 
 				to build the Bowtie2 indicies. [default="All"]
 	--user_bowtie		User supplied bowtie2 indices. If this option is used, bowtie_index is ignored.
