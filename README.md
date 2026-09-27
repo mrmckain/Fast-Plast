@@ -3,7 +3,7 @@ Fast-Plast: Rapid de novo assembly and finishing for whole chloroplast genomes
 =============
 <b>Authors</b>: Michael R. McKain, <a href="https://github.com/afinit/afin">Mark Wilson</a><br>
 </br>
-Version 1.3.2<br>
+Version 1.3.3<br>
 </br>
 <b>Contact</b>: https://github.com/mrmckain
 
@@ -301,7 +301,7 @@ Definitions:
 
 <h1 id="changelog">Changelog</h1>
 
-* Unreleased <br>
+* 27-September-2026 Fast-Plast v.1.3.3 <br>
     --Coverage analysis: the low-coverage threshold (0.15 x mean) is capped at 100x, and low-coverage runs in extremely AT-rich or homopolymer sequence are reported as low-complexity dropouts (`<name>_low_complexity_dropouts.txt`) instead of problem regions. A 5,900x library had flagged seven AT-microsatellite dips at up to 456x as problems. <br>
     --`--bowtie_index` accepts a two-word species name (`"Sorghum bicolor"` or `Sorghum_bicolor`): all accessions of that species build the index and the first becomes the scaffolding and strand-check reference, skipping the database-wide reference search. <br>
     --The afin extension length is passed as an integer. <br>
