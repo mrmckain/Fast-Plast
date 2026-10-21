@@ -452,14 +452,21 @@ sub kmers_from_coverage {
 	}
 	return () if $n < 1000;
 	$kc{$_} = ($kc{$_} || 0) / $genome for keys %kc;
-	my $top = 0;
-	for(my $k = 33; $k <= 127; $k += 2){
-		$top = $k if ($kc{$k} || 0) >= $floor;
+	# Largest k meeting the floor; if no k >= 55 does, step the floor down to
+	# 20x rather than ignoring depth altogether (a 53x library put k=121 at an
+	# expected 10x under the length rule).
+	my ($top, $floor_used) = (0, $floor);
+	for my $try ($floor, 20){
+		$floor_used = $try;
+		for(my $k = 33; $k <= 127; $k += 2){
+			$top = $k if ($kc{$k} || 0) >= $try;
+		}
+		last if $top >= 55;
 	}
 	return () if $top < 55;
 	my @ladder = grep { $_ <= $top } (55, 77, 99, 127);
 	push @ladder, $top if $top > $ladder[-1];
-	return (join(",", @ladder), $bases / $genome, $top, $n, \%kc);
+	return (join(",", @ladder), $bases / $genome, $top, $n, \%kc, $floor_used);
 }
 
 # Length statistics over the first $nrecords records of each file given:
@@ -965,12 +972,12 @@ chdir("3_Spades_Assembly");
 # Final k-mer choice from the mapped reads (see kmers_from_coverage). The
 # length-based choice made after trimming stands only if this cannot decide.
 {
-	my ($kmers, $depth, $top, $n, $kc) = kmers_from_coverage(50,
+	my ($kmers, $depth, $top, $n, $kc, $floor_used) = kmers_from_coverage(50,
 		map { "../2_Bowtie_Mapping/$_" } qw(map_pair_hits.1.fq map_pair_hits.2.fq map_hits.fq));
 	if($kmers){
 		my $prof = join("  ", map { sprintf("k%d=%.0fx", $_, $kc->{$_} || 0) } (55, 77, 99, 111, 121, 127));
 		printf $LOGFILE "\t\t\t\tMapped reads: %d, plastid depth ~%.0fx (150 kb nominal). Expected k-mer coverage: %s.\n", $n, $depth, $prof;
-		print $LOGFILE "\t\t\t\tLargest k with >= 50x expected k-mer coverage: $top. K-mer sizes for SPAdes set at $kmers (was $spades_kmer from read length).\n";
+		print $LOGFILE "\t\t\t\tLargest k with >= ${floor_used}x expected k-mer coverage: $top" . ($floor_used < 50 ? " (no k reached 50x; floor lowered)" : "") . ". K-mer sizes for SPAdes set at $kmers (was $spades_kmer from read length).\n";
 		$spades_kmer = $kmers;
 	}
 	else{

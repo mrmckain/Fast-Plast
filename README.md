@@ -306,6 +306,8 @@ Definitions:
     --SPAdes contig filter keeps contigs at 0.25x-5x of the length-weighted median coverage; the mean-1SD to mean+2.5SD window discarded real IR (high coverage) and single-copy (low coverage) contigs. <br>
     --Scaffolding: a stale `.fai` and the previous RagTag output are cleared before each round (RagTag otherwise wrote an empty scaffold file); when one contig spans the reference origin RagTag is rerun on a rotated reference; contigs that overlap on the reference are spliced (`bin/ragtag_tiling_plan.pl` + `extras/windowed_assembly/tile_scaffold.pl`) when that leaves fewer N runs than the RagTag gap-joined scaffold. <br>
     --New `bin/strand_switch_check.pl`: a segment inverted between the two copies of the short LSC/IR inverted repeat (an afin misjoin) is turned round in place, or the contig is cut and re-scaffolded. <br>
+    --K-mer choice: when no k reaches 50x expected k-mer coverage, the floor drops to 20x instead of reverting to the read-length table (a 56x library now gets 55,77,95 rather than 55,87,121). <br>
+    --Strand check: an SSC in the opposite orientation to the reference is reported as the normal isomer; the IR copies are taken from the reference itself, so a BLAST hit spanning SSC+IR is no longer flagged as a misjoin. <br>
     --Tested on 269 Johnsongrass and 48 Hosta/Agavoideae plastome libraries. <br>
 * 27-September-2026 Fast-Plast v.1.3.3 <br>
     --Coverage analysis: the low-coverage threshold (0.15 x mean) is capped at 100x, and low-coverage runs in extremely AT-rich or homopolymer sequence are reported as low-complexity dropouts (`<name>_low_complexity_dropouts.txt`) instead of problem regions. A 5,900x library had flagged seven AT-microsatellite dips at up to 456x as problems. <br>
