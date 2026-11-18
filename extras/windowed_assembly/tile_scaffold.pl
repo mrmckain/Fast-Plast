@@ -11,7 +11,8 @@ use Getopt::Long;
 # and a plan listing the tiles in reference order, the script orients each
 # tile, places it on the reference with blastn, and splices each tile onto
 # the previous one at an exact 40-mer anchor inside their shared reference
-# interval. Where the two tiles do not share an exact anchor it looks for an
+# interval. Where the two tiles do not share an exact anchor it accepts a
+# reference overlap of 10 bp or more that is identical in both tiles, then an
 # exact end overlap of the raw sequences, and failing that bridges them with N
 # (as many as the reference implies, at least 100), trimming any unaligned
 # tail bases on both sides.
@@ -110,21 +111,84 @@ for my $i (0..$#tiles) {
     if ($i == 0) { $scaf = $B; $off = 0; ($ckey, $cwin) = ($key, $rw); push @log, "start with $key (" . length($B) . " bp)"; next }
     die "tile $key has no left window\n" unless $lw;
     die "tile $ckey has no right window\n" unless $cwin;
-    my @A = pick($ckey, $cwin); my $Alast = $A[-1];
-    my @Bh = pick($key, $lw);    my $Bfirst = $Bh[0];
+    # The join is made at the end of the previous tile and the start of this
+    # one, so use placements that lie there (within $END_SLACK bp of the tile's
+    # end / start): of those, the previous tile's placement that reaches
+    # furthest along the reference (a short second placement of a repeat
+    # inside the window must not be taken for the tile's end) and this tile's
+    # that starts earliest. A tile with an IR flank at its far end has a
+    # placement in the window there too; joining on it would throw the body
+    # of the tile away. Without a placement near the end, take the nearest.
+    my $END_SLACK = 3000;
+    my @A = pick($ckey, $cwin); my $lenA = length($ori{$ckey});
+    my @Aend = grep { $lenA - $_->[1] <= $END_SLACK } @A;
+    my $Alast = @Aend ? (sort { $a->[3] <=> $b->[3] } @Aend)[-1] : (sort { $a->[1] <=> $b->[1] } @A)[-1];
+    my @Bh = pick($key, $lw);
+    my @Bstart = grep { $_->[0] <= $END_SLACK } @Bh;
+    my $Bfirst = @Bstart ? $Bstart[0] : (sort { $a->[0] <=> $b->[0] } @Bh)[0];
     my ($eA, $sB) = ($Alast->[3], $Bfirst->[2]);
     my $done = 0;
     if ($sB <= $eA) {                                           # reference overlap: exact 40-mer anchor
-        for (my $P = int(($sB + $eA) / 2); $P <= $eA - 40 && $P >= $sB; $P += 50) {
+        # Try anchors from the middle of the shared interval to its end, then
+        # from its start to the middle: when the previous tile runs past the
+        # true overlap on a diverged copy of a repeat, only the first part of
+        # the interval is shared sequence.
+        my $mid = int(($sB + $eA) / 2);
+        my @try;
+        for (my $P = $mid; $P <= $eA - 40; $P += 50) { push @try, $P }
+        for (my $P = $sB;  $P <  $mid && $P <= $eA - 40; $P += 50) { push @try, $P }
+        # Every usable anchor in the shared interval, in the order tried.
+        my @anc;                                                # [P, position in tile A, position in tile B]
+        for my $P (@try) {
+            next if $P < $sB;
             my $qa = $Alast->[0] + ($P - $Alast->[2]);
+            next if $qa < 0 || $qa + 40 > length($ori{$ckey});
             my $anchor = substr($ori{$ckey}, $qa, 40);
+            next if length($anchor) < 40 || $anchor =~ /N/i;       # an empty anchor would match everywhere, for ever
             my $qb_est = $Bfirst->[0] + ($P - $Bfirst->[2]);
             my ($best, $bd); my $pos = -1;
             while (($pos = index($B, $anchor, $pos + 1)) >= 0) { my $d = abs($pos - $qb_est); ($best, $bd) = ($pos, $d) if !defined $bd || $d < $bd }
             next unless defined $best && $bd < 2000;
-            $scaf = substr($scaf, 0, $off + $qa) . substr($B, $best);
-            push @log, sprintf("%s -> %s: spliced at reference ~%d (exact 40-mer anchor)", $ckey, $key, $P);
-            $off = $off + $qa - $best; $done = 1; last;
+            push @anc, [$P, $qa, $best];
+        }
+        if (@anc) {
+            # The first anchor tried is the default splice point: tile A before
+            # it, tile B after it. Where the two tiles differ in length between
+            # neighbouring anchors (an indel in the overlap), keep the longer
+            # version whichever tile holds it: assemblers collapse sequence at
+            # hairpins and short direct repeats far more often than they invent
+            # it (the 65 bp IR deletion in Johnsongrass is such a collapse).
+            my $default = $anc[0];
+            my @chain;                                          # anchors in order, colinear in both tiles
+            for my $c (sort { $a->[1] <=> $b->[1] } @anc) {
+                push @chain, $c if !@chain || $c->[2] > $chain[-1][2];
+            }
+            @chain = ($default) unless grep { $_ == $default } @chain;
+            my $merged = substr($scaf, 0, $off + $chain[0][1]);
+            my @kept;
+            for my $j (0 .. $#chain - 1) {
+                my ($c, $d) = @chain[$j, $j + 1];
+                my $la = $d->[1] - $c->[1]; my $lb = $d->[2] - $c->[2];
+                my $useA = $la > $lb ? 1 : $lb > $la ? 0 : ($d->[1] <= $default->[1] ? 1 : 0);
+                $merged .= $useA ? substr($ori{$ckey}, $c->[1], $la) : substr($B, $c->[2], $lb);
+                push @kept, sprintf("kept the longer version (%d bp against %d bp, from %s) at reference ~%d-%d", ($la > $lb ? ($la, $lb, $ckey) : ($lb, $la, $key)), $c->[0], $d->[0]) if $la != $lb;
+            }
+            my $last = $chain[-1];
+            $off = length($merged) - $last->[2];
+            $scaf = $merged . substr($B, $last->[2]);
+            push @log, sprintf("%s -> %s: spliced at reference ~%d (exact 40-mer anchor)", $ckey, $key, $default->[0]);
+            push @log, "    $_" for @kept;
+            $done = 1;
+        }
+    }
+    if (!$done && $sB <= $eA && $eA - $sB + 1 >= 10) {          # short reference overlap, identical in both tiles
+        my $ov = $eA - $sB + 1;
+        my $a_end   = $Alast->[1];                              # tile A bases aligned up to here (1-based)
+        my $b_start = $Bfirst->[0] - 1;                         # tile B aligned from here (0-based)
+        if ($a_end >= $ov && substr($ori{$ckey}, $a_end - $ov, $ov) eq substr($B, $b_start, $ov)) {
+            $scaf = substr($scaf, 0, $off + $a_end) . substr($B, $b_start + $ov);
+            push @log, sprintf("%s -> %s: joined at an identical %d bp reference overlap", $ckey, $key, $ov);
+            $off = $off + $a_end - ($b_start + $ov); $done = 1;
         }
     }
     unless ($done) {                                            # exact end overlap of the raw sequences
@@ -142,7 +206,7 @@ for my $i (0..$#tiles) {
             my $head = $Bfirst->[0] - 1;
             $scaf .= ("N" x $gap) . substr($B, $head);
             $off = length($scaf) - (length($B) - $head);
-            push @log, sprintf("%s -> %s: no anchor; %d bp N gap (trimmed %d + %d unaligned tail bases)", $ckey, $key, $gap, $trimA, $head);
+            push @log, sprintf("%s -> %s: no anchor; %d bp N gap (trimmed %d + %d unaligned tail bases); reference %d to %d", $ckey, $key, $gap, $trimA, $head, $eA, $sB);
             $_->[0] -= $head, $_->[1] -= $head for @{$hsp{$key}}; $ori{$key} = substr($B, $head);
         }
     }

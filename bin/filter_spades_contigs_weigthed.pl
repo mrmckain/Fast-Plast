@@ -6,9 +6,9 @@ use warnings;
 #
 # Usage: filter_spades_contigs_weigthed.pl <contigs.fasta> [min_coverage]
 #
-# Contigs shorter than 1000 bp are ignored. Among the rest, a length-weighted
-# mean and standard deviation of coverage are computed, and contigs outside
-# [mean - 1 sd, mean + 2.5 sd] are dropped. If min_coverage is given it
+# Contigs shorter than 1000 bp are ignored. Among the rest, the length-weighted
+# median coverage is taken as single-copy depth, and contigs outside
+# [0.25 x median, 5 x median] are dropped. If min_coverage is given it
 # replaces the lower bound. Fewer than four contigs are always passed through.
 # Output: filtered_spades_contigs.fsa in the current directory.
 
@@ -59,17 +59,25 @@ if(!@order){
 	exit 0;
 }
 
-my $weighted_average = $accumulated_coverage / $total_length;
-
-# Length-weighted variance (each contig contributes once per base).
-my $variance = 0;
-for my $id (@order){
-	$variance += $len_of{$id} * ($cov_of{$id} - $weighted_average) ** 2;
+# Baseline = length-weighted MEDIAN coverage. The single-copy regions are about
+# three quarters of a plastome, so the median sits at single-copy depth, with
+# the IR near 2x and its rRNA stretch often at 3-4x. The old bounds, mean - 1 sd to mean + 2.5 sd,
+# were pulled around by that spread: they dropped the rRNA part of the IR for
+# being too high and single-copy contigs for being too low, which left holes
+# afin could not close. Keep 0.25x to 5x the median instead; mitochondrial and
+# nuclear plastid-like contigs sit well below 0.25x.
+my $LOW_FACTOR  = 0.25;
+my $HIGH_FACTOR = 5;
+my $median = $cov_of{$order[0]};
+{
+	my $acc = 0;
+	for my $id (sort { $cov_of{$a} <=> $cov_of{$b} } @order){
+		$acc += $len_of{$id};
+		if($acc >= $total_length / 2){ $median = $cov_of{$id}; last; }
+	}
 }
-my $stdev = sqrt($variance / $total_length);
-
-my $min_cov = defined $forced_minimum ? $forced_minimum : $weighted_average - $stdev;
-my $max_cov = $weighted_average + 2.5 * $stdev;  # factor here controls the upper tolerance
+my $min_cov = defined $forced_minimum ? $forced_minimum : $LOW_FACTOR * $median;
+my $max_cov = $HIGH_FACTOR * $median;
 
 for my $id (@order){
 	if(@order >= 4){

@@ -1464,11 +1464,51 @@ sub scaffolding {
         $ref ||= &select_reference_plastome("../$contigs", "scaffold_reference.fsa");
 
         if($ref){
+                # The contig file is rewritten in place after earlier steps may
+                # have indexed it. pysam (ragtag_agp2fa) trusts an existing .fai
+                # without checking it, so a stale index fails with "sequence not
+                # present" and leaves an empty scaffold FASTA. Re-index fresh.
+                unlink("../$contigs.fai");
+                unlink("$ref.fai");
                 my $ragtag_exec = "$RAGTAG scaffold $ref ../$contigs -o ragtag_out -w -r -t $threads";
                 run_optional($ragtag_exec, "RagTag");
-                if(-e "ragtag_out/ragtag.scaffold.fasta"){
+                # -s, not -e: a failed agp2fa leaves a zero-byte scaffold file.
+                if(-s "ragtag_out/ragtag.scaffold.fasta"){
                         $result = "Scaffolding/ragtag_out/ragtag.scaffold.fasta";
                 }
+
+                # RagTag works on a linear reference. A contig that spans the
+                # reference's start point aligns to both of its ends, so its
+                # merged alignment covers the whole reference and RagTag treats
+                # every other contig as contained in it and leaves them
+                # unplaced. If contigs were left unplaced, rotate the reference
+                # to a point no contig spans and scaffold again; keep that run
+                # only if it leaves fewer sequences.
+                if($result){
+                        my $before = count_contigs("ragtag_out/ragtag.scaffold.fasta");
+                        if($before > 1){
+                                my $rotated = rotate_reference_off_contigs($ref, "ragtag_out/ragtag.scaffold.asm.paf", "scaffold_reference.rotated.fsa");
+                                if($rotated){
+                                        unlink("../$contigs.fai");
+                                        run_optional("$RAGTAG scaffold $rotated ../$contigs -o ragtag_rotated -w -r -t $threads", "RagTag (rotated reference)");
+                                        if(-s "ragtag_rotated/ragtag.scaffold.fasta"){
+                                                my $after = count_contigs("ragtag_rotated/ragtag.scaffold.fasta");
+                                                if($after < $before){
+                                                        $result = "Scaffolding/ragtag_rotated/ragtag.scaffold.fasta";
+                                                        print $LOGFILE "\t\t\t\tRagTag left $before sequences on the reference as given and $after after rotating its start point; using the rotated run.\n";
+                                                }
+                                        }
+                                }
+                        }
+                }
+        }
+
+        # RagTag joins neighbouring contigs with N even when they overlap on
+        # the reference. Splice those at shared sequence instead.
+        if($result){
+                my ($rt_dir, $rt_ref) = $result =~ /ragtag_rotated/ ? ("ragtag_rotated", "scaffold_reference.rotated.fsa") : ("ragtag_out", $ref);
+                my $tiled = tile_ragtag_scaffold("../$contigs", $rt_dir, $rt_ref, $name);
+                $result = "Scaffolding/$tiled" if $tiled;
         }
 
         # Graceful fallback: no usable reference, or RagTag made no joins. Pass
@@ -1483,6 +1523,174 @@ sub scaffolding {
         chdir ("../");
         return($result);
 
+}
+
+##########
+
+sub count_n_runs {
+        # Number of N runs in a FASTA file (runs do not cross records).
+        my ($fasta) = @_;
+        my ($runs, $seq) = (0, "");
+        open my $in, "<", $fasta or return undef;
+        while(<$in>){
+                chomp;
+                if(/^>/){ $runs += () = $seq =~ /[Nn]+/g; $seq = ""; }
+                else{ $seq .= $_; }
+        }
+        close $in;
+        $runs += () = $seq =~ /[Nn]+/g;
+        return $runs;
+}
+
+sub count_n_bases {
+        # Number of N bases in a FASTA file.
+        my ($fasta) = @_;
+        my $n = 0;
+        open my $in, "<", $fasta or return undef;
+        while(<$in>){ next if /^>/; $n += tr/Nn//; }
+        close $in;
+        return $n;
+}
+
+##########
+
+sub tile_ragtag_scaffold {
+        # Called from the Scaffolding directory after RagTag. Takes RagTag's
+        # order and orientation of the contigs and splices neighbours that
+        # overlap on the reference (tile_scaffold.pl), so they are no longer
+        # separated by N. Contigs RagTag left unplaced are carried along
+        # unchanged. Returns the new FASTA, or undef when tiling did not
+        # remove any gap (the RagTag scaffold is then used as before).
+        my ($contigs_path, $rt_dir, $rt_ref, $name) = @_;
+        my $planner = "$FPBIN/ragtag_tiling_plan.pl";
+        my $tiler   = "$FP_SHARE/extras/windowed_assembly/tile_scaffold.pl";
+        return undef unless -e $planner && -e $tiler;
+        my $ragtag_fasta = "$rt_dir/ragtag.scaffold.fasta";
+        my $before = count_n_runs($ragtag_fasta);
+        return undef unless $before;
+        my $ragtag_bases = 0;                             # non-N bases in the scaffold RagTag built
+        if(open my $rf, "<", $ragtag_fasta){
+                my %len; my $rid;
+                while(<$rf>){ chomp; if(/^>(\S+)/){ $rid = $1 } else { $len{$rid} += tr/ACGTacgt// } }
+                close $rf;
+                ($ragtag_bases) = sort { $b <=> $a } values %len;
+        }
+
+        unlink glob("tiling_plan.tsv*");
+        system("perl $planner $rt_dir/ragtag.scaffold.agp $rt_dir/ragtag.scaffold.asm.paf tiling_plan.tsv tiling_unplaced.txt") == 0
+                or return undef;
+        run_optional("$BLAST/makeblastdb -in $rt_ref -dbtype nucl -out tiling_refdb > tiling_makeblastdb.log 2>&1", "makeblastdb (tiling reference)")
+                or return undef;
+
+        # The plan as RagTag oriented the contigs, then the variants with an
+        # end contig reverse-complemented; keep the one that leaves fewest gaps.
+        my ($best, $best_runs, $best_n);
+        {
+                local $ENV{PATH} = "$BLAST:$ENV{PATH}";   # tile_scaffold.pl calls blastn by name
+                for my $plan ("tiling_plan.tsv", "tiling_plan.tsv.rotated", "tiling_plan.tsv.fliplast", "tiling_plan.tsv.flipfirst", "tiling_plan.tsv.flipboth"){
+                        next unless -s $plan;
+                        my $out = "$plan.fa";
+                        system("perl $tiler --tiles $contigs_path --db tiling_refdb --plan $plan --out $out --name $name\_tiled > $plan.log 2> $plan.err") == 0
+                                or next;
+                        next unless -s $out;
+                        my $runs = count_n_runs($out);
+                        next unless defined $runs;
+                        my $nb = count_n_bases($out);
+                        # A plan that joined on the wrong placement drops most
+                        # of a contig; overlaps removed by a correct splice are
+                        # a few kb at most.
+                        next if (-s $out) < 0.9 * $ragtag_bases;
+                        # Fewest gaps wins; between plans with the same number
+                        # of gaps, the one with fewer N bases (a 100 N join
+                        # rather than an IR-sized stretch).
+                        ($best, $best_runs, $best_n) = ($plan, $runs, $nb)
+                                if !defined $best_runs || $runs < $best_runs || ($runs == $best_runs && $nb < $best_n);
+                }
+        }
+        return undef unless defined $best;
+        return undef unless $best_runs < $before
+                || ($best_runs == $before && $best_n + 1000 < count_n_bases($ragtag_fasta));
+
+        my %unplaced;
+        if(open my $u, "<", "tiling_unplaced.txt"){
+                while(<$u>){ chomp; $unplaced{$_} = 1 if length; }
+                close $u;
+        }
+        open my $o, ">", "tiled.scaffold.fasta" or return undef;
+        open my $t, "<", "$best.fa" or return undef;
+        print $o $_ while <$t>;
+        close $t;
+        if(%unplaced){
+                open my $c, "<", $contigs_path or return undef;
+                my $keep = 0;
+                while(<$c>){
+                        if(/^>(\S+)/){ $keep = exists $unplaced{$1}; }
+                        print $o $_ if $keep;
+                }
+                close $c;
+        }
+        close $o;
+
+        print $LOGFILE "\t\t\t\tSpliced overlapping contigs in RagTag order ($best): $before N gap(s) before, $best_runs after.\n";
+        if(open my $l, "<", "$best.log"){
+                while(<$l>){ print $LOGFILE "\t\t\t\t\t$_" if /->/; }
+                close $l;
+        }
+        return "tiled.scaffold.fasta";
+}
+
+##########
+
+sub rotate_reference_off_contigs {
+        # Rewrite a single-record reference so that it starts at a position no
+        # contig alignment spans. $paf is the minimap2 output of a RagTag run
+        # against the unrotated reference. Returns the new file, or undef when
+        # there is nothing better than the current start.
+        my ($ref, $paf, $out) = @_;
+        my $margin = 500;
+        my ($tlen, @aln);
+        open my $pf, "<", $paf or return undef;
+        while(<$pf>){
+                my @f = split /\t/;
+                next unless @f >= 12 && $f[10] >= 1000 && $f[11] >= 10;
+                $tlen = $f[6];
+                push @aln, [$f[7], $f[8]];
+        }
+        close $pf;
+        return undef unless @aln && $tlen;
+
+        # Candidates: the middle of each stretch of reference no contig covers
+        # (largest first), then the start of each alignment.
+        my @cand;
+        my ($prev_end, @gaps) = (0);
+        for my $al (sort { $a->[0] <=> $b->[0] } @aln){
+                push @gaps, [$prev_end, $al->[0]] if $al->[0] > $prev_end;
+                $prev_end = $al->[1] if $al->[1] > $prev_end;
+        }
+        push @cand, map { int(($_->[0] + $_->[1]) / 2) } sort { ($b->[1] - $b->[0]) <=> ($a->[1] - $a->[0]) } @gaps;
+        push @cand, map { $_->[0] } sort { $a->[0] <=> $b->[0] } @aln;
+
+        my ($best, $best_spans);
+        for my $p (@cand){
+                next if $p < $margin || $p > $tlen - $margin;   # effectively the current start
+                my $spans = grep { $_->[0] + $margin < $p && $p < $_->[1] - $margin } @aln;
+                ($best, $best_spans) = ($p, $spans) if !defined $best_spans || $spans < $best_spans;
+        }
+        return undef unless defined $best;
+
+        my ($header, $seq, $records) = ("", "", 0);
+        open my $in, "<", $ref or return undef;
+        while(<$in>){
+                chomp;
+                if(/^>/){ $records++; $header = $_; }
+                else{ $seq .= $_; }
+        }
+        close $in;
+        return undef unless $records == 1 && $best < length($seq);
+        open my $o, ">", $out or return undef;
+        print $o "$header\n", substr($seq, $best), substr($seq, 0, $best), "\n";
+        close $o;
+        return $out;
 }
 
 ##########
@@ -1561,8 +1769,18 @@ sub select_reference_plastome {
 # ---------------------------------------------------------------------------
 my $strand_check_ref;
 sub check_strand_switches {
-	my ($contigs) = @_;
+	# Place the contigs on a reference plastome (bin/strand_switch_check.pl)
+	# and report strand switches inside a single-copy region. With $fix set,
+	# a flagged contig is corrected in the contig file itself: the reversed
+	# segment is turned round in place when it sits between the two copies of
+	# an inverted repeat (or between N gaps / contig ends), otherwise the
+	# contig is cut at the switch points for scaffolding to put back in order.
+	# The file as afin wrote it is kept as <contigs>.before_strand_fix.
+	# Returns the number of contigs still flagged.
+	my ($contigs, $fix) = @_;
 	return 0 unless -s $contigs;
+	my $checker = "$FPBIN/strand_switch_check.pl";
+	return 0 unless -e $checker;
 	my $ref;
 	if($scaffold_reference && -s $scaffold_reference){ $ref = $scaffold_reference; }
 	elsif($strand_check_ref && -s $strand_check_ref){ $ref = $strand_check_ref; }
@@ -1575,89 +1793,46 @@ sub check_strand_switches {
 		$strand_check_ref = File::Spec->rel2abs($picked);
 		$ref = $strand_check_ref;
 	}
-	my $db = "strand_check_ref_db";
-	run_optional("$BLAST/makeblastdb -in \"$ref\" -dbtype nucl -out $db > /dev/null 2>&1", "makeblastdb (strand check)") or return 0;
-	my $bl = "$contigs.strand_check.blastn";
-	run_optional("$BLAST/blastn -query $contigs -db $db -outfmt \"6 qseqid qlen qstart qend sstart send length slen\" -evalue 1e-50 > $bl 2>/dev/null", "blastn (strand check)") or return 0;
-
-	my %hits; my $reflen = 0;
-	open my $in, "<", $bl or return 0;
-	while(<$in>){
-		chomp; my @c = split /\t/;
-		next if $c[6] < 2000;                      # only substantial alignments
-		my ($qs, $qe, $ss, $se) = @c[2..5];
-		my $str = ($ss <= $se) ? "+" : "-";
-		($ss, $se) = ($se, $ss) if $ss > $se;
-		push @{$hits{$c[0]}}, { qs => $qs, qe => $qe, ss => $ss, se => $se, str => $str };
-		$reflen = $c[7];
-	}
-	close $in;
-
-	my (@flags, @notes);
-	for my $q (sort keys %hits){
-		my @hs = @{$hits{$q}};
-		# IR-like HSPs: the same query interval is also hit on the opposite strand
-		my @ir_ref;
-		for my $x (@hs){
-			for my $y (@hs){
-				next if $x == $y || $x->{str} eq $y->{str};
-				my $lo = ($x->{qs} > $y->{qs}) ? $x->{qs} : $y->{qs};
-				my $hi = ($x->{qe} < $y->{qe}) ? $x->{qe} : $y->{qe};
-				my $short = (($x->{qe} - $x->{qs}) < ($y->{qe} - $y->{qs})) ? ($x->{qe} - $x->{qs}) : ($y->{qe} - $y->{qs});
-				if($short > 0 && ($hi - $lo) / $short >= 0.8){
-					$x->{ir} = 1;
-					push @ir_ref, [$x->{ss}, $x->{se}];
-				}
+	my $report = "$contigs.strand_check.txt";
+	my $fixed  = "$contigs.strand_fixed";
+	unlink($fixed);
+	my $read_report = sub {
+		my (%r, $fh);
+		$r{$_} = [] for qw(FLAG NOTE FLIP SPLIT);
+		open $fh, "<", $report or return \%r;
+		while(<$fh>){ chomp; my ($k, $v) = split /\t/, $_, 2; push @{$r{$k}}, $v if defined $v && exists $r{$k}; }
+		close $fh;
+		return \%r;
+	};
+	my $r;
+	{
+		local $ENV{PATH} = "$BLAST:$ENV{PATH}";   # the checker calls blastn and makeblastdb by name
+		run_optional("perl $checker $contigs \"$ref\" $report" . ($fix ? " $fixed" : ""), "strand_switch_check.pl") or return 0;
+		$r = $read_report->();
+		if($fix && -s $fixed){
+			$current_runtime = localtime();
+			print $LOGFILE "$current_runtime\tStrand switch inside a single-copy region of $contigs (an afin misjoin at an inverted repeat); correcting the contigs.\n";
+			print $LOGFILE "\t\t\t\t$_\n" for @{$r->{FLAG}};
+			for my $f (@{$r->{FLIP}}){
+				my ($id, $s, $e) = split /\t/, $f;
+				print $LOGFILE "\t\t\t\tTurned round $id positions $s-$e in place.\n";
 			}
-		}
-		# reference SSC: the shorter of the two stretches between the IR copies
-		my @ssc;    # list of [lo, hi] intervals on the linear reference
-		if(@ir_ref >= 2){
-			my @c = sort { $a->[0] <=> $b->[0] } @ir_ref;
-			my ($first, $last) = ($c[0], $c[-1]);
-			my $between = $last->[0] - $first->[1];
-			my $around  = ($reflen - $last->[1]) + $first->[0];
-			@ssc = ($between <= $around) ? ([$first->[1], $last->[0]]) : ([$last->[1], $reflen], [1, $first->[0]]);
-		}
-		my @sc = sort { $a->{qs} <=> $b->{qs} } grep { !$_->{ir} } @hs;
-		# bases covered per strand, as the union of intervals (HSPs can overlap)
-		my %len;
-		for my $str ("+", "-"){
-			my ($cov, $lo, $hi) = (0);
-			for my $h (sort { $a->{qs} <=> $b->{qs} } grep { $_->{str} eq $str } @sc){
-				if(defined $hi && $h->{qs} <= $hi){ $hi = $h->{qe} if $h->{qe} > $hi; }
-				else{ $cov += $hi - $lo + 1 if defined $hi; ($lo, $hi) = ($h->{qs}, $h->{qe}); }
+			for my $f (@{$r->{SPLIT}}){
+				my ($id, $s, $e, $new) = split /\t/, $f;
+				print $LOGFILE "\t\t\t\tCut $id: positions $s-$e written as $new.\n";
 			}
-			$cov += $hi - $lo + 1 if defined $hi;
-			$len{$str} = $cov;
-		}
-		next unless $len{"+"} && $len{"-"};
-		my $minor = ($len{"+"} >= $len{"-"}) ? "-" : "+";
-		my @seg = grep { $_->{str} eq $minor } @sc;
-		my $in_ssc = 0;
-		if(@ssc){
-			$in_ssc = 1;
-			for my $s (@seg){
-				my $ok = grep { $s->{ss} >= $_->[0] - 500 && $s->{se} <= $_->[1] + 500 } @ssc;
-				$in_ssc = 0 unless $ok;
-			}
-		}
-		my $desc = join("; ", map { sprintf("contig %d-%d = reference %d-%d", $_->{qs}, $_->{qe}, $_->{ss}, $_->{se}) } @seg);
-		if($in_ssc){
-			push @notes, "$q: the SSC is in the opposite orientation to the reference ($desc). This is a normal isomer, not an error.";
-		}
-		else{
-			push @flags, "$q: reversed segment(s) $desc, while the rest of the contig maps to the other strand. Likely an afin misjoin at a repeat; check this contig before trusting the assembly.";
+			rename($report, "$contigs.before_strand_fix.strand_check.txt");
+			rename($contigs, "$contigs.before_strand_fix");
+			rename($fixed, $contigs);
+			unlink("$contigs.fai");
+			print $SUMMARY "NOTE - afin misjoin at an inverted repeat corrected in $contigs (" . scalar(@{$r->{FLIP}}) . " segment(s) turned round, " . scalar(@{$r->{SPLIT}}) . " piece(s) cut). The contigs before correction are in " . (File::Spec->splitdir(getcwd()))[-1] . "/$contigs.before_strand_fix\n";
+			# check the corrected contigs
+			run_optional("perl $checker $contigs \"$ref\" $report", "strand_switch_check.pl") or return 0;
+			$r = $read_report->();
 		}
 	}
-
-	open my $rep, ">", "$contigs.strand_check.txt";
-	print $rep "Reference: $ref\n";
-	print $rep "Contigs placed: " . scalar(keys %hits) . "\n";
-	print $rep "FLAG\t$_\n" for @flags;
-	print $rep "NOTE\t$_\n" for @notes;
-	print $rep "OK\tno strand switches\n" unless @flags || @notes;
-	close $rep;
+	my @flags = @{$r->{FLAG}};
+	my @notes = @{$r->{NOTE}};
 
 	$current_runtime = localtime();
 	if(@flags){
@@ -2126,6 +2301,10 @@ sub run_afin {
 			$iter_num = $temp_count;
 		}	
 	}
+	# afin can misjoin at repeats; place its output on a reference and correct
+	# strand switches before anything downstream trusts it. Done before the
+	# contigs are counted, because a correction can cut a contig in two.
+	check_strand_switches($name . "_afin_iter".$iter_num.".fa", 1);
 	open my $afin_file, "<", $name . "_afin_iter".$iter_num.".fa";
 	while(<$afin_file>){
 		chomp;
@@ -2142,9 +2321,6 @@ sub run_afin {
 		}
 	}
 	my $total_afin_contigs = keys %contig_lengths;
-	# afin can misjoin at repeats; place its output on a reference and flag
-	# strand switches before anything downstream trusts it.
-	check_strand_switches($name . "_afin_iter".$iter_num.".fa");
 	return ($total_afin_contigs, $max_afin, $min_afin);
 }
 

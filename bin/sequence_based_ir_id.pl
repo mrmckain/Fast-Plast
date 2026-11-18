@@ -99,10 +99,49 @@ else{
 for my $start (sort {$a<=>$b} keys %regions){
         for my $end (keys %{$regions{$start}}){
                 if ($end-$start < 300){
-                        delete $regions{$start};
-		
+                        # Delete only this region. A zero-length "sc" (left where
+                        # the two IR copies differ at one base) shares its start
+                        # key with the IR segment that follows; deleting the whole
+                        # key threw that IR segment away and left a hole in the IR.
+                        delete $regions{$start}{$end};
                 }
 	}
+	delete $regions{$start} unless %{$regions{$start}};
+}
+# Merge neighbours of the same type left behind by that deletion, before the
+# SC regions are numbered. A short inverted repeat (<300 bp) with one copy in
+# the IR and one in an SC would otherwise split the IR interior of a collapsed
+# IR into two "sc" regions; dropping one SC per pass (below) could then never
+# reunite the IR flanks, and orientation failed.
+{
+	my ($ms, $me, $mt);
+	my %merged;
+	for my $start (sort {$a<=>$b} keys %regions){
+		for my $end (keys %{$regions{$start}}){
+			if(defined $mt && $regions{$start}{$end} eq $mt){
+				$me = $end if $end > $me;
+			}
+			else{
+				# A short region deleted above between an IR and an SC
+				# region (a short inverted repeat next to the IR boundary)
+				# leaves a hole between them. The driver only accepts a
+				# split whose IR exactly fills the space between the two
+				# SC regions, so give the hole to the SC side.
+				my $s2 = $start;
+				if(defined $mt){
+					my $hole = $start - $me - 1;
+					if($hole > 0 && $hole <= 1000){
+						if($mt eq "sc"){ $me = $start - 1; }
+						else{ $s2 = $me + 1; }
+					}
+					$merged{$ms}{$me} = $mt;
+				}
+				($ms, $me, $mt) = ($s2, $end, $regions{$start}{$end});
+			}
+		}
+	}
+	$merged{$ms}{$me} = $mt if defined $mt;
+	%regions = %merged;
 }
 my $ssc=0;
 for my $start (sort {$a<=>$b} keys %regions){
