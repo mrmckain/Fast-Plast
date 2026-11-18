@@ -25,6 +25,9 @@ use warnings;
 # uncovered stretch a <plan>.rotated (see below). The caller tiles each plan
 # and keeps the best.
 #
+# Contigs RagTag left unplaced because they align to both IR copies are put
+# into the gap between placed contigs that one of their placements falls in.
+#
 # Exits non-zero without writing a plan when there is nothing to tile: fewer
 # than two placed contigs, more than one scaffold, or a placed contig with no
 # usable alignment in its scaffold orientation.
@@ -63,6 +66,68 @@ while(<$p>){
 	$e->[1] = $f[8]     if $f[8] > $e->[1];
 }
 close $p;
+
+# Contigs RagTag leaves unplaced because they align equally well to both IR
+# copies (mapping quality ~0 at each) are often exactly what fills a gap
+# between two placed contigs: one IR copy is covered by neighbours, the other
+# is a hole the size of the IR. Put such a contig into the gap that one of its
+# placements falls in, in reference order, so tile_scaffold.pl can splice it
+# instead of leaving the IR as N.
+my $MIN_GAP_FILL = 1000;   # aligned bases inside the gap needed to use a placement
+{
+	my %is_loose = map { $_ => 1 } @loose;
+	my %cand;    # contig -> [strand, lo, hi] for every alignment >= 1000 bp, any mapping quality
+	open my $p2, "<", $paf or die "cannot open $paf: $!\n";
+	while(<$p2>){
+		my @f = split /\t/;
+		next unless @f >= 12 && $is_loose{$f[0]} && $f[10] >= 1000;
+		push @{$cand{$f[0]}}, [$f[4], $f[7] + 1, $f[8]];
+	}
+	close $p2;
+	my @gaps;    # [index of the placed contig before the gap, lo, hi]
+	for my $i (0 .. $#placed - 1){
+		my $e1 = $extent{$placed[$i][0]}{$placed[$i][1]} or next;
+		my $e2 = $extent{$placed[$i+1][0]}{$placed[$i+1][1]} or next;
+		push @gaps, [$i, $e1->[1] + 1, $e2->[0] - 1] if $e2->[0] - $e1->[1] - 1 >= $MIN_GAP_FILL;
+	}
+	my %fill;    # gap index -> [[contig, strand, lo, hi], ...]
+	my @still_loose;
+	for my $id (@loose){
+		my ($best, $best_ov);
+		for my $c (@{$cand{$id} || []}){
+			for my $g (0 .. $#gaps){
+				my $lo = $c->[1] > $gaps[$g][1] ? $c->[1] : $gaps[$g][1];
+				my $hi = $c->[2] < $gaps[$g][2] ? $c->[2] : $gaps[$g][2];
+				my $ov = $hi - $lo + 1;
+				($best, $best_ov) = ([$g, @$c], $ov) if $ov >= $MIN_GAP_FILL && (!defined $best_ov || $ov > $best_ov);
+			}
+		}
+		if($best){
+			my ($g, $strand, $lo, $hi) = @$best;
+			push @{$fill{$g}}, [$id, $strand, $lo, $hi];
+			# merge this contig's alignments on that strand near the chosen one into its extent
+			my ($elo, $ehi) = ($lo, $hi);
+			for my $c (@{$cand{$id}}){
+				next unless $c->[0] eq $strand && $c->[2] >= $lo - 5000 && $c->[1] <= $hi + 5000;
+				$elo = $c->[1] if $c->[1] < $elo; $ehi = $c->[2] if $c->[2] > $ehi;
+			}
+			$extent{$id}{$strand} = [$elo, $ehi];
+		}
+		else{ push @still_loose, $id; }
+	}
+	if(%fill){
+		my @new;
+		for my $i (0 .. $#placed){
+			push @new, $placed[$i];
+			for my $g (grep { $gaps[$_][0] == $i } keys %fill){
+				push @new, map { [$_->[0], $_->[1]] } sort { $::a->[2] <=> $::b->[2] } @{$fill{$g}};   # $a is the AGP filehandle here
+			}
+		}
+		print STDERR "IR gap fill: placed $_->[0] ($_->[1]) at reference $_->[2]-$_->[3]\n" for map { @$_ } values %fill;
+		@placed = @new;
+		@loose = @still_loose;
+	}
+}
 
 my @lines;
 for my $c (@placed){
