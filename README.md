@@ -3,7 +3,7 @@ Fast-Plast: Rapid de novo assembly and finishing for whole chloroplast genomes
 =============
 <b>Authors</b>: Michael R. McKain, <a href="https://github.com/afinit/afin">Mark Wilson</a><br>
 </br>
-Version 1.3.3<br>
+Version 1.3.4<br>
 </br>
 <b>Contact</b>: https://github.com/mrmckain
 
@@ -301,6 +301,12 @@ Definitions:
 
 <h1 id="changelog">Changelog</h1>
 
+* 18-November-2026 Fast-Plast v.1.3.4 <br>
+    --Collapsed IR: a single afin contig holding a complete plastome with one IR copy (e.g. ~120 kb in grasses, ~131 kb in Hosta) is now split into LSC/IR/SSC. `sequence_based_ir_id.pl` merges adjacent regions of the same type after dropping regions under 300 bp (a short inverted repeat between the IR and LSC had split the IR interior), and removes only the exact short region. <br>
+    --SPAdes contig filter keeps contigs at 0.25x-5x of the length-weighted median coverage; the mean-1SD to mean+2.5SD window discarded real IR (high coverage) and single-copy (low coverage) contigs. <br>
+    --Scaffolding: a stale `.fai` and the previous RagTag output are cleared before each round (RagTag otherwise wrote an empty scaffold file); when one contig spans the reference origin RagTag is rerun on a rotated reference; contigs that overlap on the reference are spliced (`bin/ragtag_tiling_plan.pl` + `extras/windowed_assembly/tile_scaffold.pl`) when that leaves fewer N runs than the RagTag gap-joined scaffold. <br>
+    --New `bin/strand_switch_check.pl`: a segment inverted between the two copies of the short LSC/IR inverted repeat (an afin misjoin) is turned round in place, or the contig is cut and re-scaffolded. <br>
+    --Tested on 269 Johnsongrass and 48 Hosta/Agavoideae plastome libraries. <br>
 * 27-September-2026 Fast-Plast v.1.3.3 <br>
     --Coverage analysis: the low-coverage threshold (0.15 x mean) is capped at 100x, and low-coverage runs in extremely AT-rich or homopolymer sequence are reported as low-complexity dropouts (`<name>_low_complexity_dropouts.txt`) instead of problem regions. A 5,900x library had flagged seven AT-microsatellite dips at up to 456x as problems. <br>
     --`--bowtie_index` accepts a two-word species name (`"Sorghum bicolor"` or `Sorghum_bicolor`): all accessions of that species build the index and the first becomes the scaffolding and strand-check reference, skipping the database-wide reference search. <br>
