@@ -1353,6 +1353,23 @@ else{
 	$current_afin=&afin_wrap($lc_remove_contigs);
 
 	&orientate_plastome($current_afin, $name, "../Final_Assembly_Fixed_Low_Coverage/"); 
+	# The repaired contigs may not orient (e.g. one contig with a single IR copy).
+	# Then there is no new plastome to check: keep the finished one in
+	# Final_Assembly, say so, and stop here instead of failing in bowtie2-build.
+	unless(-s "../Final_Assembly_Fixed_Low_Coverage/${name}_FULLCP.fsa"){
+		$current_runtime = localtime();
+		print $LOGFILE "$current_runtime\tReassembly of the low-coverage region(s) did not give an oriented plastome. Keeping Final_Assembly/${name}_FULLCP.fsa; check Coverage_Analysis/${name}_problem_regions_plastid_assembly.txt.\n";
+		print $SUMMARY "NOTE - low-coverage repair did not give an oriented plastome; the plastome in Final_Assembly is unchanged (values above). Problem regions: Coverage_Analysis/${name}_problem_regions_plastid_assembly.txt\n";
+		chdir("../");
+		if($clean && $clean eq "light"){
+			unlink(glob("5_Plastome_Finishing/*fsa.n*"));
+			unlink(glob("4.5_Reassemble_Low_Coverage/*fsa.n*"));
+			unlink(glob("*/*bt2"));
+			unlink(glob("*/*.sam"));
+			unlink(glob("Coverage_Analysis/mer_counts.jf"));
+		}
+		exit 0;
+	}
 	mkdir("../Coverage_Analysis_Reassembly");
 	chdir("../Coverage_Analysis_Reassembly");	
 	my $build_bowtie2_exec = $BOWTIE2 . "-build ../Final_Assembly_Fixed_Low_Coverage/" . $name . "_FULLCP.fsa " . $name . "_bowtie";
