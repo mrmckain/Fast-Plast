@@ -308,7 +308,8 @@ Definitions:
     --New `bin/strand_switch_check.pl`: a segment inverted between the two copies of the short LSC/IR inverted repeat (an afin misjoin) is turned round in place, or the contig is cut and re-scaffolded. <br>
     --K-mer choice: when no k reaches 50x expected k-mer coverage, the floor drops to 20x instead of reverting to the read-length table (a 56x library now gets 55,77,95 rather than 55,87,121). <br>
     --Strand check: an SSC in the opposite orientation to the reference is reported as the normal isomer; the IR copies are taken from the reference itself, so a BLAST hit spanning SSC+IR is no longer flagged as a misjoin. <br>
-    --Tested on 269 Johnsongrass and 48 Hosta/Agavoideae plastome libraries. <br>
+    --A single-IR-copy contig no longer crashes the IR split (empty split file) or the low-coverage repair (no oriented plastome); the finished plastome is kept and the log says the repair failed. <br>
+    --Developed on 269 Johnsongrass libraries; release tested on 9 Hosta/Agavoideae libraries (7 complete; 2 still unscaffolded, as in 1.3.3). <br>
 * 27-September-2026 Fast-Plast v.1.3.3 <br>
     --Coverage analysis: the low-coverage threshold (0.15 x mean) is capped at 100x, and low-coverage runs in extremely AT-rich or homopolymer sequence are reported as low-complexity dropouts (`<name>_low_complexity_dropouts.txt`) instead of problem regions. A 5,900x library had flagged seven AT-microsatellite dips at up to 456x as problems. <br>
     --`--bowtie_index` accepts a two-word species name (`"Sorghum bicolor"` or `Sorghum_bicolor`): all accessions of that species build the index and the first becomes the scaffolding and strand-check reference, skipping the database-wide reference search. <br>
