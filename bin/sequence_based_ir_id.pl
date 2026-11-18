@@ -182,6 +182,13 @@ for my $start (sort {$a<=>$b} keys %regions){
         }
 }
 
+# No region left (the only SC was the one removed for this pass): write an
+# empty split file; the driver skips it.
+unless(defined $final_start){
+	open my $empty, ">", $name . "_regions_split" . $sc_region_to_split_on . ".fsa";
+	close $empty;
+	exit 0;
+}
 $final_regions{$final_start}{$final_end}=$final_regionid;
 
 open my $out, ">", $name . "_regions_split" . $sc_region_to_split_on . ".fsa";

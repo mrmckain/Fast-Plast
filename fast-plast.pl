@@ -2636,6 +2636,10 @@ sub orientate_plastome{
 
         	run_cmd("perl $FPBIN/sequence_based_ir_id.pl $current_afin $name $i $min_region_length", "sequence_based_ir_id.pl");
         	my $split_fullname= $name ."_regions_split".$i.".fsa";
+        	# Nothing left to split on (e.g. one contig with a single IR copy has no
+        	# inverted repeat, so the whole contig is one SC and removing it leaves
+        	# an empty file): try the next pass instead of failing in makeblastdb.
+        	next unless -s $split_fullname;
 
         	run_cmd("$BLAST/makeblastdb -in $split_fullname -dbtype nucl", "makeblastdb");
         	my $blast_afin_exec = $BLAST . "blastn -query " . $split_fullname . " -db " . $split_fullname . " -evalue 1e-40 -outfmt 6 -max_target_seqs 1000000 > " . $split_fullname . ".blastn";
