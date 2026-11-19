@@ -9,7 +9,7 @@ source:
   # sha256 of the GitHub tag tarball; recompute on every version bump:
   #   curl -sSL https://github.com/mrmckain/Fast-Plast/archive/refs/tags/v<ver>.tar.gz | shasum -a 256
   url: https://github.com/mrmckain/Fast-Plast/archive/refs/tags/v{{ version }}.tar.gz
-  sha256: c4f017784b9c105dcb100d12b07ecc4c71228051b08ce044ff20495607dafb9e
+  sha256: 69784b0c635f165d4cda98e5fbafb3e2e5b381326f22e4581a3520536f83eaa0
 
 build:
   number: 0
