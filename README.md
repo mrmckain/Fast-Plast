@@ -3,7 +3,7 @@ Fast-Plast: Rapid de novo assembly and finishing for whole chloroplast genomes
 =============
 <b>Authors</b>: Michael R. McKain, <a href="https://github.com/afinit/afin">Mark Wilson</a><br>
 </br>
-Version 1.3.5<br>
+Version 1.3.6<br>
 </br>
 <b>Contact</b>: https://github.com/mrmckain
 
@@ -301,6 +301,12 @@ Definitions:
 
 <h1 id="changelog">Changelog</h1>
 
+* 20-November-2026 Fast-Plast v.1.3.6 <br>
+    --Fixes a v1.3.5 regression: the single-IR-copy rebuild ran on every one-contig assembly, including contigs the normal orientation step already finishes, and on some it left part of the IR in a single-copy region (plastomes ~2.4 kb short with a ~24.2 kb IR; 6 of 48 Hosta/Agavoideae libraries). Use v1.3.6, not v1.3.5. <br>
+    --The rebuild (`bin/coverage_ir_expand.pl`) is now a fallback: it runs only when orientation fails, and orientation is then retried. <br>
+    --Contig-end overhangs into the other IR copy are found in 100 bp chunks that tolerate one mismatching chunk (an exact prefix match stopped at the first SNP or afin error and left IR sequence at the contig end). <br>
+    --The rebuild is refused when either single-copy region starts or ends at >= 1.5x single-copy k-mer depth (IR left in a single-copy region). <br>
+    --Tested on 14 libraries: the 6 affected by v1.3.5 are identical to their v1.3.4 assemblies; of 7 v1.3.4 orientation failures, 5 finish (3 identical to earlier assemblies, 2 within 1 bp), 2 still fail (a junction with almost no read coverage; a plastome with a 33 kb IR and 9 kb SSC). <br>
 * 20-November-2026 Fast-Plast v.1.3.5 <br>
     --One contig with a single IR copy: afin can return a whole plastome as one contig that passes through the IR once (LSC-IR-SSC; the two IR copies collapse in the assembly graph). It has no inverted repeat, so orientation failed. New `bin/coverage_ir_expand.pl` finds the IR as the stretch at about twice the single-copy k-mer coverage, removes contig-end overhangs into the other IR copy, places the IR ends with reads spanning the two missing junctions (trimming up to 300 bp of an unreliable contig tip), and writes SC1 + IR + SC2 + revcomp(IR) for the usual orientation step. It refuses (nothing changes) when the contig already holds both IR copies, the high-coverage stretch is not IR-sized, or junction support is below 20% of the single-copy k-mer depth. Applied before plastome finishing and after the low-coverage reassembly. <br>
     --Tested on 12 Hosta/Agavoideae libraries: every one-contig single-IR-copy assembly (Hos001, 006, 007, 009, 016, Bowiea; Hos005 when the junction is covered) became a complete plastome, identical to the earlier assembly where one existed (Hos006 rotated by 78 bp; Hos005 differs by 1 bp in a 4x-coverage stretch). <br>
