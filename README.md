@@ -3,7 +3,7 @@ Fast-Plast: Rapid de novo assembly and finishing for whole chloroplast genomes
 =============
 <b>Authors</b>: Michael R. McKain, <a href="https://github.com/afinit/afin">Mark Wilson</a><br>
 </br>
-Version 1.3.4<br>
+Version 1.3.5<br>
 </br>
 <b>Contact</b>: https://github.com/mrmckain
 
@@ -301,6 +301,9 @@ Definitions:
 
 <h1 id="changelog">Changelog</h1>
 
+* 20-November-2026 Fast-Plast v.1.3.5 <br>
+    --One contig with a single IR copy: afin can return a whole plastome as one contig that passes through the IR once (LSC-IR-SSC; the two IR copies collapse in the assembly graph). It has no inverted repeat, so orientation failed. New `bin/coverage_ir_expand.pl` finds the IR as the stretch at about twice the single-copy k-mer coverage, removes contig-end overhangs into the other IR copy, places the IR ends with reads spanning the two missing junctions (trimming up to 300 bp of an unreliable contig tip), and writes SC1 + IR + SC2 + revcomp(IR) for the usual orientation step. It refuses (nothing changes) when the contig already holds both IR copies, the high-coverage stretch is not IR-sized, or junction support is below 20% of the single-copy k-mer depth. Applied before plastome finishing and after the low-coverage reassembly. <br>
+    --Tested on 12 Hosta/Agavoideae libraries: every one-contig single-IR-copy assembly (Hos001, 006, 007, 009, 016, Bowiea; Hos005 when the junction is covered) became a complete plastome, identical to the earlier assembly where one existed (Hos006 rotated by 78 bp; Hos005 differs by 1 bp in a 4x-coverage stretch). <br>
 * 18-November-2026 Fast-Plast v.1.3.4 <br>
     --Collapsed IR: a single afin contig holding a complete plastome with one IR copy (e.g. ~120 kb in grasses, ~131 kb in Hosta) is now split into LSC/IR/SSC. `sequence_based_ir_id.pl` merges adjacent regions of the same type after dropping regions under 300 bp (a short inverted repeat between the IR and LSC had split the IR interior), and removes only the exact short region. <br>
     --SPAdes contig filter keeps contigs at 0.25x-5x of the length-weighted median coverage; the mean-1SD to mean+2.5SD window discarded real IR (high coverage) and single-copy (low coverage) contigs. <br>
