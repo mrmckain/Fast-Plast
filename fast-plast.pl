@@ -1217,7 +1217,6 @@ else{
 	close ($cpcomposition);
 }
 
-&rebuild_single_ir_copy($current_afin);
 chdir("../");
 
 ########## Start Plastome Finishing ##########
@@ -1229,6 +1228,15 @@ mkdir("5_Plastome_Finishing");
 chdir("5_Plastome_Finishing");
 
 &orientate_plastome("../4_Afin_Assembly/".$current_afin, $name, "../Final_Assembly/"); 
+# Fallback only: if orientation found no IR and the assembly is one contig, it may
+# carry a single IR copy (see rebuild_single_ir_copy); rebuild the second copy
+# and orient again. Assemblies that orient as they are never reach this.
+unless(-s "../Final_Assembly/${name}_FULLCP.fsa"){
+	chdir("../4_Afin_Assembly");
+	my $rebuilt = &rebuild_single_ir_copy($current_afin);
+	chdir("../5_Plastome_Finishing");
+	&orientate_plastome("../4_Afin_Assembly/".$current_afin, $name, "../Final_Assembly/") if $rebuilt;
+}
 chdir("../");
 
 if(!-d "Final_Assembly"){
@@ -1352,9 +1360,11 @@ else{
 
 	my $lc_remove_contigs = &reassemble_low_coverage("../Final_Assembly/" . $name . "_FULLCP.fsa", "../Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt");
 	$current_afin=&afin_wrap($lc_remove_contigs);
-	&rebuild_single_ir_copy($current_afin);
 
 	&orientate_plastome($current_afin, $name, "../Final_Assembly_Fixed_Low_Coverage/"); 
+	if(!-s "../Final_Assembly_Fixed_Low_Coverage/${name}_FULLCP.fsa" && &rebuild_single_ir_copy($current_afin)){
+		&orientate_plastome($current_afin, $name, "../Final_Assembly_Fixed_Low_Coverage/");
+	}
 	# The repaired contigs may not orient (e.g. one contig with a single IR copy).
 	# Then there is no new plastome to check: keep the finished one in
 	# Final_Assembly, say so, and stop here instead of failing in bowtie2-build.
@@ -2154,11 +2164,12 @@ sub count_lines {
 # (and nothing changes) when the contig already holds both copies or the reads
 # do not support the junctions. The rebuilt sequence replaces the contig file
 # under the same name; the original is kept as <file>.before_ir_rebuild.
+# Called only after orientation has failed. Returns 1 if it rebuilt the contig.
 sub rebuild_single_ir_copy {
 	my ($contigs) = @_;
-	return unless -s $contigs && &count_contigs($contigs) == 1;
+	return 0 unless -s $contigs && &count_contigs($contigs) == 1;
 	my @reads = glob("../2_Bowtie_Mapping/map_*");
-	return unless @reads;
+	return 0 unless @reads;
 	my $out = "$contigs.ir_rebuilt.fa";
 	my $rep = "$contigs.ir_rebuild.txt";
 	unlink($out);
@@ -2175,11 +2186,10 @@ sub rebuild_single_ir_copy {
 		rename($contigs, "$contigs.before_ir_rebuild");
 		rename($out, $contigs);
 		unlink("$contigs.fai");
+		return 1;
 	}
-	else{
-		print $LOGFILE "\t\t\t\tSingle-IR-copy rebuild not applied: $note\n";
-	}
-	return;
+	print $LOGFILE "\t\t\t\tSingle-IR-copy rebuild not applied: $note\n";
+	return 0;
 }
 
 ##########

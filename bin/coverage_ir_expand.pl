@@ -116,19 +116,33 @@ my $ratio = median(@w[$bs .. $be]) / $M;
 }
 
 # ---- 3. overhangs into the other IR copy ----------------------------------
+# A contig end that ran on into the other IR copy is the reverse complement of
+# part of the IR. Walk in from each end in $CHUNK bp steps while the chunk's
+# reverse complement is found in the IR stretch; one failing chunk (a SNP or an
+# afin error in the overhang) is tolerated, two in a row end the overhang. An
+# exact prefix match stopped at the first difference and left IR sequence at
+# the contig end, which then gave a false junction inside the IR.
+my $CHUNK = 100;
 my $irzone = substr($C, ($s0 > $SEARCH ? $s0 - $SEARCH : 0), $irlen0 + 2 * $SEARCH);
-my ($ov1, $ov2) = (0, 0);
-# start: longest prefix whose reverse complement lies in the IR stretch
-if(index($irzone, rc(substr($C, 0, $MIN_OVH))) >= 0){
-	my ($lo, $hi) = ($MIN_OVH, ($e0 - $s0 < $s0 ? $e0 - $s0 : $s0));
-	while($lo < $hi){ my $m = int(($lo + $hi + 1) / 2); if(index($irzone, rc(substr($C, 0, $m))) >= 0){ $lo = $m; } else{ $hi = $m - 1; } }
-	$ov1 = $lo;
+sub overhang {
+	my ($from_end) = @_;
+	my $max = $from_end ? $L - $e0 : $s0;          # cannot reach into the IR stretch itself
+	my ($ov, $miss) = (0, 0);
+	for(my $p = 0; $p + $CHUNK <= $max; $p += $CHUNK){
+		my $chunk = $from_end ? substr($C, $L - $p - $CHUNK, $CHUNK) : substr($C, $p, $CHUNK);
+		if(index($irzone, rc($chunk)) >= 0){ $ov = $p + $CHUNK; $miss = 0; }
+		else{ last if ++$miss >= 2; }
+	}
+	# extend base by base past the last whole chunk
+	while($ov + 1 <= $max){
+		my $seg = $from_end ? substr($C, $L - $ov - 1, 25) : substr($C, $ov + 1 - 25, 25);
+		last if $ov + 1 < 25 || index($irzone, rc($seg)) < 0;
+		$ov++;
+	}
+	return $ov >= $MIN_OVH ? $ov : 0;
 }
-if(index($irzone, rc(substr($C, $L - $MIN_OVH))) >= 0){
-	my ($lo, $hi) = ($MIN_OVH, ($e0 - $s0 < $L - $e0 ? $e0 - $s0 : $L - $e0));
-	while($lo < $hi){ my $m = int(($lo + $hi + 1) / 2); if(index($irzone, rc(substr($C, $L - $m))) >= 0){ $lo = $m; } else{ $hi = $m - 1; } }
-	$ov2 = $lo;
-}
+my $ov1 = overhang(0);
+my $ov2 = overhang(1);
 my $Ct = substr($C, $ov1, $L - $ov1 - $ov2);
 my ($s1, $e1) = ($s0 - $ov1, $e0 - $ov1);
 my $Lt = length $Ct;
@@ -188,7 +202,24 @@ my $IR = substr($Ct, $s, $e - $s);
 my $irlen = length $IR;
 stop("IR from the junctions is $irlen bp, not IR-sized") if $irlen < $MIN_IR || $irlen > $MAX_IR;
 
-# ---- 5. rebuild ------------------------------------------------------------
+# ---- 5. check the single-copy ends -------------------------------------------
+# Each single-copy region must start and end at single-copy depth. IR-level
+# coverage there means IR sequence was left in an SC (a wrong IR end).
+{
+	my $SC_END = 1000;
+	my @cov2 = map { sup(substr($Ct, $_, $K)) } 0 .. length($Ct) - $K;
+	my @checks = (["SC1 start", 0], ["SC1 end", $s - $SC_END], ["SC2 start", $e], ["SC2 end", length($Ct) - $K - $SC_END]);
+	for my $c (@checks){
+		my ($what, $from) = @$c;
+		$from = 0 if $from < 0;
+		my $to = $from + $SC_END - 1; $to = $#cov2 if $to > $#cov2;
+		next if $to <= $from;
+		my $m = median(@cov2[$from .. $to]);
+		stop(sprintf("%s is at %.2fx the single-copy k-mer depth (IR left in a single-copy region)", $what, $m / $M)) if $m >= 1.5 * $M;
+	}
+}
+
+# ---- 6. rebuild ------------------------------------------------------------
 my $new = $Ct . rc($IR);
 open my $o, ">", $out or die "ERROR: cannot write $out: $!\n";
 print $o ">$ids[0]_IR_rebuilt\n";
