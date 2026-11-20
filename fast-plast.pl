@@ -128,7 +128,7 @@ my $version;
 # --version flag. (The POD VERSION section defers to --version, so there is no
 # second copy to keep in sync.)
 # ---------------------------------------------------------------------------
-my $FP_VERSION = "1.3.4";
+my $FP_VERSION = "1.3.5";
 my $current_version = "Fast-Plast v.$FP_VERSION";
 my $user_bowtie;
 my $clean;
@@ -1217,6 +1217,7 @@ else{
 	close ($cpcomposition);
 }
 
+&rebuild_single_ir_copy($current_afin);
 chdir("../");
 
 ########## Start Plastome Finishing ##########
@@ -1351,6 +1352,7 @@ else{
 
 	my $lc_remove_contigs = &reassemble_low_coverage("../Final_Assembly/" . $name . "_FULLCP.fsa", "../Coverage_Analysis/".$name."_problem_regions_plastid_assembly.txt");
 	$current_afin=&afin_wrap($lc_remove_contigs);
+	&rebuild_single_ir_copy($current_afin);
 
 	&orientate_plastome($current_afin, $name, "../Final_Assembly_Fixed_Low_Coverage/"); 
 	# The repaired contigs may not orient (e.g. one contig with a single IR copy).
@@ -2140,6 +2142,45 @@ sub count_lines {
 
 
 
+
+##########
+
+# afin can return a whole plastome as one contig that passes through the IR
+# once (LSC-IR-SSC): the two IR copies collapse in the assembly graph. Such a
+# contig has no inverted repeat, so sequence_based_ir_id.pl finds no IR and
+# orientation fails. bin/coverage_ir_expand.pl finds the IR from read coverage
+# (about twice the single-copy depth), places its ends with reads spanning the
+# two missing junctions, and writes SC1 + IR + SC2 + revcomp(IR). It refuses
+# (and nothing changes) when the contig already holds both copies or the reads
+# do not support the junctions. The rebuilt sequence replaces the contig file
+# under the same name; the original is kept as <file>.before_ir_rebuild.
+sub rebuild_single_ir_copy {
+	my ($contigs) = @_;
+	return unless -s $contigs && &count_contigs($contigs) == 1;
+	my @reads = glob("../2_Bowtie_Mapping/map_*");
+	return unless @reads;
+	my $out = "$contigs.ir_rebuilt.fa";
+	my $rep = "$contigs.ir_rebuild.txt";
+	unlink($out);
+	my $cmd = "perl $FPBIN/coverage_ir_expand.pl $contigs $out $rep @reads";
+	print $LOGFILE "\t\t\t\tRunning: $cmd\n";
+	my $rc = system($cmd);
+	my $note = "";
+	if(open my $r, "<", $rep){ $note = <$r> // ""; chomp $note; close $r; }
+	$note =~ s/^(NOT_)?APPLIED\t//;
+	$current_runtime = localtime();
+	if($rc == 0 && -s $out){
+		print $LOGFILE "$current_runtime\tOne contig with a single IR copy: second IR copy rebuilt from read coverage and junction reads ($note).\n";
+		print $SUMMARY "NOTE - one-contig assembly with a single IR copy; second IR copy rebuilt from reads: $note\n";
+		rename($contigs, "$contigs.before_ir_rebuild");
+		rename($out, $contigs);
+		unlink("$contigs.fai");
+	}
+	else{
+		print $LOGFILE "\t\t\t\tSingle-IR-copy rebuild not applied: $note\n";
+	}
+	return;
+}
 
 ##########
 
