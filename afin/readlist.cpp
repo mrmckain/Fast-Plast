@@ -89,13 +89,18 @@ void Readlist::create_read_range(){
   // add the last entry
   read_range.insert( { current, std::make_tuple( curr_start+1, rlist.size(), 0, 0 )});
 
-  std::string rc( rlist[0].substr( rlist[0].length() - max_sort_char, max_sort_char ) );
+  // Walk the reads in rc_reflist order (sorted by the reverse complement of their
+  // last max_sort_char bases): get_rc_read(j) returns rlist[rc_reflist[j]], so the
+  // ranges must be indices into rc_reflist. Walking rlist[i] here (as before) gave
+  // ranges that did not match get_rc_read, and reads matching a contig only as a
+  // reverse complement were mostly never found.
+  std::string rc( rlist[rc_reflist[0]].substr( rlist[rc_reflist[0]].length() - max_sort_char, max_sort_char ) );
   current = revcomp( rc );
   curr_start = 0;
 
   // cycle through the rc_reflist to include these ranges in the hash as well
   for( long int i=1; i<rc_reflist.size(); i++ ){
-    rc = rlist[i].substr( rlist[i].length() - max_sort_char, max_sort_char );
+    rc = rlist[rc_reflist[i]].substr( rlist[rc_reflist[i]].length() - max_sort_char, max_sort_char );
     rc = revcomp( rc );
     if( rc.compare( current ) != 0 ){
       // check if current already exists in hash
