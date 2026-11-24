@@ -76,7 +76,13 @@ void Match::match_contig_fr(){
           std::string rc = reads->get_rc_read(j);
 
           if( rc.compare( 0, seq_sub_rc.length(), seq_sub_rc ) == 0 ){
-            push_match( rc, i );
+            // rc starts with the reverse complement of the contig front, so the read
+            // itself (revcomp of rc) ends with the front: store it in contig
+            // orientation, as Read::get_pos expects for front matches (back == false)
+            // and as the forward-read branch above does. Storing rc gave reads in the
+            // opposite orientation; it went unnoticed while create_read_range() built
+            // the reverse-complement ranges wrongly and this branch rarely ran.
+            push_match( revcomp( rc ), i );
           }
         }
       }
